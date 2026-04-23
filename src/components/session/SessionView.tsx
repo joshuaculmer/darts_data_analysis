@@ -17,35 +17,31 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
   const [selectedParticipant, setSelectedParticipant] = useState<string>(
     initialParticipant ?? participantIds[0] ?? ""
   );
-  const [selectedSessionIndex, setSelectedSessionIndex] = useState<number | null>(0);
+  const [selectedSessionIndex, setSelectedSessionIndex] = useState<number>(0);
   const [expandedGame, setExpandedGame] = useState<number | null>(null);
 
   const participantSessions = sessions
     .map((s, i) => ({ session: s, globalIndex: i }))
     .filter(({ session }) => session.user_uuid === selectedParticipant);
 
-  // Apply initial selection from click-to-navigate
+  // Handle click-to-navigate from scatter plot.
+  // Compute the local index using initialParticipant directly so both states
+  // are set atomically — avoids a race where the participant-change path
+  // resets the session index after this effect sets it.
   useEffect(() => {
-    if (initialParticipant) setSelectedParticipant(initialParticipant);
-  }, [initialParticipant]);
-
-  useEffect(() => {
-    if (initialSessionIndex != null) {
-      const localIdx = participantSessions.findIndex(
-        ({ globalIndex }) => globalIndex === initialSessionIndex
-      );
-      setSelectedSessionIndex(localIdx >= 0 ? localIdx : 0);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSessionIndex, initialParticipant]);
-
-  // Reset session selection when participant changes (unless driven by initialSessionIndex)
-  useEffect(() => {
-    setSelectedSessionIndex(null);
+    if (initialParticipant == null || initialSessionIndex == null) return;
+    const navSessions = sessions
+      .map((s, i) => ({ session: s, globalIndex: i }))
+      .filter(({ session }) => session.user_uuid === initialParticipant);
+    const localIdx = navSessions.findIndex(({ globalIndex }) => globalIndex === initialSessionIndex);
+    setSelectedParticipant(initialParticipant);
+    setSelectedSessionIndex(localIdx >= 0 ? localIdx : 0);
     setExpandedGame(null);
-  }, [selectedParticipant]);
+  // sessions is stable across navigations; initialParticipant/Index are the triggers
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialParticipant, initialSessionIndex]);
 
-  const activeEntry = selectedSessionIndex != null ? participantSessions[selectedSessionIndex] : null;
+  const activeEntry = participantSessions[selectedSessionIndex] ?? null;
   const activeSession = activeEntry?.session ?? null;
 
   const sessionScore = activeSession ? computeSessionScore(activeSession, boards) : null;
@@ -58,7 +54,11 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
           <label style={{ fontSize: 11, color: "#94a3b8" }}>Participant</label>
           <select
             value={selectedParticipant}
-            onChange={(e) => setSelectedParticipant(e.target.value)}
+            onChange={(e) => {
+              setSelectedParticipant(e.target.value);
+              setSelectedSessionIndex(0);
+              setExpandedGame(null);
+            }}
             style={{ background: "#1e293b", color: "#e2e8f0", border: "1px solid #334155", borderRadius: 4, padding: "4px 8px", fontSize: 13 }}
           >
             {participantIds.map((id) => {

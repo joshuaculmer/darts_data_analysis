@@ -69,7 +69,7 @@ export function ScoreVsSkillScatter({ points, onSessionClick }: Props) {
                 data={group}
                 isAnimationActive={false}
                 onClick={onSessionClick ? (data) => {
-                  const p = data as ScoreSkillPoint;
+                  const p = data as unknown as ScoreSkillPoint;
                   onSessionClick(p.user_uuid, p.sessionIndex);
                 } : undefined}
                 style={onSessionClick ? { cursor: "pointer" } : undefined}

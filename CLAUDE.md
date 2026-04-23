@@ -12,6 +12,8 @@ The app has three sequential gates before showing the dashboard:
 2. **Board loading screen** — app auto-fetches the Perlin noise board surfaces referenced in the session data
 3. **Dashboard** — all data available, all charts active
 
+Both CSVs are persisted in `localStorage` (`darts:sessions_csv`, `darts:survey_csv`) so the dashboard reloads automatically on page refresh without re-uploading. A red **Clear Data** button in the top-right of the header removes both keys and resets all app state to the upload screen.
+
 The trust question selector auto-selects the first available question on survey load.
 
 ## Data Sources
@@ -54,15 +56,18 @@ participantTotalScore = sum of session sums across all sessions for a user
 - `MIN_SESSIONS_REQUIRED = 5` in `stats.ts` — change this single constant to update the completeness threshold everywhere. A participant is "complete" when `sessionCount === MIN_SESSIONS_REQUIRED && surveyCount === MIN_SESSIONS_REQUIRED`.
 
 ## Navigation Structure
-Top navbar with five sections. See `PLANNING.md` for the full chart roadmap per section.
+Top navbar with six sections. See `PLANNING.md` for the full chart roadmap per section.
 
 | Section | Key Components |
 |---|---|
 | Sanity Checks | KpiCards, SessionCalendar, ConditionDistribution |
-| Game Performance | ScoreVsSkillScatter, TrustVsScore |
+| Game Performance | ScoreVsSkillScatter (click a point to jump to Session View), TrustVsScore |
 | Trust & Influence | TrustQuestionSelector, TrustByCondition, TrustOverTime, TrustVsScore |
 | Individual View | IndividualView (participant dropdown + timeline + breakdown) |
+| Session View | SessionView — participant + session dropdowns; session metadata table + per-game table with expandable hit rows |
 | Raw Data | Coming soon (filterable/sortable tables) |
+
+All sections except Raw Data respect the **Complete Participants** toggle (passed via `filteredSessions` / `filteredSurveyResponses`).
 
 ## File Structure
 
@@ -91,6 +96,7 @@ src/
 │   ├── scoreStats.ts                # gameScore, computeSessionScore, computeAllSessionScores,
 │   │                                #   computeParticipantTotalScores, computeScoreByCondition,
 │   │                                #   computeScoreVsSkillPoints, SessionScore, ParticipantScore
+│   │                                #   ScoreSkillPoint includes user_uuid + sessionIndex for click-to-navigate
 │   ├── scoreStats.test.ts
 │   ├── surveyStats.ts               # joinSessionsWithSurvey, computeTrustByCondition,
 │   │                                #   computeTrustOverTime, computeTrustVsScorePoints
@@ -115,13 +121,18 @@ src/
     │   ├── TrustOverTime.tsx
     │   └── TrustVsScore.tsx
     │
-    └── individual/
-        ├── IndividualView.tsx       # Parent: participant selector, wires all sub-components
-        ├── IndividualTimeline.tsx
-        ├── GameBreakdown.tsx        # Stub — renders session avg; game-level bars need raw session passed in
-        ├── ConditionExposure.tsx
-        ├── ParticipantKpiCards.tsx
-        └── SurveyResponseTable.tsx
+    ├── individual/
+    │   ├── IndividualView.tsx       # Parent: participant selector, wires all sub-components
+    │   ├── IndividualTimeline.tsx
+    │   ├── GameBreakdown.tsx        # Stub — renders session avg; game-level bars need raw session passed in
+    │   ├── ConditionExposure.tsx
+    │   ├── ParticipantKpiCards.tsx
+    │   └── SurveyResponseTable.tsx
+    │
+    └── session/
+        └── SessionView.tsx          # Participant + session dropdowns; metadata table + games table
+                                     #   (click row → expands per-hit coordinates + individual hit scores)
+                                     #   Navigated to automatically when a scatter point is clicked
 
 public/
 ├── Perlin_Noise_Surfaces.ts/        # 100 board JSON files (PerlinNoiseBoard0.json … PerlinNoiseBoard99.json)

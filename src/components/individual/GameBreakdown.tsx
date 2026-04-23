@@ -21,7 +21,7 @@ interface Props {
 export function GameBreakdown({ points, selectedSessionIndex, onSelectSession }: Props) {
   const selectedPoint = points.find((p) => p.sessionIndex === selectedSessionIndex);
   const games: GameBreakdownPoint[] = selectedPoint
-    ? computeGameBreakdown({ games: [] } as never) // placeholder shape — actual session not available here
+    ? computeGameBreakdown({ games: [] } as never, new Map()) // placeholder — actual session not wired in yet
     : [];
 
   // We receive IndividualSessionPoint which has score but not the raw games array.

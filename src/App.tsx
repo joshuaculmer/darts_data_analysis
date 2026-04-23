@@ -6,11 +6,7 @@ import type {
 } from "./loaders/loadData";
 import { loadBoards } from "./loaders/loadBoards";
 import type { RewardSurface } from "./types/dart";
-import {
-  computeScoreVsSkillPoints,
-  computeAllSessionScores,
-  computeParticipantTotalScores,
-} from "./utils/scoreStats";
+import { computeScoreVsSkillPoints } from "./utils/scoreStats";
 import { getCompleteUserIds } from "./utils/stats";
 import {
   joinSessionsWithSurvey,
@@ -55,11 +51,29 @@ function App() {
   const [sessionViewParticipant, setSessionViewParticipant] = useState<string | null>(null);
   const [sessionViewIndex, setSessionViewIndex] = useState<number | null>(null);
 
+  // Restore persisted CSVs on mount
+  useEffect(() => {
+    const savedSessions = localStorage.getItem("darts:sessions_csv");
+    const savedSurvey = localStorage.getItem("darts:survey_csv");
+    if (savedSessions) {
+      loadGameSessions(savedSessions).then((parsed) => {
+        setSessions(parsed);
+        setSessionsLoaded(true);
+      });
+    }
+    if (savedSurvey) {
+      loadSurveyResponses(savedSurvey).then((parsed) => {
+        setSurveyResponses(parsed);
+      });
+    }
+  }, []);
+
   const handleSessionsFile = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
       const text = await file.text();
+      localStorage.setItem("darts:sessions_csv", text);
       const parsed = await loadGameSessions(text);
       setSessions(parsed);
       setSessionsLoaded(true);
@@ -72,11 +86,26 @@ function App() {
       const file = e.target.files?.[0];
       if (!file) return;
       const text = await file.text();
+      localStorage.setItem("darts:survey_csv", text);
       const parsed = await loadSurveyResponses(text);
       setSurveyResponses(parsed);
     },
     [],
   );
+
+  const handleClearData = useCallback(() => {
+    localStorage.removeItem("darts:sessions_csv");
+    localStorage.removeItem("darts:survey_csv");
+    setSessions([]);
+    setSurveyResponses([]);
+    setSessionsLoaded(false);
+    setBoardsLoaded(false);
+    setBoards(new Map());
+    setActiveSection("sanity");
+    setTrustQuestionId(null);
+    setSessionViewParticipant(null);
+    setSessionViewIndex(null);
+  }, []);
 
   // Auto-select the first available trust question whenever survey data loads
   useEffect(() => {
@@ -114,14 +143,6 @@ function App() {
     () => computeScoreVsSkillPoints(filteredSessions, boards),
     [filteredSessions, boards],
   );
-  const sessionScores = useMemo(
-    () => computeAllSessionScores(filteredSessions, boards),
-    [filteredSessions, boards],
-  );
-  const participantTotalScores = useMemo(
-    () => computeParticipantTotalScores(filteredSessions, boards),
-    [filteredSessions, boards],
-  );
   const joinedData = useMemo(
     () => joinSessionsWithSurvey(filteredSessions, filteredSurveyResponses),
     [filteredSessions, filteredSurveyResponses],
@@ -147,13 +168,23 @@ function App() {
   );
 
   const surveyLoaded = surveyResponses.length > 0;
+  const anyDataLoaded = sessionsLoaded || surveyLoaded;
+
+  const appHeader = (
+    <header className="app-header">
+      <h1>Darts Research — Data Analysis</h1>
+      {anyDataLoaded && (
+        <button className="btn-danger" onClick={handleClearData}>
+          Clear Data
+        </button>
+      )}
+    </header>
+  );
 
   if (!sessionsLoaded || !surveyLoaded) {
     return (
       <div className="app">
-        <header className="app-header">
-          <h1>Darts Research — Data Analysis</h1>
-        </header>
+        {appHeader}
         <div className="upload-screen">
           <div className="upload-group">
             <div className="upload-item upload-item--required">
@@ -204,9 +235,7 @@ function App() {
   if (!boardsLoaded) {
     return (
       <div className="app">
-        <header className="app-header">
-          <h1>Darts Research — Data Analysis</h1>
-        </header>
+        {appHeader}
         <div className="upload-screen">
           <p style={{ color: "#64748b", fontSize: 14 }}>
             Loading board surfaces…
@@ -218,9 +247,7 @@ function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <h1>Darts Research — Data Analysis</h1>
-      </header>
+      {appHeader}
 
       <nav className="app-nav">
         {NAV_ITEMS.map(({ id, label }) => (

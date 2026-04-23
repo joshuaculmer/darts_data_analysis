@@ -25,6 +25,24 @@ body {
   flex: 1;
 }
 
+.btn-danger {
+  padding: 0.4rem 0.9rem;
+  background: #7f1d1d;
+  border: 1px solid #991b1b;
+  color: #fca5a5;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-danger:hover {
+  background: #991b1b;
+  color: #fee2e2;
+}
+
 /* Upload screen */
 .upload-screen {
   flex: 1;
