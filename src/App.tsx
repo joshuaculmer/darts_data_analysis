@@ -27,15 +27,17 @@ import { TrustByCondition } from "./components/trust/TrustByCondition";
 import { TrustOverTime } from "./components/trust/TrustOverTime";
 import { TrustVsScore } from "./components/trust/TrustVsScore";
 import { IndividualView } from "./components/individual/IndividualView";
+import { SessionView } from "./components/session/SessionView";
 import "./App.css";
 
-type NavSection = "sanity" | "performance" | "trust" | "individual" | "raw";
+type NavSection = "sanity" | "performance" | "trust" | "individual" | "session" | "raw";
 
 const NAV_ITEMS: { id: NavSection; label: string }[] = [
   { id: "sanity", label: "Sanity Checks" },
   { id: "performance", label: "Game Performance" },
   { id: "trust", label: "Trust & Influence" },
   { id: "individual", label: "Individual View" },
+  { id: "session", label: "Session View" },
   { id: "raw", label: "Raw Data" },
 ];
 
@@ -50,6 +52,8 @@ function App() {
   const [activeSection, setActiveSection] = useState<NavSection>("sanity");
   const [trustQuestionId, setTrustQuestionId] = useState<string | null>(null);
   const [completeOnly, setCompleteOnly] = useState(true);
+  const [sessionViewParticipant, setSessionViewParticipant] = useState<string | null>(null);
+  const [sessionViewIndex, setSessionViewIndex] = useState<number | null>(null);
 
   const handleSessionsFile = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -251,7 +255,14 @@ function App() {
             <p className="section-note">
               How game scores vary by AI condition and player trust.
             </p>
-            <ScoreVsSkillScatter points={scoreVsSkillPoints} />
+            <ScoreVsSkillScatter
+              points={scoreVsSkillPoints}
+              onSessionClick={(user_uuid, sessionIndex) => {
+                setSessionViewParticipant(user_uuid);
+                setSessionViewIndex(sessionIndex);
+                setActiveSection("session");
+              }}
+            />
             {trustQuestionId && <TrustVsScore points={trustVsScorePoints} />}
           </section>
         )}
@@ -295,6 +306,20 @@ function App() {
               trustQuestionId={trustQuestionId}
               surveyLoaded={surveyLoaded}
               boards={boards}
+            />
+          </section>
+        )}
+
+        {activeSection === "session" && (
+          <section className="dash-section">
+            <p className="section-note">
+              Raw data for a single session. Click any point in the Score vs Execution Skill chart to jump here.
+            </p>
+            <SessionView
+              sessions={filteredSessions}
+              boards={boards}
+              initialParticipant={sessionViewParticipant}
+              initialSessionIndex={sessionViewIndex}
             />
           </section>
         )}

@@ -14,11 +14,12 @@ import { AI_Type } from "../../types/dart";
 
 interface Props {
   points: ScoreSkillPoint[];
+  onSessionClick?: (user_uuid: string, sessionIndex: number) => void;
 }
 
 const TOOLTIP_STYLE = { background: "#1e293b", border: "1px solid #334155", fontSize: 12 };
 
-export function ScoreVsSkillScatter({ points }: Props) {
+export function ScoreVsSkillScatter({ points, onSessionClick }: Props) {
   if (points.length === 0) {
     return (
       <div className="chart-card">
@@ -62,7 +63,17 @@ export function ScoreVsSkillScatter({ points }: Props) {
             const group = points.filter((p) => p.aiType === type);
             if (group.length === 0) return null;
             return (
-              <Scatter key={type} name={AI_TYPE_LABELS[type]} data={group} isAnimationActive={false}>
+              <Scatter
+                key={type}
+                name={AI_TYPE_LABELS[type]}
+                data={group}
+                isAnimationActive={false}
+                onClick={onSessionClick ? (data) => {
+                  const p = data as ScoreSkillPoint;
+                  onSessionClick(p.user_uuid, p.sessionIndex);
+                } : undefined}
+                style={onSessionClick ? { cursor: "pointer" } : undefined}
+              >
                 {group.map((_, i) => (
                   <Cell key={i} fill={group[0].color} fillOpacity={0.75} />
                 ))}

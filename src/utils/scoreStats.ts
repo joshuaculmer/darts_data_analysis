@@ -140,17 +140,21 @@ export interface ScoreSkillPoint {
   aiType: AI_Type;
   label: string;
   color: string;
+  user_uuid: string;
+  sessionIndex: number;
 }
 
 export function computeScoreVsSkillPoints(
   sessions: ParsedGameSession[],
   boards: Map<number, RewardSurface>,
 ): ScoreSkillPoint[] {
-  return sessions.map((s) => ({
+  return sessions.map((s, i) => ({
     score: computeSessionScore(s, boards).avg,
     executionSkill: s.execution_skill,
     aiType: s.ai_advice,
     label: AI_TYPE_LABELS[s.ai_advice],
     color: AI_TYPE_COLORS[s.ai_advice],
+    user_uuid: s.user_uuid,
+    sessionIndex: i,
   }));
 }

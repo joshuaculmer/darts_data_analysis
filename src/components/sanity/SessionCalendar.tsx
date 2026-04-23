@@ -73,13 +73,19 @@ export function SessionCalendar({ sessions }: Props) {
     const endDow = dayOfWeek(lastDate);
     const gridEnd = addDays(lastDate, 6 - endDow);
 
-    const cells: { date: string; count: number; week: number; day: number }[] = [];
+    const cells: { date: string; count: number; week: number; day: number }[] =
+      [];
     let current = gridStart;
     let week = 0;
 
     while (current <= gridEnd) {
       const dow = dayOfWeek(current);
-      cells.push({ date: current, count: countMap.get(current) ?? 0, week, day: dow });
+      cells.push({
+        date: current,
+        count: countMap.get(current) ?? 0,
+        week,
+        day: dow,
+      });
       if (dow === 6) week++;
       current = addDays(current, 1);
     }
@@ -116,7 +122,10 @@ export function SessionCalendar({ sessions }: Props) {
   return (
     <div className="chart-card">
       <h2>Participants Over Time</h2>
-      <div ref={containerRef} style={{ overflowX: "auto", position: "relative" }}>
+      <div
+        ref={containerRef}
+        style={{ overflowX: "auto", position: "relative" }}
+      >
         <svg width={svgWidth} height={svgHeight + 28}>
           {/* Month labels */}
           {monthLabels.map(({ label, week }) => (
@@ -217,11 +226,12 @@ export function SessionCalendar({ sessions }: Props) {
             }}
           >
             {tooltip.count === 0
-              ? `No participants · ${tooltip.date}`
-              : `${tooltip.count} participant${tooltip.count !== 1 ? "s" : ""} · ${tooltip.date}`}
+              ? `${tooltip.date} · [0]`
+              : `${tooltip.date} · [${tooltip.count}]`}
           </div>
         )}
       </div>
     </div>
   );
 }
+
