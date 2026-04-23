@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { AI_Type } from "../types/dart";
-import { computeKpis, groupSessionsByDate, countByCondition } from "./stats";
-import type { ParsedGameSession } from "../loaders/loadData";
+import { computeKpis, groupSessionsByDate, countByCondition, MIN_SESSIONS_REQUIRED } from "./stats";
+import type { ParsedGameSession, ParsedSurveyResponse } from "../loaders/loadData";
 
 // Minimal session factory — only fill in what each test needs
 function makeSession(overrides: Partial<ParsedGameSession>): ParsedGameSession {
@@ -18,44 +18,40 @@ function makeSession(overrides: Partial<ParsedGameSession>): ParsedGameSession {
   };
 }
 
+function makeSurvey(uuid: string, overrides: Partial<ParsedSurveyResponse> = {}): ParsedSurveyResponse {
+  return { id: "sv1", created_at: "2024-01-15T10:30:00Z", user_uuid: uuid, user_nickname: null, responses: [], ...overrides };
+}
+
+function makeSessions(uuid: string, n: number): ParsedGameSession[] {
+  return Array.from({ length: n }, (_, i) =>
+    makeSession({ user_uuid: uuid, created_at: `2024-01-${String(i + 1).padStart(2, "0")}T10:00:00Z` }),
+  );
+}
+
+function makeSurveys(uuid: string, n: number): ParsedSurveyResponse[] {
+  return Array.from({ length: n }, () => makeSurvey(uuid));
+}
+
 // ---------------------------------------------------------------------------
 // computeKpis
 // ---------------------------------------------------------------------------
 describe("computeKpis", () => {
   it("returns zeros for an empty session list", () => {
-    const result = computeKpis([]);
-    expect(result.totalSessions).toBe(0);
+    const result = computeKpis([], []);
     expect(result.uniqueParticipants).toBe(0);
-    expect(result.avgSkill).toBe(0);
-    expect(result.avgGamesPlayed).toBe(0);
-  });
-
-  it("returns correct values for a single session", () => {
-    const result = computeKpis([
-      makeSession({ execution_skill: 80, games_played: 5, user_uuid: "uuid-a" }),
-    ]);
-    expect(result.totalSessions).toBe(1);
-    expect(result.uniqueParticipants).toBe(1);
-    expect(result.avgSkill).toBe(80);
-    expect(result.avgGamesPlayed).toBe(5);
-  });
-
-  it("averages execution_skill across multiple sessions", () => {
-    const sessions = [
-      makeSession({ execution_skill: 60 }),
-      makeSession({ execution_skill: 80 }),
-      makeSession({ execution_skill: 100 }),
-    ];
-    expect(computeKpis(sessions).avgSkill).toBeCloseTo(80);
+    expect(result.completeParticipants).toBe(0);
+    expect(result.avgSessionsPerParticipant).toBe(0);
+    expect(result.avgTimePerSessionMs).toBe(0);
+    expect(result.avgTotalTimeMs).toBe(0);
   });
 
   it("counts unique participants by user_uuid, not by nickname", () => {
     const sessions = [
       makeSession({ user_uuid: "uuid-a", user_nickname: "Alice" }),
-      makeSession({ user_uuid: "uuid-a", user_nickname: "Alice" }), // same person, second session
+      makeSession({ user_uuid: "uuid-a", user_nickname: "Alice" }),
       makeSession({ user_uuid: "uuid-b", user_nickname: null }),
     ];
-    expect(computeKpis(sessions).uniqueParticipants).toBe(2);
+    expect(computeKpis(sessions, []).uniqueParticipants).toBe(2);
   });
 
   it("does not conflate different users who share a nickname", () => {
@@ -63,7 +59,48 @@ describe("computeKpis", () => {
       makeSession({ user_uuid: "uuid-a", user_nickname: "Sam" }),
       makeSession({ user_uuid: "uuid-b", user_nickname: "Sam" }),
     ];
-    expect(computeKpis(sessions).uniqueParticipants).toBe(2);
+    expect(computeKpis(sessions, []).uniqueParticipants).toBe(2);
+  });
+
+  it("computes avgSessionsPerParticipant correctly", () => {
+    const sessions = [
+      ...makeSessions("uuid-a", 3),
+      ...makeSessions("uuid-b", 1),
+    ];
+    // (3 + 1) / 2 participants = 2
+    expect(computeKpis(sessions, []).avgSessionsPerParticipant).toBeCloseTo(2);
+  });
+
+  it("marks a participant as complete when sessions and surveys both equal MIN_SESSIONS_REQUIRED", () => {
+    const n = MIN_SESSIONS_REQUIRED;
+    const sessions = makeSessions("uuid-a", n);
+    const surveys = makeSurveys("uuid-a", n);
+    expect(computeKpis(sessions, surveys).completeParticipants).toBe(1);
+  });
+
+  it("does not mark a participant as complete if survey count is below threshold", () => {
+    const n = MIN_SESSIONS_REQUIRED;
+    const sessions = makeSessions("uuid-a", n);
+    const surveys = makeSurveys("uuid-a", n - 1);
+    expect(computeKpis(sessions, surveys).completeParticipants).toBe(0);
+  });
+
+  it("does not mark a participant as complete if session count is below threshold", () => {
+    const n = MIN_SESSIONS_REQUIRED;
+    const sessions = makeSessions("uuid-a", n - 1);
+    const surveys = makeSurveys("uuid-a", n);
+    expect(computeKpis(sessions, surveys).completeParticipants).toBe(0);
+  });
+
+  it("computes avg time per session for complete participants using inter-session gaps", () => {
+    const n = MIN_SESSIONS_REQUIRED;
+    // Sessions spaced exactly 1 hour apart → gaps all 3600000ms
+    const sessions = Array.from({ length: n }, (_, i) =>
+      makeSession({ user_uuid: "uuid-a", created_at: `2024-01-01T${String(i).padStart(2, "0")}:00:00Z` }),
+    );
+    const surveys = makeSurveys("uuid-a", n);
+    const { avgTimePerSessionMs } = computeKpis(sessions, surveys);
+    expect(avgTimePerSessionMs).toBeCloseTo(3_600_000);
   });
 });
 

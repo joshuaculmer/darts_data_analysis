@@ -1,11 +1,57 @@
 import { AI_Type } from "../types/dart";
-import type { DartGameDTO } from "../types/dart";
+import type { DartGameDTO, RewardSurface } from "../types/dart";
 import type { ParsedGameSession } from "../loaders/loadData";
 import { AI_TYPE_COLORS, AI_TYPE_LABELS } from "./stats";
 
-export function sessionAvgScore(games: DartGameDTO[]): number {
-  if (games.length === 0) return 0;
-  return games.reduce((sum, g) => sum + (g.start - g.end), 0) / games.length;
+export function gameScore(game: DartGameDTO, surface: RewardSurface): number {
+  return game.hits.reduce((sum, hit) => {
+    const x = Math.floor(hit.x);
+    const y = Math.floor(hit.y);
+    return sum + (surface[x]?.[y] ?? 0);
+  }, 0);
+}
+
+export interface SessionScore {
+  gameScores: number[];
+  sum: number;
+  avg: number;
+}
+
+export function computeSessionScore(
+  session: ParsedGameSession,
+  boards: Map<number, RewardSurface>,
+): SessionScore {
+  const gameScores = session.games.map((game) => {
+    const surface = boards.get(game.board_id);
+    return surface ? gameScore(game, surface) : 0;
+  });
+  const sum = gameScores.reduce((s, v) => s + v, 0);
+  const avg = gameScores.length > 0 ? sum / gameScores.length : 0;
+  return { gameScores, sum, avg };
+}
+
+export function computeAllSessionScores(
+  sessions: ParsedGameSession[],
+  boards: Map<number, RewardSurface>,
+): SessionScore[] {
+  return sessions.map((s) => computeSessionScore(s, boards));
+}
+
+export interface ParticipantScore {
+  user_uuid: string;
+  totalScore: number;
+}
+
+export function computeParticipantTotalScores(
+  sessions: ParsedGameSession[],
+  boards: Map<number, RewardSurface>,
+): ParticipantScore[] {
+  const totals = new Map<string, number>();
+  for (const session of sessions) {
+    const { sum } = computeSessionScore(session, boards);
+    totals.set(session.user_uuid, (totals.get(session.user_uuid) ?? 0) + sum);
+  }
+  return [...totals.entries()].map(([user_uuid, totalScore]) => ({ user_uuid, totalScore }));
 }
 
 export interface ScoreConditionStats {
@@ -52,9 +98,12 @@ function stdDev(values: number[], mean: number): number {
   return Math.sqrt(variance);
 }
 
-export function computeScoreByCondition(sessions: ParsedGameSession[]): ScoreConditionStats[] {
+export function computeScoreByCondition(
+  sessions: ParsedGameSession[],
+  boards: Map<number, RewardSurface>,
+): ScoreConditionStats[] {
   const grouped = sessions.reduce<Partial<Record<AI_Type, number[]>>>((acc, s) => {
-    (acc[s.ai_advice] ??= []).push(sessionAvgScore(s.games));
+    (acc[s.ai_advice] ??= []).push(computeSessionScore(s, boards).avg);
     return acc;
   }, {});
 
@@ -93,9 +142,12 @@ export interface ScoreSkillPoint {
   color: string;
 }
 
-export function computeScoreVsSkillPoints(sessions: ParsedGameSession[]): ScoreSkillPoint[] {
+export function computeScoreVsSkillPoints(
+  sessions: ParsedGameSession[],
+  boards: Map<number, RewardSurface>,
+): ScoreSkillPoint[] {
   return sessions.map((s) => ({
-    score: sessionAvgScore(s.games),
+    score: computeSessionScore(s, boards).avg,
     executionSkill: s.execution_skill,
     aiType: s.ai_advice,
     label: AI_TYPE_LABELS[s.ai_advice],

@@ -1,22 +1,91 @@
 import { AI_Type } from "../types/dart";
-import type { ParsedGameSession } from "../loaders/loadData";
+import type { ParsedGameSession, ParsedSurveyResponse } from "../loaders/loadData";
+
+// Change this to update the completeness threshold everywhere at once
+export const MIN_SESSIONS_REQUIRED = 5;
 
 export interface Kpis {
-  totalSessions: number;
   uniqueParticipants: number;
-  avgSkill: number;
-  avgGamesPlayed: number;
+  completeParticipants: number;
+  avgSessionsPerParticipant: number;
+  avgTimePerSessionMs: number;
+  avgTotalTimeMs: number;
 }
 
-export function computeKpis(sessions: ParsedGameSession[]): Kpis {
-  const totalSessions = sessions.length;
-  if (totalSessions === 0) {
-    return { totalSessions: 0, uniqueParticipants: 0, avgSkill: 0, avgGamesPlayed: 0 };
+export function computeKpis(
+  sessions: ParsedGameSession[],
+  surveyResponses: ParsedSurveyResponse[],
+): Kpis {
+  const empty: Kpis = {
+    uniqueParticipants: 0,
+    completeParticipants: 0,
+    avgSessionsPerParticipant: 0,
+    avgTimePerSessionMs: 0,
+    avgTotalTimeMs: 0,
+  };
+  if (sessions.length === 0) return empty;
+
+  const sessionsByUser = sessions.reduce<Record<string, ParsedGameSession[]>>((acc, s) => {
+    (acc[s.user_uuid] ??= []).push(s);
+    return acc;
+  }, {});
+
+  const surveyCountByUser = surveyResponses.reduce<Record<string, number>>((acc, r) => {
+    acc[r.user_uuid] = (acc[r.user_uuid] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const userIds = Object.keys(sessionsByUser);
+  const uniqueParticipants = userIds.length;
+  const avgSessionsPerParticipant =
+    userIds.reduce((sum, uuid) => sum + sessionsByUser[uuid].length, 0) / uniqueParticipants;
+
+  const completeUserIds = userIds.filter((uuid) => {
+    const sc = sessionsByUser[uuid].length;
+    const rc = surveyCountByUser[uuid] ?? 0;
+    return sc === MIN_SESSIONS_REQUIRED && rc === MIN_SESSIONS_REQUIRED;
+  });
+
+  let avgTimePerSessionMs = 0;
+  let avgTotalTimeMs = 0;
+
+  if (completeUserIds.length > 0) {
+    const perUser: { avgGap: number; sessionCount: number }[] = [];
+
+    for (const uuid of completeUserIds) {
+      const sorted = [...sessionsByUser[uuid]].sort((a, b) =>
+        a.created_at.localeCompare(b.created_at),
+      );
+      const gaps: number[] = [];
+      for (let i = 1; i < sorted.length; i++) {
+        gaps.push(
+          new Date(sorted[i].created_at).getTime() -
+            new Date(sorted[i - 1].created_at).getTime(),
+        );
+      }
+      if (gaps.length > 0) {
+        const avgGap = gaps.reduce((s, g) => s + g, 0) / gaps.length;
+        perUser.push({ avgGap, sessionCount: sorted.length });
+      }
+    }
+
+    if (perUser.length > 0) {
+      avgTimePerSessionMs =
+        perUser.reduce((s, d) => s + d.avgGap, 0) / perUser.length;
+      // Total per user = avgGap × sessionCount (the ×N accounts for N-1 measured
+      // gaps plus one estimated gap for the first session)
+      avgTotalTimeMs =
+        perUser.reduce((s, d) => s + d.avgGap * d.sessionCount, 0) / perUser.length;
+    }
   }
-  const uniqueParticipants = new Set(sessions.map((s) => s.user_uuid)).size;
-  const avgSkill = sessions.reduce((sum, s) => sum + s.execution_skill, 0) / totalSessions;
-  const avgGamesPlayed = sessions.reduce((sum, s) => sum + s.games_played, 0) / totalSessions;
-  return { totalSessions, uniqueParticipants, avgSkill, avgGamesPlayed };
+
+  return {
+    uniqueParticipants,
+    completeParticipants: completeUserIds.length,
+    avgSessionsPerParticipant,
+    avgTimePerSessionMs,
+    avgTotalTimeMs,
+  };
 }
 
 export interface DateCount {
@@ -209,6 +278,27 @@ export function groupParticipantsByDate(sessions: ParsedGameSession[]): DatePart
   return Object.entries(byDate)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, uuids]) => ({ date, count: uuids.size }));
+}
+
+export function getCompleteUserIds(
+  sessions: ParsedGameSession[],
+  surveyResponses: ParsedSurveyResponse[],
+): Set<string> {
+  const sessionCountByUser = sessions.reduce<Record<string, number>>((acc, s) => {
+    acc[s.user_uuid] = (acc[s.user_uuid] ?? 0) + 1;
+    return acc;
+  }, {});
+  const surveyCountByUser = surveyResponses.reduce<Record<string, number>>((acc, r) => {
+    acc[r.user_uuid] = (acc[r.user_uuid] ?? 0) + 1;
+    return acc;
+  }, {});
+  const ids = new Set<string>();
+  for (const [uuid, count] of Object.entries(sessionCountByUser)) {
+    if (count === MIN_SESSIONS_REQUIRED && (surveyCountByUser[uuid] ?? 0) === MIN_SESSIONS_REQUIRED) {
+      ids.add(uuid);
+    }
+  }
+  return ids;
 }
 
 export function countByCondition(sessions: ParsedGameSession[]): ConditionCount[] {

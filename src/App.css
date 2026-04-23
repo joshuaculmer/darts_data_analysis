@@ -400,6 +400,55 @@ body {
   letter-spacing: 0.04em;
 }
 
+/* KPI toggle */
+.kpi-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  cursor: pointer;
+}
+
+.kpi-toggle input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 2rem;
+  height: 1.1rem;
+  background: #334155;
+  border-radius: 99px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.kpi-toggle input[type="checkbox"]:checked {
+  background: #4f8ef7;
+}
+
+.kpi-toggle input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  width: 0.8rem;
+  height: 0.8rem;
+  background: #fff;
+  border-radius: 50%;
+  top: 50%;
+  left: 0.15rem;
+  transform: translateY(-50%);
+  transition: left 0.2s;
+}
+
+.kpi-toggle input[type="checkbox"]:checked::after {
+  left: calc(100% - 0.15rem - 0.8rem);
+}
+
+.kpi-toggle__label {
+  font-size: 0.72rem;
+  color: #64748b;
+  user-select: none;
+}
+
 /* Chart layout */
 .chart-row {
   display: grid;

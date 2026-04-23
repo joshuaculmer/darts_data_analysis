@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import type { ParsedGameSession } from "../../loaders/loadData";
+import type { RewardSurface } from "../../types/dart";
 import type { JoinedSessionSurvey } from "../../utils/surveyStats";
 import {
   getParticipantList,
@@ -17,9 +18,10 @@ interface Props {
   joined: JoinedSessionSurvey[];
   trustQuestionId: string | null;
   surveyLoaded: boolean;
+  boards: Map<number, RewardSurface>;
 }
 
-export function IndividualView({ sessions, joined, trustQuestionId, surveyLoaded }: Props) {
+export function IndividualView({ sessions, joined, trustQuestionId, surveyLoaded, boards }: Props) {
   const [selectedUuid, setSelectedUuid] = useState<string | null>(null);
   const [selectedSessionIndex, setSelectedSessionIndex] = useState<number>(1);
 
@@ -29,13 +31,13 @@ export function IndividualView({ sessions, joined, trustQuestionId, surveyLoaded
   const activeTrustId = trustQuestionId ?? "";
 
   const timeline = useMemo(
-    () => (activeUuid ? computeIndividualTimeline(joined, activeUuid, activeTrustId) : []),
-    [joined, activeUuid, activeTrustId],
+    () => (activeUuid ? computeIndividualTimeline(joined, activeUuid, activeTrustId, boards) : []),
+    [joined, activeUuid, activeTrustId, boards],
   );
 
   const kpis = useMemo(
-    () => (activeUuid ? computeIndividualKpis(joined, activeUuid, activeTrustId) : null),
-    [joined, activeUuid, activeTrustId],
+    () => (activeUuid ? computeIndividualKpis(joined, activeUuid, activeTrustId, boards) : null),
+    [joined, activeUuid, activeTrustId, boards],
   );
 
   if (participants.length === 0) {

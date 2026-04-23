@@ -1,28 +1,26 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { loadGameSessions, loadSurveyResponses } from "./loaders/loadData";
 import type {
   ParsedGameSession,
   ParsedSurveyResponse,
 } from "./loaders/loadData";
-// import {
-//   computeConditionStats,
-//   computeScatterPoints,
-//   computeUserConditionAverages,
-// } from "./utils/stats";
-import { computeScoreVsSkillPoints } from "./utils/scoreStats";
+import { loadBoards } from "./loaders/loadBoards";
+import type { RewardSurface } from "./types/dart";
+import {
+  computeScoreVsSkillPoints,
+  computeAllSessionScores,
+  computeParticipantTotalScores,
+} from "./utils/scoreStats";
+import { getCompleteUserIds } from "./utils/stats";
 import {
   joinSessionsWithSurvey,
   computeTrustByCondition,
   computeTrustOverTime,
   computeTrustVsScorePoints,
 } from "./utils/surveyStats";
-import { KpiCards } from "./components/phase1/KpiCards";
-import { SessionCalendar } from "./components/phase1/SessionCalendar";
-import { ConditionDistribution } from "./components/phase1/ConditionDistribution";
-// import { ConditionBoxPlot } from "./components/phase2/ConditionBoxPlot";
-// import { ConditionMeanBar } from "./components/phase2/ConditionMeanBar";
-// import { ExecutionSkillScatter } from "./components/phase2/ExecutionSkillScatter";
-// import { PairedSlopeChart } from "./components/phase2/PairedSlopeChart";
+import { KpiCards } from "./components/sanity/KpiCards";
+import { SessionCalendar } from "./components/sanity/SessionCalendar";
+import { ConditionDistribution } from "./components/sanity/ConditionDistribution";
 import { ScoreVsSkillScatter } from "./components/performance/ScoreVsSkillScatter";
 import { TrustQuestionSelector } from "./components/trust/TrustQuestionSelector";
 import { TrustByCondition } from "./components/trust/TrustByCondition";
@@ -41,30 +39,17 @@ const NAV_ITEMS: { id: NavSection; label: string }[] = [
   { id: "raw", label: "Raw Data" },
 ];
 
-function SurveyRequiredPlaceholder({
-  onLoad,
-}: {
-  onLoad: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}) {
-  return (
-    <div className="survey-placeholder">
-      <p>This chart requires the post-session survey CSV.</p>
-      <label className="upload-btn upload-btn--small">
-        Load survey CSV
-        <input type="file" accept=".csv" onChange={onLoad} hidden />
-      </label>
-    </div>
-  );
-}
-
 function App() {
   const [sessions, setSessions] = useState<ParsedGameSession[]>([]);
   const [surveyResponses, setSurveyResponses] = useState<
     ParsedSurveyResponse[]
   >([]);
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
+  const [boards, setBoards] = useState<Map<number, RewardSurface>>(new Map());
+  const [boardsLoaded, setBoardsLoaded] = useState(false);
   const [activeSection, setActiveSection] = useState<NavSection>("sanity");
   const [trustQuestionId, setTrustQuestionId] = useState<string | null>(null);
+  const [completeOnly, setCompleteOnly] = useState(true);
 
   const handleSessionsFile = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,25 +74,53 @@ function App() {
     [],
   );
 
-  // const conditionStats = useMemo(
-  //   () => computeConditionStats(sessions),
-  //   [sessions],
-  // );
-  // const scatterPoints = useMemo(
-  //   () => computeScatterPoints(sessions),
-  //   [sessions],
-  // );
-  // const userConditionRows = useMemo(
-  //   () => computeUserConditionAverages(sessions),
-  //   [sessions],
-  // );
+  // Auto-select the first available trust question whenever survey data loads
+  useEffect(() => {
+    if (surveyResponses.length === 0) return;
+    const firstId = surveyResponses[0]?.responses[0]?.questionId ?? null;
+    if (firstId) setTrustQuestionId(firstId);
+  }, [surveyResponses]);
+
+  // Load board surfaces once both CSVs are ready
+  useEffect(() => {
+    if (!sessionsLoaded || surveyResponses.length === 0) return;
+    setBoardsLoaded(false);
+    loadBoards(sessions).then((loaded) => {
+      setBoards(loaded);
+      setBoardsLoaded(true);
+    });
+  }, [sessions, surveyResponses, sessionsLoaded]);
+
+  const completeUserIds = useMemo(
+    () => getCompleteUserIds(sessions, surveyResponses),
+    [sessions, surveyResponses],
+  );
+
+  const filteredSessions = useMemo(
+    () => (completeOnly ? sessions.filter((s) => completeUserIds.has(s.user_uuid)) : sessions),
+    [sessions, completeOnly, completeUserIds],
+  );
+
+  const filteredSurveyResponses = useMemo(
+    () => (completeOnly ? surveyResponses.filter((r) => completeUserIds.has(r.user_uuid)) : surveyResponses),
+    [surveyResponses, completeOnly, completeUserIds],
+  );
+
   const scoreVsSkillPoints = useMemo(
-    () => computeScoreVsSkillPoints(sessions),
-    [sessions],
+    () => computeScoreVsSkillPoints(filteredSessions, boards),
+    [filteredSessions, boards],
+  );
+  const sessionScores = useMemo(
+    () => computeAllSessionScores(filteredSessions, boards),
+    [filteredSessions, boards],
+  );
+  const participantTotalScores = useMemo(
+    () => computeParticipantTotalScores(filteredSessions, boards),
+    [filteredSessions, boards],
   );
   const joinedData = useMemo(
-    () => joinSessionsWithSurvey(sessions, surveyResponses),
-    [sessions, surveyResponses],
+    () => joinSessionsWithSurvey(filteredSessions, filteredSurveyResponses),
+    [filteredSessions, filteredSurveyResponses],
   );
   const trustByCondition = useMemo(
     () =>
@@ -124,9 +137,9 @@ function App() {
   const trustVsScorePoints = useMemo(
     () =>
       trustQuestionId
-        ? computeTrustVsScorePoints(joinedData, trustQuestionId)
+        ? computeTrustVsScorePoints(joinedData, trustQuestionId, boards)
         : [],
-    [joinedData, trustQuestionId],
+    [joinedData, trustQuestionId, boards],
   );
 
   const surveyLoaded = surveyResponses.length > 0;
@@ -184,6 +197,21 @@ function App() {
     );
   }
 
+  if (!boardsLoaded) {
+    return (
+      <div className="app">
+        <header className="app-header">
+          <h1>Darts Research — Data Analysis</h1>
+        </header>
+        <div className="upload-screen">
+          <p style={{ color: "#64748b", fontSize: 14 }}>
+            Loading board surfaces…
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -205,14 +233,15 @@ function App() {
       <main className="dashboard">
         {activeSection === "sanity" && (
           <section className="dash-section">
-            <p className="section-note">
-              Balance and administration checks — verify the study ran as
-              expected. These are not research findings.
-            </p>
-            <KpiCards sessions={sessions} />
+            <KpiCards
+              sessions={filteredSessions}
+              surveyResponses={filteredSurveyResponses}
+              completeOnly={completeOnly}
+              onToggleCompleteOnly={() => setCompleteOnly((v) => !v)}
+            />
             <div className="chart-row">
-              <SessionCalendar sessions={sessions} />
-              <ConditionDistribution sessions={sessions} />
+              <SessionCalendar sessions={filteredSessions} />
+              <ConditionDistribution sessions={filteredSessions} />
             </div>
           </section>
         )}
@@ -222,19 +251,8 @@ function App() {
             <p className="section-note">
               How game scores vary by AI condition and player trust.
             </p>
-            {/* <ConditionBoxPlot stats={conditionStats} />
-            <ConditionMeanBar stats={conditionStats} />
-            <div className="chart-row">
-              <ExecutionSkillScatter points={scatterPoints} />
-              <PairedSlopeChart rows={userConditionRows} />
-            </div> */}
             <ScoreVsSkillScatter points={scoreVsSkillPoints} />
-            {surveyLoaded && trustQuestionId && (
-              <TrustVsScore points={trustVsScorePoints} />
-            )}
-            {!surveyLoaded && (
-              <SurveyRequiredPlaceholder onLoad={handleSurveyFile} />
-            )}
+            {trustQuestionId && <TrustVsScore points={trustVsScorePoints} />}
           </section>
         )}
 
@@ -244,29 +262,23 @@ function App() {
               How much participants trusted the AI, how condition shaped that
               trust, and whether trust translated into better scores.
             </p>
-            {surveyLoaded ? (
+            <TrustQuestionSelector
+              surveys={surveyResponses}
+              trustQuestionId={trustQuestionId}
+              onChange={setTrustQuestionId}
+            />
+            {trustQuestionId ? (
               <>
-                <TrustQuestionSelector
-                  surveys={surveyResponses}
-                  trustQuestionId={trustQuestionId}
-                  onChange={setTrustQuestionId}
-                />
-                {trustQuestionId ? (
-                  <>
-                    <TrustByCondition stats={trustByCondition} />
-                    <div className="chart-row">
-                      <TrustOverTime points={trustOverTime} />
-                      <TrustVsScore points={trustVsScorePoints} />
-                    </div>
-                  </>
-                ) : (
-                  <p className="section-note">
-                    Select a trust question above to load the charts.
-                  </p>
-                )}
+                <TrustByCondition stats={trustByCondition} />
+                <div className="chart-row">
+                  <TrustOverTime points={trustOverTime} />
+                  <TrustVsScore points={trustVsScorePoints} />
+                </div>
               </>
             ) : (
-              <SurveyRequiredPlaceholder onLoad={handleSurveyFile} />
+              <p className="section-note">
+                Select a trust question above to load the charts.
+              </p>
             )}
           </section>
         )}
@@ -278,10 +290,11 @@ function App() {
               trust arc, and condition exposure.
             </p>
             <IndividualView
-              sessions={sessions}
+              sessions={filteredSessions}
               joined={joinedData}
               trustQuestionId={trustQuestionId}
               surveyLoaded={surveyLoaded}
+              boards={boards}
             />
           </section>
         )}
@@ -295,14 +308,10 @@ function App() {
               <h2>Sessions Table</h2>
               <p className="coming-soon">Coming soon</p>
             </div>
-            {surveyLoaded ? (
-              <div className="chart-card">
-                <h2>Survey Responses Table</h2>
-                <p className="coming-soon">Coming soon</p>
-              </div>
-            ) : (
-              <SurveyRequiredPlaceholder onLoad={handleSurveyFile} />
-            )}
+            <div className="chart-card">
+              <h2>Survey Responses Table</h2>
+              <p className="coming-soon">Coming soon</p>
+            </div>
           </section>
         )}
       </main>

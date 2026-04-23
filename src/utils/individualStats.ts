@@ -1,9 +1,10 @@
 import type { ParsedGameSession } from "../loaders/loadData";
 import type { JoinedSessionSurvey } from "./surveyStats";
 import { getAnswerValue } from "./surveyStats";
-import { sessionAvgScore } from "./scoreStats";
+import { computeSessionScore, gameScore } from "./scoreStats";
 import { AI_TYPE_COLORS, AI_TYPE_LABELS } from "./stats";
 import { AI_Type } from "../types/dart";
+import type { RewardSurface } from "../types/dart";
 
 export interface ParticipantEntry {
   uuid: string;
@@ -38,6 +39,7 @@ export function computeIndividualTimeline(
   joined: JoinedSessionSurvey[],
   userId: string,
   trustQuestionId: string,
+  boards: Map<number, RewardSurface>,
 ): IndividualSessionPoint[] {
   return joined
     .filter((j) => j.session.user_uuid === userId)
@@ -45,7 +47,7 @@ export function computeIndividualTimeline(
     .map(({ session, survey }, idx) => ({
       sessionIndex: idx + 1,
       date: session.created_at.slice(0, 10),
-      score: sessionAvgScore(session.games),
+      score: computeSessionScore(session, boards).avg,
       trust: survey ? getAnswerValue(survey.responses, trustQuestionId) : null,
       aiType: session.ai_advice,
       label: AI_TYPE_LABELS[session.ai_advice],
@@ -65,6 +67,7 @@ export function computeIndividualKpis(
   joined: JoinedSessionSurvey[],
   userId: string,
   trustQuestionId: string,
+  boards: Map<number, RewardSurface>,
 ): IndividualKpis {
   const mine = joined
     .filter((j) => j.session.user_uuid === userId)
@@ -74,7 +77,7 @@ export function computeIndividualKpis(
     return { sessionsPlayed: 0, avgScore: 0, avgTrust: null, conditionsSeen: [] };
   }
 
-  const scores = mine.map((j) => sessionAvgScore(j.session.games));
+  const scores = mine.map((j) => computeSessionScore(j.session, boards).avg);
   const avgScore = scores.reduce((s, v) => s + v, 0) / scores.length;
 
   const trustValues = mine
@@ -99,15 +102,17 @@ export function computeIndividualKpis(
 export interface GameBreakdownPoint {
   gameIndex: number;
   score: number;
-  start: number;
-  end: number;
 }
 
-export function computeGameBreakdown(session: ParsedGameSession): GameBreakdownPoint[] {
-  return session.games.map((g, i) => ({
-    gameIndex: i + 1,
-    score: g.start - g.end,
-    start: g.start,
-    end: g.end,
-  }));
+export function computeGameBreakdown(
+  session: ParsedGameSession,
+  boards: Map<number, RewardSurface>,
+): GameBreakdownPoint[] {
+  return session.games.map((g, i) => {
+    const surface = boards.get(g.board_id);
+    return {
+      gameIndex: i + 1,
+      score: surface ? gameScore(g, surface) : 0,
+    };
+  });
 }

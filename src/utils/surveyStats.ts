@@ -1,8 +1,9 @@
 import { AI_Type } from "../types/dart";
+import type { RewardSurface } from "../types/dart";
 import type { Answer } from "../types/survey";
 import type { ParsedGameSession, ParsedSurveyResponse } from "../loaders/loadData";
 import { AI_TYPE_COLORS, AI_TYPE_LABELS } from "./stats";
-import { sessionAvgScore } from "./scoreStats";
+import { computeSessionScore } from "./scoreStats";
 
 export function getAnswerValue(responses: Answer[], questionId: string): number | null {
   const answer = responses.find((r) => r.questionId === questionId);
@@ -121,6 +122,7 @@ export interface TrustScorePoint {
 export function computeTrustVsScorePoints(
   joined: JoinedSessionSurvey[],
   trustQuestionId: string,
+  boards: Map<number, RewardSurface>,
 ): TrustScorePoint[] {
   return joined.flatMap(({ session, survey }) => {
     if (!survey) return [];
@@ -128,7 +130,7 @@ export function computeTrustVsScorePoints(
     if (trust === null) return [];
     return [{
       trust,
-      score: sessionAvgScore(session.games),
+      score: computeSessionScore(session, boards).avg,
       aiType: session.ai_advice,
       label: AI_TYPE_LABELS[session.ai_advice],
       color: AI_TYPE_COLORS[session.ai_advice],

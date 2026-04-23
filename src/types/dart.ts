@@ -1,3 +1,5 @@
+export type RewardSurface = number[][];
+
 export interface Coord {
   x: number;
   y: number;

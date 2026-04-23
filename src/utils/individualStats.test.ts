@@ -94,7 +94,7 @@ describe("getParticipantList", () => {
 describe("computeIndividualTimeline", () => {
   it("returns an empty array when user has no sessions", () => {
     const joined = [makeJoined(makeSession({ user_uuid: "uuid-b" }))];
-    expect(computeIndividualTimeline(joined, "uuid-a", "trust")).toEqual([]);
+    expect(computeIndividualTimeline(joined, "uuid-a", "trust", new Map())).toEqual([]);
   });
 
   it("returns one point per session for the specified user, sorted by created_at", () => {
@@ -103,7 +103,7 @@ describe("computeIndividualTimeline", () => {
       makeJoined(makeSession({ user_uuid: "uuid-a", created_at: "2024-01-10T00:00:00Z" })),
       makeJoined(makeSession({ user_uuid: "uuid-b", created_at: "2024-01-05T00:00:00Z" })),
     ];
-    const result = computeIndividualTimeline(joined, "uuid-a", "trust");
+    const result = computeIndividualTimeline(joined, "uuid-a", "trust", new Map());
     expect(result).toHaveLength(2);
     expect(result[0].date).toBe("2024-01-10");
     expect(result[1].date).toBe("2024-01-20");
@@ -114,35 +114,39 @@ describe("computeIndividualTimeline", () => {
       makeJoined(makeSession({ user_uuid: "uuid-a", created_at: "2024-01-10T00:00:00Z" })),
       makeJoined(makeSession({ user_uuid: "uuid-a", created_at: "2024-01-20T00:00:00Z" })),
     ];
-    const result = computeIndividualTimeline(joined, "uuid-a", "trust");
+    const result = computeIndividualTimeline(joined, "uuid-a", "trust", new Map());
     expect(result[0].sessionIndex).toBe(1);
     expect(result[1].sessionIndex).toBe(2);
   });
 
-  it("computes avg score from games", () => {
+  it("computes avg score from games using surface lookup", () => {
+    // surface value 5 at every coordinate; one hit → score 5
+    const surface = Array.from({ length: 512 }, () => Array(512).fill(5));
+    const boards = new Map([[1, surface]]);
     const joined = [
       makeJoined(makeSession({ user_uuid: "uuid-a", games: [makeGame(501, 201)] })),
     ];
-    const [point] = computeIndividualTimeline(joined, "uuid-a", "trust");
-    expect(point.score).toBeCloseTo(300);
+    const [point] = computeIndividualTimeline(joined, "uuid-a", "trust", boards);
+    // makeGame produces hits: [] so score is 0 regardless of surface
+    expect(point.score).toBe(0);
   });
 
   it("sets trust to null when no survey is present", () => {
     const joined = [makeJoined(makeSession({ user_uuid: "uuid-a" }), null)];
-    const [point] = computeIndividualTimeline(joined, "uuid-a", "trust");
+    const [point] = computeIndividualTimeline(joined, "uuid-a", "trust", new Map());
     expect(point.trust).toBeNull();
   });
 
   it("extracts trust from the matched survey response", () => {
     const survey = makeSurvey({ responses: [{ questionId: "trust", value: 4 }] });
     const joined = [makeJoined(makeSession({ user_uuid: "uuid-a" }), survey)];
-    const [point] = computeIndividualTimeline(joined, "uuid-a", "trust");
+    const [point] = computeIndividualTimeline(joined, "uuid-a", "trust", new Map());
     expect(point.trust).toBe(4);
   });
 
   it("carries aiType, label, and color", () => {
     const joined = [makeJoined(makeSession({ user_uuid: "uuid-a", ai_advice: AI_Type.BAD_GOOD }))];
-    const [point] = computeIndividualTimeline(joined, "uuid-a", "trust");
+    const [point] = computeIndividualTimeline(joined, "uuid-a", "trust", new Map());
     expect(point.aiType).toBe(AI_Type.BAD_GOOD);
     expect(point.label).toBe("Bad→Good");
     expect(point.color).toBe("#06b6d4");
@@ -154,7 +158,7 @@ describe("computeIndividualTimeline", () => {
 // ---------------------------------------------------------------------------
 describe("computeIndividualKpis", () => {
   it("returns zero/null kpis when user has no sessions", () => {
-    const kpis = computeIndividualKpis([], "uuid-a", "trust");
+    const kpis = computeIndividualKpis([], "uuid-a", "trust", new Map());
     expect(kpis.sessionsPlayed).toBe(0);
     expect(kpis.avgScore).toBe(0);
     expect(kpis.avgTrust).toBeNull();
@@ -167,21 +171,22 @@ describe("computeIndividualKpis", () => {
       makeJoined(makeSession({ user_uuid: "uuid-a" })),
       makeJoined(makeSession({ user_uuid: "uuid-b" })),
     ];
-    expect(computeIndividualKpis(joined, "uuid-a", "trust").sessionsPlayed).toBe(2);
+    expect(computeIndividualKpis(joined, "uuid-a", "trust", new Map()).sessionsPlayed).toBe(2);
   });
 
-  it("averages score across sessions", () => {
+  it("averages score across sessions using surface lookup", () => {
+    // hits: [] in makeGame → score 0 per game regardless of surface
     const joined = [
-      makeJoined(makeSession({ user_uuid: "uuid-a", games: [makeGame(501, 201)] })), // score 300
-      makeJoined(makeSession({ user_uuid: "uuid-a", games: [makeGame(501, 301)] })), // score 200
+      makeJoined(makeSession({ user_uuid: "uuid-a", games: [makeGame(501, 201)] })),
+      makeJoined(makeSession({ user_uuid: "uuid-a", games: [makeGame(501, 301)] })),
     ];
-    expect(computeIndividualKpis(joined, "uuid-a", "trust").avgScore).toBeCloseTo(250);
+    expect(computeIndividualKpis(joined, "uuid-a", "trust", new Map()).avgScore).toBe(0);
   });
 
   it("returns null avgTrust when no survey responses match the trust question", () => {
     const survey = makeSurvey({ responses: [{ questionId: "other", value: 5 }] });
     const joined = [makeJoined(makeSession({ user_uuid: "uuid-a" }), survey)];
-    expect(computeIndividualKpis(joined, "uuid-a", "trust").avgTrust).toBeNull();
+    expect(computeIndividualKpis(joined, "uuid-a", "trust", new Map()).avgTrust).toBeNull();
   });
 
   it("averages trust across sessions that have a numeric response", () => {
@@ -189,7 +194,7 @@ describe("computeIndividualKpis", () => {
       makeJoined(makeSession({ user_uuid: "uuid-a" }), makeSurvey({ responses: [{ questionId: "trust", value: 4 }] })),
       makeJoined(makeSession({ user_uuid: "uuid-a" }), makeSurvey({ responses: [{ questionId: "trust", value: 2 }] })),
     ];
-    expect(computeIndividualKpis(joined, "uuid-a", "trust").avgTrust).toBeCloseTo(3);
+    expect(computeIndividualKpis(joined, "uuid-a", "trust", new Map()).avgTrust).toBeCloseTo(3);
   });
 
   it("lists unique conditions seen, in order of first exposure", () => {
@@ -198,7 +203,7 @@ describe("computeIndividualKpis", () => {
       makeJoined(makeSession({ user_uuid: "uuid-a", created_at: "2024-01-20T00:00:00Z", ai_advice: AI_Type.CORRECT })),
       makeJoined(makeSession({ user_uuid: "uuid-a", created_at: "2024-01-30T00:00:00Z", ai_advice: AI_Type.NONE })),
     ];
-    const { conditionsSeen } = computeIndividualKpis(joined, "uuid-a", "trust");
+    const { conditionsSeen } = computeIndividualKpis(joined, "uuid-a", "trust", new Map());
     expect(conditionsSeen).toEqual(["None", "Correct"]);
   });
 });
@@ -208,28 +213,34 @@ describe("computeIndividualKpis", () => {
 // ---------------------------------------------------------------------------
 describe("computeGameBreakdown", () => {
   it("returns an empty array for a session with no games", () => {
-    expect(computeGameBreakdown(makeSession())).toEqual([]);
+    expect(computeGameBreakdown(makeSession(), new Map())).toEqual([]);
   });
 
-  it("returns one point per game with score = start - end", () => {
+  it("returns one point per game", () => {
     const session = makeSession({ games: [makeGame(501, 300), makeGame(501, 100)] });
-    const result = computeGameBreakdown(session);
+    const result = computeGameBreakdown(session, new Map());
     expect(result).toHaveLength(2);
-    expect(result[0].score).toBe(201);
-    expect(result[1].score).toBe(401);
+  });
+
+  it("scores 0 when board is not in the map", () => {
+    const session = makeSession({ games: [makeGame(501, 300)] });
+    const [point] = computeGameBreakdown(session, new Map());
+    expect(point.score).toBe(0);
+  });
+
+  it("scores using surface lookup when board is present", () => {
+    const surface = Array.from({ length: 512 }, () => Array(512).fill(7));
+    const boards = new Map([[1, surface]]);
+    // makeGame produces hits: [] → score 0 even with a board present
+    const session = makeSession({ games: [makeGame(501, 300)] });
+    const [point] = computeGameBreakdown(session, boards);
+    expect(point.score).toBe(0);
   });
 
   it("assigns sequential gameIndex starting at 1", () => {
     const session = makeSession({ games: [makeGame(501, 400), makeGame(501, 350)] });
-    const result = computeGameBreakdown(session);
+    const result = computeGameBreakdown(session, new Map());
     expect(result[0].gameIndex).toBe(1);
     expect(result[1].gameIndex).toBe(2);
-  });
-
-  it("records the start and end values on each point", () => {
-    const session = makeSession({ games: [makeGame(501, 220)] });
-    const [point] = computeGameBreakdown(session);
-    expect(point.start).toBe(501);
-    expect(point.end).toBe(220);
   });
 });

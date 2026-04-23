@@ -213,15 +213,15 @@ describe("computeTrustOverTime", () => {
 // ---------------------------------------------------------------------------
 describe("computeTrustVsScorePoints", () => {
   it("returns an empty array when there are no joined sessions", () => {
-    expect(computeTrustVsScorePoints([], "trust")).toEqual([]);
+    expect(computeTrustVsScorePoints([], "trust", new Map())).toEqual([]);
   });
 
   it("omits sessions with no trust answer", () => {
     const joined = [{ session: makeSession(), survey: null }];
-    expect(computeTrustVsScorePoints(joined, "trust")).toHaveLength(0);
+    expect(computeTrustVsScorePoints(joined, "trust", new Map())).toHaveLength(0);
   });
 
-  it("maps trust rating and session avg score for each point", () => {
+  it("maps trust rating and aiType for each point", () => {
     const joined = [
       {
         session: makeSession({
@@ -231,9 +231,10 @@ describe("computeTrustVsScorePoints", () => {
         survey: makeSurvey({ responses: [{ questionId: "trust", value: 4 }] }),
       },
     ];
-    const [point] = computeTrustVsScorePoints(joined, "trust");
+    const [point] = computeTrustVsScorePoints(joined, "trust", new Map());
     expect(point.trust).toBe(4);
-    expect(point.score).toBeCloseTo(201);
     expect(point.aiType).toBe(AI_Type.CORRECT);
+    // score is 0 here because hits: [] — with real board data it reflects surface values
+    expect(point.score).toBe(0);
   });
 });
