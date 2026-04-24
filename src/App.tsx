@@ -6,13 +6,15 @@ import type {
 } from "./loaders/loadData";
 import { loadBoards } from "./loaders/loadBoards";
 import type { RewardSurface } from "./types/dart";
-import { computeScoreVsSkillPoints } from "./utils/scoreStats";
+import { computeScoreVsSkillPoints, computeProximityVsScorePoints } from "./utils/scoreStats";
 import { getCompleteUserIds } from "./utils/stats";
 import {
   joinSessionsWithSurvey,
   computeTrustByCondition,
   computeTrustOverTime,
   computeTrustVsScorePoints,
+  computeTrustVsTimePoints,
+  computeTrustVsProximityPoints,
 } from "./utils/surveyStats";
 import { KpiCards } from "./components/sanity/KpiCards";
 import { SessionCalendar } from "./components/sanity/SessionCalendar";
@@ -22,6 +24,11 @@ import { TrustQuestionSelector } from "./components/trust/TrustQuestionSelector"
 import { TrustByCondition } from "./components/trust/TrustByCondition";
 import { TrustOverTime } from "./components/trust/TrustOverTime";
 import { TrustVsScore } from "./components/trust/TrustVsScore";
+import { TrustVsTime } from "./components/trust/TrustVsTime";
+import { TrustVsProximity } from "./components/trust/TrustVsProximity";
+import { ProximityVsScore } from "./components/performance/ProximityVsScore";
+import { SessionsTable } from "./components/raw/SessionsTable";
+import { SurveyTable } from "./components/raw/SurveyTable";
 import { IndividualView } from "./components/individual/IndividualView";
 import { SessionView } from "./components/session/SessionView";
 import "./App.css";
@@ -166,6 +173,18 @@ function App() {
         : [],
     [joinedData, trustQuestionId, boards],
   );
+  const trustVsTimePoints = useMemo(
+    () => (trustQuestionId ? computeTrustVsTimePoints(joinedData, trustQuestionId) : []),
+    [joinedData, trustQuestionId],
+  );
+  const trustVsProximityPoints = useMemo(
+    () => (trustQuestionId ? computeTrustVsProximityPoints(joinedData, trustQuestionId) : []),
+    [joinedData, trustQuestionId],
+  );
+  const proximityVsScorePoints = useMemo(
+    () => computeProximityVsScorePoints(filteredSessions, boards),
+    [filteredSessions, boards],
+  );
 
   const surveyLoaded = surveyResponses.length > 0;
   const anyDataLoaded = sessionsLoaded || surveyLoaded;
@@ -290,7 +309,8 @@ function App() {
                 setActiveSection("session");
               }}
             />
-            {trustQuestionId && <TrustVsScore points={trustVsScorePoints} />}
+            {trustQuestionId && <TrustVsScore points={trustVsScorePoints} boards={boards} />}
+            <ProximityVsScore points={proximityVsScorePoints} boards={boards} />
           </section>
         )}
 
@@ -310,8 +330,10 @@ function App() {
                 <TrustByCondition stats={trustByCondition} />
                 <div className="chart-row">
                   <TrustOverTime points={trustOverTime} />
-                  <TrustVsScore points={trustVsScorePoints} />
+                  <TrustVsScore points={trustVsScorePoints} boards={boards} />
                 </div>
+                <TrustVsTime points={trustVsTimePoints} />
+                <TrustVsProximity points={trustVsProximityPoints} />
               </>
             ) : (
               <p className="section-note">
@@ -354,16 +376,10 @@ function App() {
         {activeSection === "raw" && (
           <section className="dash-section">
             <p className="section-note">
-              Filterable, sortable tables with CSV export.
+              All sessions and survey responses — unfiltered regardless of the Complete Participants toggle. Click any column header to sort.
             </p>
-            <div className="chart-card">
-              <h2>Sessions Table</h2>
-              <p className="coming-soon">Coming soon</p>
-            </div>
-            <div className="chart-card">
-              <h2>Survey Responses Table</h2>
-              <p className="coming-soon">Coming soon</p>
-            </div>
+            <SessionsTable sessions={sessions} boards={boards} />
+            <SurveyTable surveys={surveyResponses} />
           </section>
         )}
       </main>

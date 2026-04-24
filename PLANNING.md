@@ -71,7 +71,8 @@ The app will have a top navbar with five sections:
 - [x] **Before/after paired chart**: slope chart per user across conditions (hidden if <2 conditions)
 - [x] **Score vs execution_skill scatter**: how does preset skill level relate to actual in-game score?
 - [ ] **Score by trust level**: group participants by survey-reported trust quartile, compare scores — requires survey CSV
-- [x] **Score vs trust scatter**: per-session score vs trust rating — shown in both this section and Trust & Influence; requires trust question to be selected
+- [x] **Score vs trust scatter**: per-session score vs trust rating — shown in both this section and Trust & Influence; click-to-expand per-game scores; requires trust question to be selected
+- [x] **Proximity vs score scatter**: per-session avg distance from suggested aiming coord vs avg score; click-to-expand per-game scatter; NONE-condition sessions shown separately
 - [ ] **Ordering effect**: GOOD_BAD vs BAD_GOOD score delta (does trajectory matter?)
 
 ### Section 3 — Trust & Influence
@@ -81,7 +82,9 @@ The app will have a top navbar with five sections:
 - [x] **Trust by AI condition**: mean trust rating per AI_Type (bar chart with 95% CI error bars)
 - [x] **Trust over time**: scatter of trust rating by session date, colored by AI condition
 - [ ] **Trust trajectory**: GOOD_BAD vs BAD_GOOD trust arc — did trust recover when advice improved?
-- [x] **Trust → score**: scatter of trust rating vs game score, colored by AI_Type — key research question
+- [x] **Trust → score**: scatter of trust rating vs avg game score; click-to-expand per-game scores
+- [x] **Trust → time per game**: scatter of trust rating vs avg game duration (s); click-to-expand per-game durations
+- [x] **Trust → proximity**: scatter of trust rating vs avg distance from suggested aiming coord; NONE-condition sessions shown separately; click-to-expand per-game proximity bars
 - [ ] **Survey breakdown**: stacked Likert bars per question (SD → SA) for all trust-related questions
 - [ ] **Per-condition survey heatmap**: participant × question, color = response value, faceted by AI_Type
 
@@ -97,8 +100,8 @@ The app will have a top navbar with five sections:
 - [x] **Narrative summary card**: KPI cards — sessions played, avg score, avg trust, conditions seen
 
 ### Section 5 — Raw Data & Export
-- [ ] Filterable/sortable sessions table with CSV export
-- [ ] Raw survey responses table, filterable by participant and condition
+- [x] Filterable/sortable sessions table with CSV export — shows participant, UUID, condition, exec skill, games_played vs games array length (red if mismatch), avg score/game, date
+- [x] Survey responses table with CSV export — dynamic question columns, filterable by participant/UUID, sortable by participant/date
 
 ---
 

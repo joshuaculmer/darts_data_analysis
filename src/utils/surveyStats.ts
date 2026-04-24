@@ -3,12 +3,28 @@ import type { RewardSurface } from "../types/dart";
 import type { Answer } from "../types/survey";
 import type { ParsedGameSession, ParsedSurveyResponse } from "../loaders/loadData";
 import { AI_TYPE_COLORS, AI_TYPE_LABELS } from "./stats";
-import { computeSessionScore } from "./scoreStats";
+import { computeSessionScore, computeGameProximity, computeGameDurationSecs } from "./scoreStats";
+
+const LIKERT_SCALE: Record<string, number> = {
+  "strongly disagree": 1,
+  "disagree": 2,
+  "neutral": 3,
+  "neither agree nor disagree": 3,
+  "agree": 4,
+  "strongly agree": 5,
+};
 
 export function getAnswerValue(responses: Answer[], questionId: string): number | null {
   const answer = responses.find((r) => r.questionId === questionId);
   if (answer === undefined) return null;
-  return typeof answer.value === "number" ? answer.value : null;
+  if (typeof answer.value === "number") return answer.value;
+  if (typeof answer.value === "string") {
+    const trimmed = answer.value.trim();
+    const n = Number(trimmed);
+    if (!Number.isNaN(n) && trimmed !== "") return n;
+    return LIKERT_SCALE[trimmed.toLowerCase()] ?? null;
+  }
+  return null;
 }
 
 export interface JoinedSessionSurvey {
@@ -25,7 +41,16 @@ export function joinSessionsWithSurvey(
     if (candidates.length === 0) return { session, survey: null };
 
     const sessionTime = new Date(session.created_at).getTime();
-    const nearest = candidates.reduce((best, s) => {
+
+    // In the study design, participants fill out the survey after each session.
+    // Prefer surveys submitted after the session so that earlier sessions don't
+    // steal surveys that belong to later ones.
+    const afterSession = candidates.filter(
+      (s) => new Date(s.created_at).getTime() >= sessionTime,
+    );
+    const pool = afterSession.length > 0 ? afterSession : candidates;
+
+    const nearest = pool.reduce((best, s) => {
       const sDiff = Math.abs(new Date(s.created_at).getTime() - sessionTime);
       const bDiff = Math.abs(new Date(best.created_at).getTime() - sessionTime);
       return sDiff < bDiff ? s : best;
@@ -117,6 +142,7 @@ export interface TrustScorePoint {
   aiType: AI_Type;
   label: string;
   color: string;
+  session: ParsedGameSession;
 }
 
 export function computeTrustVsScorePoints(
@@ -134,6 +160,72 @@ export function computeTrustVsScorePoints(
       aiType: session.ai_advice,
       label: AI_TYPE_LABELS[session.ai_advice],
       color: AI_TYPE_COLORS[session.ai_advice],
+      session,
+    }];
+  });
+}
+
+export interface TrustVsTimePoint {
+  trust: number;
+  avgTimeSecs: number;
+  aiType: AI_Type;
+  label: string;
+  color: string;
+  session: ParsedGameSession;
+}
+
+export function computeTrustVsTimePoints(
+  joined: JoinedSessionSurvey[],
+  trustQuestionId: string,
+): TrustVsTimePoint[] {
+  return joined.flatMap(({ session, survey }) => {
+    if (!survey || session.games.length === 0) return [];
+    const trust = getAnswerValue(survey.responses, trustQuestionId);
+    if (trust === null) return [];
+    const avgTimeSecs =
+      session.games.reduce((s, g) => s + computeGameDurationSecs(g), 0) / session.games.length;
+    return [{
+      trust,
+      avgTimeSecs,
+      aiType: session.ai_advice,
+      label: AI_TYPE_LABELS[session.ai_advice],
+      color: AI_TYPE_COLORS[session.ai_advice],
+      session,
+    }];
+  });
+}
+
+export interface TrustVsProximityPoint {
+  trust: number;
+  avgProximity: number | null;
+  aiType: AI_Type;
+  label: string;
+  color: string;
+  session: ParsedGameSession;
+}
+
+export function computeTrustVsProximityPoints(
+  joined: JoinedSessionSurvey[],
+  trustQuestionId: string,
+): TrustVsProximityPoint[] {
+  return joined.flatMap(({ session, survey }) => {
+    if (!survey) return [];
+    const trust = getAnswerValue(survey.responses, trustQuestionId);
+    if (trust === null) return [];
+    const proximities = session.games
+      .map(computeGameProximity)
+      .filter((p): p is number => p !== null);
+    const avgProximity =
+      proximities.length > 0
+        ? proximities.reduce((s, v) => s + v, 0) / proximities.length
+        : null;
+    return [{
+      trust,
+      avgProximity,
+      aiType: session.ai_advice,
+      label: AI_TYPE_LABELS[session.ai_advice],
+      color: AI_TYPE_COLORS[session.ai_advice],
+      session,
     }];
   });
 }

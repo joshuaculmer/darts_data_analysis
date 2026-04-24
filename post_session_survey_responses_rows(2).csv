@@ -1,0 +1,30 @@
+id,created_at,responses,user_uuid,user_nickname
+1,2026-01-05 17:43:39.730602+00,"[{""value"":""Strongly Disagree "",""questionId"":""trust""},{""value"":""great"",""questionId"":""performance""}]",,
+2,2026-01-05 18:12:38.023513+00,"[{""value"":""Strongly Disagree "",""questionId"":""trust""},{""value"":""great"",""questionId"":""performance""}]",09ee50e5-8698-42ac-b9a1-c9233f7a360a,
+3,2026-01-05 18:13:31.475485+00,"[{""value"":""Strongly Disagree "",""questionId"":""trust""},{""value"":""great"",""questionId"":""performance""}]",09ee50e5-8698-42ac-b9a1-c9233f7a360a,
+4,2026-01-06 15:39:45.449839+00,"[{""value"":""Strongly Disagree "",""questionId"":""trust""},{""value"":""great"",""questionId"":""performance""}]",e999d23a-0366-4ad1-932a-7ed90909e8a1,
+5,2026-01-07 19:40:59.821467+00,"[{""value"":""Neutral"",""questionId"":""trust""},{""value"":""good"",""questionId"":""performance""}]",819e1710-0953-41ee-ae0e-bc295703a27f,
+6,2026-01-12 22:35:03.727589+00,"[{""value"":""Disagree"",""questionId"":""trust""},{""value"":""poor"",""questionId"":""performance""}]",ad030875-3ecf-479f-a9ec-34dbfbf9f94c,
+7,2026-01-12 22:35:47.784489+00,"[{""value"":""Neutral"",""questionId"":""trust""},{""value"":""good"",""questionId"":""performance""}]",ad030875-3ecf-479f-a9ec-34dbfbf9f94c,
+8,2026-01-12 22:36:19.40337+00,"[{""value"":""Agree"",""questionId"":""trust""},{""value"":""great"",""questionId"":""performance""}]",ad030875-3ecf-479f-a9ec-34dbfbf9f94c,
+9,2026-02-06 16:11:01.959692+00,"[{""value"":""Agree"",""questionId"":""trust""},{""value"":""good"",""questionId"":""performance""}]",4e4d9a76-9543-4ddd-a8ad-ab3343337b86,
+10,2026-02-06 16:11:22.272832+00,"[{""value"":""Disagree"",""questionId"":""trust""},{""value"":""great"",""questionId"":""performance""}]",4e4d9a76-9543-4ddd-a8ad-ab3343337b86,
+11,2026-02-06 16:11:47.722124+00,"[{""value"":""Agree"",""questionId"":""trust""},{""value"":""good"",""questionId"":""performance""}]",4e4d9a76-9543-4ddd-a8ad-ab3343337b86,
+12,2026-02-06 16:12:10.521438+00,"[{""value"":""Disagree"",""questionId"":""trust""},{""value"":""good"",""questionId"":""performance""}]",4e4d9a76-9543-4ddd-a8ad-ab3343337b86,
+13,2026-04-22 23:27:12.616911+00,"[{""value"":""Disagree"",""questionId"":""trust""},{""value"":""good"",""questionId"":""performance""}]",9f86d081-884c-4d65-9a2f-eaa0c55ad015,test
+14,2026-04-22 23:27:51.588639+00,"[{""value"":""Disagree"",""questionId"":""trust""},{""value"":""good"",""questionId"":""performance""}]",9f86d081-884c-4d65-9a2f-eaa0c55ad015,test
+15,2026-04-23 20:20:45.326257+00,"[{""value"":""Strongly Disagree "",""questionId"":""trust""},{""value"":""great"",""questionId"":""performance""}]",646d5615-8008-4404-8d81-6f45e0eca8da,dat boi
+16,2026-04-23 20:20:59.329051+00,"[{""value"":""Disagree"",""questionId"":""trust""},{""value"":""great"",""questionId"":""performance""}]",646d5615-8008-4404-8d81-6f45e0eca8da,dat boi
+17,2026-04-23 20:21:15.794406+00,"[{""value"":""Neutral"",""questionId"":""trust""},{""value"":""great"",""questionId"":""performance""}]",646d5615-8008-4404-8d81-6f45e0eca8da,dat boi
+18,2026-04-23 20:21:41.069353+00,"[{""value"":""Disagree"",""questionId"":""trust""},{""value"":""good"",""questionId"":""performance""}]",646d5615-8008-4404-8d81-6f45e0eca8da,dat boi
+19,2026-04-23 20:21:59.320724+00,"[{""value"":""Strongly Agree"",""questionId"":""trust""},{""value"":""great"",""questionId"":""performance""}]",646d5615-8008-4404-8d81-6f45e0eca8da,dat boi
+20,2026-04-23 21:34:13.550973+00,"[{""value"":""Disagree"",""questionId"":""trust""},{""value"":""great"",""questionId"":""performance""}]",386a85d8-c887-48b0-8b13-55608363c7e3,josh
+21,2026-04-23 21:34:29.662072+00,"[{""value"":""Neutral"",""questionId"":""trust""},{""value"":""great"",""questionId"":""performance""}]",386a85d8-c887-48b0-8b13-55608363c7e3,josh
+22,2026-04-23 21:34:47.157987+00,"[{""value"":""Strongly Disagree "",""questionId"":""trust""},{""value"":""good"",""questionId"":""performance""}]",386a85d8-c887-48b0-8b13-55608363c7e3,josh
+23,2026-04-23 21:35:47.278832+00,"[{""value"":""Neutral"",""questionId"":""trust""},{""value"":""good"",""questionId"":""performance""}]",386a85d8-c887-48b0-8b13-55608363c7e3,josh
+24,2026-04-23 21:36:02.116613+00,"[{""value"":""Neutral"",""questionId"":""trust""},{""value"":""good"",""questionId"":""performance""}]",386a85d8-c887-48b0-8b13-55608363c7e3,josh
+25,2026-04-23 21:45:04.590396+00,"[{""value"":""Strongly Agree"",""questionId"":""trust""},{""value"":""poor"",""questionId"":""performance""}]",0af0314a-0d41-415a-a7cf-2384f8193b25,newt
+26,2026-04-23 21:45:22.524635+00,"[{""value"":""Strongly Agree"",""questionId"":""trust""},{""value"":""poor"",""questionId"":""performance""}]",0af0314a-0d41-415a-a7cf-2384f8193b25,newt
+27,2026-04-23 21:45:37.352704+00,"[{""value"":""Strongly Agree"",""questionId"":""trust""},{""value"":""poor"",""questionId"":""performance""}]",0af0314a-0d41-415a-a7cf-2384f8193b25,newt
+28,2026-04-23 21:45:52.321247+00,"[{""value"":""Strongly Agree"",""questionId"":""trust""},{""value"":""great"",""questionId"":""performance""}]",0af0314a-0d41-415a-a7cf-2384f8193b25,newt
+29,2026-04-23 21:46:05.746855+00,"[{""value"":""Strongly Agree"",""questionId"":""trust""},{""value"":""great"",""questionId"":""performance""}]",0af0314a-0d41-415a-a7cf-2384f8193b25,newt

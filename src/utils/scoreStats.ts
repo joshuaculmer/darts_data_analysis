@@ -158,3 +158,46 @@ export function computeScoreVsSkillPoints(
     sessionIndex: i,
   }));
 }
+
+export function computeGameProximity(game: DartGameDTO): number | null {
+  if (!game.suggested_aiming_coord) return null;
+  const dx = game.actual_aiming_coord.x - game.suggested_aiming_coord.x;
+  const dy = game.actual_aiming_coord.y - game.suggested_aiming_coord.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+export function computeGameDurationSecs(game: DartGameDTO): number {
+  return Math.max(0, (game.end - game.start) / 1000);
+}
+
+export interface ProximityScorePoint {
+  avgProximity: number | null;
+  score: number;
+  aiType: AI_Type;
+  label: string;
+  color: string;
+  session: ParsedGameSession;
+}
+
+export function computeProximityVsScorePoints(
+  sessions: ParsedGameSession[],
+  boards: Map<number, RewardSurface>,
+): ProximityScorePoint[] {
+  return sessions.map((session) => {
+    const proximities = session.games
+      .map(computeGameProximity)
+      .filter((p): p is number => p !== null);
+    const avgProximity =
+      proximities.length > 0
+        ? proximities.reduce((s, v) => s + v, 0) / proximities.length
+        : null;
+    return {
+      avgProximity,
+      score: computeSessionScore(session, boards).avg,
+      aiType: session.ai_advice,
+      label: AI_TYPE_LABELS[session.ai_advice],
+      color: AI_TYPE_COLORS[session.ai_advice],
+      session,
+    };
+  });
+}

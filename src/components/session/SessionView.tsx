@@ -3,6 +3,7 @@ import type { ParsedGameSession } from "../../loaders/loadData";
 import type { RewardSurface } from "../../types/dart";
 import { computeSessionScore, gameScore } from "../../utils/scoreStats";
 import { AI_TYPE_LABELS } from "../../utils/stats";
+import { GameBoardView } from "./GameBoardView";
 
 interface Props {
   sessions: ParsedGameSession[];
@@ -167,42 +168,51 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
                     </tr>
                     {isExpanded && (
                       <tr key={`hits-${gi}`}>
-                        <td colSpan={8} style={{ padding: "0 10px 12px 32px", background: "#0f172a" }}>
-                          <div style={{ paddingTop: 8 }}>
-                            <p style={{ fontSize: 11, color: "#64748b", marginBottom: 6 }}>
-                              Hit coordinates ({game.hits.length} hits)
-                            </p>
-                            {game.hits.length === 0 ? (
-                              <span style={{ fontSize: 12, color: "#475569" }}>No hits recorded.</span>
+                        <td colSpan={8} style={{ padding: "12px 10px 16px 10px", background: "#0f172a" }}>
+                          <div style={{ display: "flex", gap: 32, alignItems: "flex-start", flexWrap: "wrap" }}>
+                            {/* Board visualisation */}
+                            {surface ? (
+                              <GameBoardView game={game} surface={surface} />
                             ) : (
-                              <table style={{ borderCollapse: "collapse", fontSize: 11 }}>
-                                <thead>
-                                  <tr>
-                                    <th style={{ padding: "4px 12px 4px 0", color: "#64748b", textAlign: "left" }}>Hit #</th>
-                                    <th style={{ padding: "4px 12px 4px 0", color: "#64748b", textAlign: "left" }}>x</th>
-                                    <th style={{ padding: "4px 12px 4px 0", color: "#64748b", textAlign: "left" }}>y</th>
-                                    <th style={{ padding: "4px 12px 4px 0", color: "#64748b", textAlign: "left" }}>Score</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {game.hits.map((hit, hi) => {
-                                    const hx = Math.floor(hit.x);
-                                    const hy = Math.floor(hit.y);
-                                    const hitScore = surface ? (surface[hx]?.[hy] ?? 0) : null;
-                                    return (
-                                      <tr key={hi} style={{ borderBottom: "1px solid #1e293b" }}>
-                                        <td style={{ padding: "3px 12px 3px 0", color: "#94a3b8" }}>{hi + 1}</td>
-                                        <td style={{ padding: "3px 12px 3px 0", color: "#e2e8f0" }}>{hit.x.toFixed(4)}</td>
-                                        <td style={{ padding: "3px 12px 3px 0", color: "#e2e8f0" }}>{hit.y.toFixed(4)}</td>
-                                        <td style={{ padding: "3px 12px 3px 0", color: "#e2e8f0" }}>
-                                          {hitScore != null ? hitScore.toFixed(4) : "—"}
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
+                              <span style={{ fontSize: 12, color: "#475569" }}>Board surface not loaded.</span>
                             )}
+
+                            {/* Hit coordinate table */}
+                            <div>
+                              <p style={{ fontSize: 11, color: "#64748b", marginBottom: 6 }}>
+                                Hit coordinates ({game.hits.length} hits)
+                              </p>
+                              {game.hits.length === 0 ? (
+                                <span style={{ fontSize: 12, color: "#475569" }}>No hits recorded.</span>
+                              ) : (
+                                <table style={{ borderCollapse: "collapse", fontSize: 11 }}>
+                                  <thead>
+                                    <tr>
+                                      {["Hit #", "x", "y", "Score"].map((h) => (
+                                        <th key={h} style={{ padding: "4px 12px 4px 0", color: "#64748b", textAlign: "left" }}>{h}</th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {game.hits.map((hit, hi) => {
+                                      const hx = Math.floor(hit.x);
+                                      const hy = Math.floor(hit.y);
+                                      const hitScore = surface ? (surface[hx]?.[hy] ?? 0) : null;
+                                      return (
+                                        <tr key={hi} style={{ borderBottom: "1px solid #1e293b" }}>
+                                          <td style={{ padding: "3px 12px 3px 0", color: "#94a3b8" }}>{hi + 1}</td>
+                                          <td style={{ padding: "3px 12px 3px 0", color: "#e2e8f0" }}>{hit.x.toFixed(4)}</td>
+                                          <td style={{ padding: "3px 12px 3px 0", color: "#e2e8f0" }}>{hit.y.toFixed(4)}</td>
+                                          <td style={{ padding: "3px 12px 3px 0", color: "#e2e8f0" }}>
+                                            {hitScore != null ? hitScore.toFixed(4) : "—"}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              )}
+                            </div>
                           </div>
                         </td>
                       </tr>

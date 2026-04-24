@@ -61,8 +61,8 @@ Top navbar with six sections. See `PLANNING.md` for the full chart roadmap per s
 | Section | Key Components |
 |---|---|
 | Sanity Checks | KpiCards, SessionCalendar, ConditionDistribution |
-| Game Performance | ScoreVsSkillScatter (click a point to jump to Session View), TrustVsScore |
-| Trust & Influence | TrustQuestionSelector, TrustByCondition, TrustOverTime, TrustVsScore |
+| Game Performance | ScoreVsSkillScatter (click → Session View), TrustVsScore (click → game scores), ProximityVsScore (click → game proximity/score) |
+| Trust & Influence | TrustQuestionSelector, TrustByCondition, TrustOverTime, TrustVsScore, TrustVsTime, TrustVsProximity |
 | Individual View | IndividualView (participant dropdown + timeline + breakdown) |
 | Session View | SessionView — participant + session dropdowns; session metadata table + per-game table with expandable hit rows |
 | Raw Data | Coming soon (filterable/sortable tables) |
@@ -95,11 +95,14 @@ src/
 │   ├── stats.phase2.test.ts
 │   ├── scoreStats.ts                # gameScore, computeSessionScore, computeAllSessionScores,
 │   │                                #   computeParticipantTotalScores, computeScoreByCondition,
-│   │                                #   computeScoreVsSkillPoints, SessionScore, ParticipantScore
+│   │                                #   computeScoreVsSkillPoints, computeProximityVsScorePoints,
+│   │                                #   computeGameProximity, computeGameDurationSecs,
+│   │                                #   SessionScore, ParticipantScore, ProximityScorePoint
 │   │                                #   ScoreSkillPoint includes user_uuid + sessionIndex for click-to-navigate
 │   ├── scoreStats.test.ts
 │   ├── surveyStats.ts               # joinSessionsWithSurvey, computeTrustByCondition,
-│   │                                #   computeTrustOverTime, computeTrustVsScorePoints
+│   │                                #   computeTrustOverTime, computeTrustVsScorePoints,
+│   │                                #   computeTrustVsTimePoints, computeTrustVsProximityPoints
 │   ├── surveyStats.test.ts
 │   ├── individualStats.ts           # getParticipantList, computeIndividualTimeline,
 │   │                                #   computeIndividualKpis, computeGameBreakdown
@@ -113,13 +116,16 @@ src/
     │   └── ConditionDistribution.tsx
     │
     ├── performance/
-    │   └── ScoreVsSkillScatter.tsx
+    │   ├── ScoreVsSkillScatter.tsx
+    │   └── ProximityVsScore.tsx      # Proximity vs score scatter; click → per-game scatter breakdown
     │
     ├── trust/
     │   ├── TrustQuestionSelector.tsx
     │   ├── TrustByCondition.tsx
     │   ├── TrustOverTime.tsx
-    │   └── TrustVsScore.tsx
+    │   ├── TrustVsScore.tsx          # Trust vs avg score; click → per-game score bars; needs boards prop
+    │   ├── TrustVsTime.tsx           # Trust vs avg game duration; click → per-game duration bars
+    │   └── TrustVsProximity.tsx      # Trust vs avg proximity to AI suggestion; null sessions listed separately; click → per-game proximity bars
     │
     ├── individual/
     │   ├── IndividualView.tsx       # Parent: participant selector, wires all sub-components
@@ -129,10 +135,14 @@ src/
     │   ├── ParticipantKpiCards.tsx
     │   └── SurveyResponseTable.tsx
     │
-    └── session/
-        └── SessionView.tsx          # Participant + session dropdowns; metadata table + games table
-                                     #   (click row → expands per-hit coordinates + individual hit scores)
-                                     #   Navigated to automatically when a scatter point is clicked
+    ├── session/
+    │   └── SessionView.tsx          # Participant + session dropdowns; metadata table + games table
+    │                                #   (click row → expands per-hit coordinates + individual hit scores)
+    │                                #   Navigated to automatically when a scatter point is clicked
+    │
+    └── raw/
+        ├── SessionsTable.tsx        # Sortable/filterable sessions table; shows games_played vs actual array length (red if mismatch); CSV export; uses unfiltered sessions
+        └── SurveyTable.tsx          # Sortable/filterable survey table; dynamic question columns; CSV export
 
 public/
 ├── Perlin_Noise_Surfaces.ts/        # 100 board JSON files (PerlinNoiseBoard0.json … PerlinNoiseBoard99.json)
