@@ -6,7 +6,10 @@ import type {
 } from "./loaders/loadData";
 import { loadBoards } from "./loaders/loadBoards";
 import type { RewardSurface } from "./types/dart";
-import { computeScoreVsSkillPoints, computeProximityVsScorePoints } from "./utils/scoreStats";
+import {
+  computeScoreVsSkillPoints,
+  computeProximityVsScorePoints,
+} from "./utils/scoreStats";
 import { getCompleteUserIds } from "./utils/stats";
 import {
   joinSessionsWithSurvey,
@@ -33,7 +36,13 @@ import { IndividualView } from "./components/individual/IndividualView";
 import { SessionView } from "./components/session/SessionView";
 import "./App.css";
 
-type NavSection = "sanity" | "performance" | "trust" | "individual" | "session" | "raw";
+type NavSection =
+  | "sanity"
+  | "performance"
+  | "trust"
+  | "individual"
+  | "session"
+  | "raw";
 
 const NAV_ITEMS: { id: NavSection; label: string }[] = [
   { id: "sanity", label: "Sanity Checks" },
@@ -55,7 +64,9 @@ function App() {
   const [activeSection, setActiveSection] = useState<NavSection>("sanity");
   const [trustQuestionId, setTrustQuestionId] = useState<string | null>(null);
   const [completeOnly, setCompleteOnly] = useState(true);
-  const [sessionViewParticipant, setSessionViewParticipant] = useState<string | null>(null);
+  const [sessionViewParticipant, setSessionViewParticipant] = useState<
+    string | null
+  >(null);
   const [sessionViewIndex, setSessionViewIndex] = useState<number | null>(null);
 
   // Restore persisted CSVs on mount
@@ -137,12 +148,18 @@ function App() {
   );
 
   const filteredSessions = useMemo(
-    () => (completeOnly ? sessions.filter((s) => completeUserIds.has(s.user_uuid)) : sessions),
+    () =>
+      completeOnly
+        ? sessions.filter((s) => completeUserIds.has(s.user_uuid))
+        : sessions,
     [sessions, completeOnly, completeUserIds],
   );
 
   const filteredSurveyResponses = useMemo(
-    () => (completeOnly ? surveyResponses.filter((r) => completeUserIds.has(r.user_uuid)) : surveyResponses),
+    () =>
+      completeOnly
+        ? surveyResponses.filter((r) => completeUserIds.has(r.user_uuid))
+        : surveyResponses,
     [surveyResponses, completeOnly, completeUserIds],
   );
 
@@ -174,11 +191,17 @@ function App() {
     [joinedData, trustQuestionId, boards],
   );
   const trustVsTimePoints = useMemo(
-    () => (trustQuestionId ? computeTrustVsTimePoints(joinedData, trustQuestionId) : []),
+    () =>
+      trustQuestionId
+        ? computeTrustVsTimePoints(joinedData, trustQuestionId)
+        : [],
     [joinedData, trustQuestionId],
   );
   const trustVsProximityPoints = useMemo(
-    () => (trustQuestionId ? computeTrustVsProximityPoints(joinedData, trustQuestionId) : []),
+    () =>
+      trustQuestionId
+        ? computeTrustVsProximityPoints(joinedData, trustQuestionId)
+        : [],
     [joinedData, trustQuestionId],
   );
   const proximityVsScorePoints = useMemo(
@@ -193,7 +216,11 @@ function App() {
     <header className="app-header">
       <h1>Darts Research — Data Analysis</h1>
       {anyDataLoaded && (
-        <button className="btn-danger" onClick={handleClearData}>
+        <button
+          className="btn-danger"
+          onClick={handleClearData}
+          style={{ alignSelf: "center", marginLeft: "auto" }}
+        >
           Clear Data
         </button>
       )}
@@ -266,9 +293,8 @@ function App() {
 
   return (
     <div className="app">
-      {appHeader}
-
-      <nav className="app-nav">
+      <header className="app-header">
+        <h1>Darts Analysis</h1>
         {NAV_ITEMS.map(({ id, label }) => (
           <button
             key={id}
@@ -278,7 +304,15 @@ function App() {
             {label}
           </button>
         ))}
-      </nav>
+        <div style={{ flex: 1 }} />
+        <button
+          className="btn-danger"
+          onClick={handleClearData}
+          style={{ alignSelf: "center" }}
+        >
+          Clear Data
+        </button>
+      </header>
 
       <main className="dashboard">
         {activeSection === "sanity" && (
@@ -309,7 +343,9 @@ function App() {
                 setActiveSection("session");
               }}
             />
-            {trustQuestionId && <TrustVsScore points={trustVsScorePoints} boards={boards} />}
+            {trustQuestionId && (
+              <TrustVsScore points={trustVsScorePoints} boards={boards} />
+            )}
             <ProximityVsScore points={proximityVsScorePoints} boards={boards} />
           </section>
         )}
@@ -362,7 +398,7 @@ function App() {
         {activeSection === "session" && (
           <section className="dash-section">
             <p className="section-note">
-              Raw data for a single session. Click any point in the Score vs Execution Skill chart to jump here.
+              Full details of each game session for the selected participant
             </p>
             <SessionView
               sessions={filteredSessions}
@@ -376,7 +412,8 @@ function App() {
         {activeSection === "raw" && (
           <section className="dash-section">
             <p className="section-note">
-              All sessions and survey responses — unfiltered regardless of the Complete Participants toggle. Click any column header to sort.
+              All sessions and survey responses — unfiltered regardless of the
+              Complete Participants toggle. Click any column header to sort.
             </p>
             <SessionsTable sessions={sessions} boards={boards} />
             <SurveyTable surveys={surveyResponses} />

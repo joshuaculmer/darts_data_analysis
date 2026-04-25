@@ -43,60 +43,57 @@ export function GameBoardView({ game, surface }: Props) {
     }
     ctx.putImageData(imageData, 0, 0);
 
-    // Hits — small white dots with thin black outline
-    ctx.globalAlpha = 0.9;
+    // Suggested aiming coord — red × reticle (drawn first, under actual aim and hits)
+    if (game.suggested_aiming_coord) {
+      const { x, y } = game.suggested_aiming_coord;
+      const d = 11; // 15 * sin(45°) ≈ 10.6, rounded up slightly
+      ctx.strokeStyle = "#ef4444";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(x, y, 10, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x - d, y - d); ctx.lineTo(x + d, y + d);
+      ctx.moveTo(x + d, y - d); ctx.lineTo(x - d, y + d);
+      ctx.stroke();
+    }
+
+    // Actual aiming coord — white fill with red outline (drawn second, under hits)
+    {
+      const { x, y } = game.actual_aiming_coord;
+      ctx.beginPath();
+      ctx.arc(x, y, 10, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255,0.25)";
+      ctx.fill();
+      ctx.strokeStyle = "#ef4444";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x - 15, y); ctx.lineTo(x + 15, y);
+      ctx.moveTo(x, y - 15); ctx.lineTo(x, y + 15);
+      ctx.stroke();
+    }
+
+    // Hits — black dots with white outline, drawn last so they're never obscured
     for (const hit of game.hits) {
       ctx.beginPath();
       ctx.arc(hit.x, hit.y, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = "#000000";
       ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.6)";
-      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = "rgba(255,255,255,0.7)";
+      ctx.lineWidth = 1;
       ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-
-    // Suggested aiming coord — cyan reticle (drawn first so actual aim renders on top)
-    if (game.suggested_aiming_coord) {
-      const { x, y } = game.suggested_aiming_coord;
-      ctx.strokeStyle = "#00e5ff";
-      ctx.lineWidth = 1.5;
-      ctx.globalAlpha = 0.9;
-      ctx.beginPath();
-      ctx.arc(x, y, 10, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(x - 15, y); ctx.lineTo(x + 15, y);
-      ctx.moveTo(x, y - 15); ctx.lineTo(x, y + 15);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-
-    // Actual aiming coord — yellow reticle
-    {
-      const { x, y } = game.actual_aiming_coord;
-      ctx.strokeStyle = "#fbbf24";
-      ctx.lineWidth = 1.5;
-      ctx.globalAlpha = 0.95;
-      ctx.beginPath();
-      ctx.arc(x, y, 10, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(x - 15, y); ctx.lineTo(x + 15, y);
-      ctx.moveTo(x, y - 15); ctx.lineTo(x, y + 15);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
     }
   }, [game, surface]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <div style={{ display: "flex", gap: 16, alignItems: "center", fontSize: 11, flexWrap: "wrap" }}>
-        <span style={{ color: "#fbbf24" }}>⊕ Actual aim</span>
+        <span style={{ color: "#ef4444" }}>⊕ Actual aim</span>
         {game.suggested_aiming_coord
-          ? <span style={{ color: "#00e5ff" }}>⊕ Suggested aim</span>
+          ? <span style={{ color: "#ef4444", opacity: 0.6 }}>⊕ Suggested aim</span>
           : <span style={{ color: "#475569" }}>No suggestion (NONE condition)</span>}
-        <span style={{ color: "#cbd5e1" }}>● Hits</span>
+        <span style={{ color: "#94a3b8" }}>● Hits</span>
         <span style={{ color: "#94a3b8" }}>
           Score: <strong style={{ color: "#e2e8f0" }}>{score.toFixed(2)}</strong>
         </span>

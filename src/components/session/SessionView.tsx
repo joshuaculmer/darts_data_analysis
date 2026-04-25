@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import type { ParsedGameSession } from "../../loaders/loadData";
 import type { RewardSurface } from "../../types/dart";
-import { computeSessionScore, gameScore } from "../../utils/scoreStats";
-import { AI_TYPE_LABELS } from "../../utils/stats";
+import { computeSessionScore } from "../../utils/scoreStats";
+import { AI_TYPE_LABELS, AI_TYPE_COLORS } from "../../utils/stats";
 import { GameBoardView } from "./GameBoardView";
 
 interface Props {
@@ -12,6 +12,19 @@ interface Props {
   initialSessionIndex?: number | null;
 }
 
+function KpiChip({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+      <span style={{ fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        {label}
+      </span>
+      <span style={{ fontSize: 14, fontWeight: 600, color: accent ? "#f1f5f9" : "#94a3b8" }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
 export function SessionView({ sessions, boards, initialParticipant, initialSessionIndex }: Props) {
   const participantIds = [...new Set(sessions.map((s) => s.user_uuid))].sort();
 
@@ -19,16 +32,15 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
     initialParticipant ?? participantIds[0] ?? ""
   );
   const [selectedSessionIndex, setSelectedSessionIndex] = useState<number>(0);
-  const [expandedGame, setExpandedGame] = useState<number | null>(null);
+  const [selectedGame, setSelectedGame] = useState<number>(0);
 
   const participantSessions = sessions
     .map((s, i) => ({ session: s, globalIndex: i }))
     .filter(({ session }) => session.user_uuid === selectedParticipant);
 
   // Handle click-to-navigate from scatter plot.
-  // Compute the local index using initialParticipant directly so both states
-  // are set atomically — avoids a race where the participant-change path
-  // resets the session index after this effect sets it.
+  // Compute local index using initialParticipant directly so both states
+  // are set atomically — avoids a race where participant-change resets session index.
   useEffect(() => {
     if (initialParticipant == null || initialSessionIndex == null) return;
     const navSessions = sessions
@@ -37,196 +49,255 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
     const localIdx = navSessions.findIndex(({ globalIndex }) => globalIndex === initialSessionIndex);
     setSelectedParticipant(initialParticipant);
     setSelectedSessionIndex(localIdx >= 0 ? localIdx : 0);
-    setExpandedGame(null);
+    setSelectedGame(0);
   // sessions is stable across navigations; initialParticipant/Index are the triggers
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialParticipant, initialSessionIndex]);
 
+  // Reset selected game when session changes
+  useEffect(() => {
+    setSelectedGame(0);
+  }, [selectedSessionIndex, selectedParticipant]);
+
   const activeEntry = participantSessions[selectedSessionIndex] ?? null;
   const activeSession = activeEntry?.session ?? null;
-
   const sessionScore = activeSession ? computeSessionScore(activeSession, boards) : null;
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Selectors */}
-      <div className="chart-card" style={{ display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <label style={{ fontSize: 11, color: "#94a3b8" }}>Participant</label>
-          <select
-            value={selectedParticipant}
-            onChange={(e) => {
-              setSelectedParticipant(e.target.value);
-              setSelectedSessionIndex(0);
-              setExpandedGame(null);
-            }}
-            style={{ background: "#1e293b", color: "#e2e8f0", border: "1px solid #334155", borderRadius: 4, padding: "4px 8px", fontSize: 13 }}
-          >
-            {participantIds.map((id) => {
-              const nick = sessions.find((s) => s.user_uuid === id)?.user_nickname;
-              return (
-                <option key={id} value={id}>
-                  {nick ? `${nick} (${id.slice(0, 8)}…)` : id.slice(0, 12) + "…"}
-                </option>
-              );
-            })}
-          </select>
-        </div>
+  const game = activeSession?.games[selectedGame] ?? null;
+  const surface = game ? (boards.get(game.board_id) ?? null) : null;
+  const maxGameScore = sessionScore ? Math.max(...sessionScore.gameScores, 1) : 1;
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <label style={{ fontSize: 11, color: "#94a3b8" }}>Session</label>
-          <select
-            value={selectedSessionIndex ?? ""}
-            onChange={(e) => {
-              setSelectedSessionIndex(Number(e.target.value));
-              setExpandedGame(null);
-            }}
-            style={{ background: "#1e293b", color: "#e2e8f0", border: "1px solid #334155", borderRadius: 4, padding: "4px 8px", fontSize: 13 }}
-          >
-            {participantSessions.map(({ session }, localIdx) => (
-              <option key={localIdx} value={localIdx}>
-                Session {localIdx + 1} — {AI_TYPE_LABELS[session.ai_advice]} — {new Date(session.created_at).toLocaleDateString()}
+  return (
+    <div style={{
+      border: "1px solid #334155",
+      borderRadius: 10,
+      overflow: "hidden",
+      background: "#0f172a",
+    }}>
+
+      {/* Zone 1: Navigation strip — participant + session pills */}
+      <div style={{
+        background: "#1e293b",
+        borderBottom: "1px solid #334155",
+        padding: "10px 16px",
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        flexWrap: "wrap",
+      }}>
+        <select
+          value={selectedParticipant}
+          onChange={(e) => {
+            setSelectedParticipant(e.target.value);
+            setSelectedSessionIndex(0);
+          }}
+          style={{
+            background: "#0f172a",
+            color: "#e2e8f0",
+            border: "1px solid #475569",
+            borderRadius: 6,
+            padding: "5px 10px",
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: "pointer",
+            flexShrink: 0,
+          }}
+        >
+          {participantIds.map((id) => {
+            const nick = sessions.find((s) => s.user_uuid === id)?.user_nickname;
+            return (
+              <option key={id} value={id}>
+                {nick ? `${nick} (${id.slice(0, 8)}…)` : id.slice(0, 12) + "…"}
               </option>
-            ))}
-          </select>
+            );
+          })}
+        </select>
+
+        <span style={{ color: "#334155", userSelect: "none" }}>│</span>
+
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {participantSessions.map(({ session }, localIdx) => {
+            const color = AI_TYPE_COLORS[session.ai_advice];
+            const isActive = localIdx === selectedSessionIndex;
+            return (
+              <button
+                key={localIdx}
+                onClick={() => setSelectedSessionIndex(localIdx)}
+                style={{
+                  padding: "4px 11px",
+                  border: `1.5px solid ${color}`,
+                  borderRadius: 99,
+                  background: isActive ? color : "transparent",
+                  color: isActive ? "#0f172a" : color,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  transition: "background 0.12s, color 0.12s",
+                }}
+              >
+                S{localIdx + 1} · {AI_TYPE_LABELS[session.ai_advice]}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Session metadata */}
+      {/* Zone 2: Session KPI strip */}
       {activeSession && sessionScore && (
-        <div className="chart-card">
-          <h2 style={{ marginBottom: 12 }}>Session Metadata</h2>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <tbody>
-              {[
-                ["Participant UUID", activeSession.user_uuid],
-                ["Nickname", activeSession.user_nickname ?? "—"],
-                ["Created At", new Date(activeSession.created_at).toLocaleString()],
-                ["AI Condition", `${AI_TYPE_LABELS[activeSession.ai_advice]} (${activeSession.ai_advice})`],
-                ["Execution Skill", activeSession.execution_skill],
-                ["Games Played", activeSession.games_played],
-                ["Total Score", sessionScore.sum.toFixed(2)],
-                ["Avg Score / Game", sessionScore.avg.toFixed(2)],
-              ].map(([label, value]) => (
-                <tr key={label as string} style={{ borderBottom: "1px solid #1e293b" }}>
-                  <td style={{ padding: "6px 12px 6px 0", color: "#94a3b8", fontWeight: 500, whiteSpace: "nowrap" }}>{label}</td>
-                  <td style={{ padding: "6px 0", color: "#e2e8f0" }}>{value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div style={{
+          background: "#111827",
+          borderBottom: "1px solid #1e293b",
+          padding: "10px 18px",
+          display: "flex",
+          alignItems: "center",
+          gap: 28,
+          flexWrap: "wrap",
+        }}>
+          <span
+            className="condition-badge"
+            style={{
+              background: AI_TYPE_COLORS[activeSession.ai_advice],
+              fontSize: 12,
+              padding: "3px 11px",
+              fontWeight: 700,
+            }}
+          >
+            {AI_TYPE_LABELS[activeSession.ai_advice]}
+          </span>
+
+          <KpiChip label="Date" value={new Date(activeSession.created_at).toLocaleDateString()} />
+          <KpiChip label="Skill" value={activeSession.execution_skill} />
+          <KpiChip label="Games" value={activeSession.games.length} />
+          <KpiChip label="Total Score" value={sessionScore.sum.toFixed(1)} accent />
+          <KpiChip label="Avg / Game" value={sessionScore.avg.toFixed(1)} accent />
+
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "#334155", fontFamily: "monospace" }}>
+            {activeSession.user_uuid}
+          </span>
         </div>
       )}
 
-      {/* Games table */}
-      {activeSession && sessionScore && (
-        <div className="chart-card">
-          <h2 style={{ marginBottom: 12 }}>Games</h2>
-          <p style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>
-            Click a row to expand / collapse its hit coordinates.
-          </p>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid #334155" }}>
-                {["#", "Board ID", "Score", "# Hits", "Actual Aim (x, y)", "Suggested Aim (x, y)", "Start", "End"].map((h) => (
-                  <th key={h} style={{ padding: "6px 10px", textAlign: "left", color: "#94a3b8", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {activeSession.games.map((game, gi) => {
-                const surface = boards.get(game.board_id);
-                const score = surface ? gameScore(game, surface) : null;
-                const isExpanded = expandedGame === gi;
-                return (
-                  <>
-                    <tr
-                      key={`game-${gi}`}
-                      onClick={() => setExpandedGame(isExpanded ? null : gi)}
-                      style={{
-                        borderBottom: "1px solid #1e293b",
-                        cursor: "pointer",
-                        background: isExpanded ? "#1e3a5f22" : undefined,
-                      }}
-                    >
-                      <td style={{ padding: "6px 10px", color: "#e2e8f0" }}>{gi + 1}</td>
-                      <td style={{ padding: "6px 10px", color: "#e2e8f0" }}>{game.board_id}</td>
-                      <td style={{ padding: "6px 10px", color: "#e2e8f0" }}>
-                        {score != null ? score.toFixed(2) : <span style={{ color: "#475569" }}>—</span>}
-                      </td>
-                      <td style={{ padding: "6px 10px", color: "#e2e8f0" }}>{game.hits.length}</td>
-                      <td style={{ padding: "6px 10px", color: "#e2e8f0" }}>
-                        ({game.actual_aiming_coord.x.toFixed(2)}, {game.actual_aiming_coord.y.toFixed(2)})
-                      </td>
-                      <td style={{ padding: "6px 10px", color: "#e2e8f0" }}>
-                        {game.suggested_aiming_coord
-                          ? `(${game.suggested_aiming_coord.x.toFixed(2)}, ${game.suggested_aiming_coord.y.toFixed(2)})`
-                          : <span style={{ color: "#475569" }}>—</span>}
-                      </td>
-                      <td style={{ padding: "6px 10px", color: "#64748b" }}>{game.start}</td>
-                      <td style={{ padding: "6px 10px", color: "#64748b" }}>{game.end}</td>
-                    </tr>
-                    {isExpanded && (
-                      <tr key={`hits-${gi}`}>
-                        <td colSpan={8} style={{ padding: "12px 10px 16px 10px", background: "#0f172a" }}>
-                          <div style={{ display: "flex", gap: 32, alignItems: "flex-start", flexWrap: "wrap" }}>
-                            {/* Board visualisation */}
-                            {surface ? (
-                              <GameBoardView game={game} surface={surface} />
-                            ) : (
-                              <span style={{ fontSize: 12, color: "#475569" }}>Board surface not loaded.</span>
-                            )}
+      {/* Zone 3: Game list + game detail */}
+      {activeSession && sessionScore ? (
+        <div style={{ display: "flex", minHeight: 620 }}>
 
-                            {/* Hit coordinate table */}
-                            <div>
-                              <p style={{ fontSize: 11, color: "#64748b", marginBottom: 6 }}>
-                                Hit coordinates ({game.hits.length} hits)
-                              </p>
-                              {game.hits.length === 0 ? (
-                                <span style={{ fontSize: 12, color: "#475569" }}>No hits recorded.</span>
-                              ) : (
-                                <table style={{ borderCollapse: "collapse", fontSize: 11 }}>
-                                  <thead>
-                                    <tr>
-                                      {["Hit #", "x", "y", "Score"].map((h) => (
-                                        <th key={h} style={{ padding: "4px 12px 4px 0", color: "#64748b", textAlign: "left" }}>{h}</th>
-                                      ))}
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {game.hits.map((hit, hi) => {
-                                      const hx = Math.floor(hit.x);
-                                      const hy = Math.floor(hit.y);
-                                      const hitScore = surface ? (surface[hx]?.[hy] ?? 0) : null;
-                                      return (
-                                        <tr key={hi} style={{ borderBottom: "1px solid #1e293b" }}>
-                                          <td style={{ padding: "3px 12px 3px 0", color: "#94a3b8" }}>{hi + 1}</td>
-                                          <td style={{ padding: "3px 12px 3px 0", color: "#e2e8f0" }}>{hit.x.toFixed(4)}</td>
-                                          <td style={{ padding: "3px 12px 3px 0", color: "#e2e8f0" }}>{hit.y.toFixed(4)}</td>
-                                          <td style={{ padding: "3px 12px 3px 0", color: "#e2e8f0" }}>
-                                            {hitScore != null ? hitScore.toFixed(4) : "—"}
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </>
-                );
-              })}
-            </tbody>
-          </table>
+          {/* Left panel: game list */}
+          <div style={{
+            width: 196,
+            flexShrink: 0,
+            borderRight: "1px solid #1e293b",
+            background: "#0a1120",
+            overflowY: "auto",
+            paddingTop: 4,
+            paddingBottom: 4,
+          }}>
+            {activeSession.games.map((g, gi) => {
+              const gScore = sessionScore.gameScores[gi];
+              const isSelected = gi === selectedGame;
+              const barPct = Math.round((gScore / maxGameScore) * 100);
+              return (
+                <button
+                  key={gi}
+                  onClick={() => setSelectedGame(gi)}
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    background: isSelected ? "#1e293b" : "transparent",
+                    border: "none",
+                    borderLeft: `3px solid ${isSelected ? "#4f8ef7" : "transparent"}`,
+                    padding: "10px 12px",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 5,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <span style={{ fontSize: 13, fontWeight: isSelected ? 600 : 400, color: isSelected ? "#f1f5f9" : "#94a3b8" }}>
+                      Game {gi + 1}
+                    </span>
+                    <span style={{ fontSize: 12, color: isSelected ? "#e2e8f0" : "#64748b", fontVariantNumeric: "tabular-nums" }}>
+                      {gScore.toFixed(1)}
+                    </span>
+                  </div>
+                  <div style={{ height: 3, background: "#1e293b", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{
+                      height: "100%",
+                      width: `${barPct}%`,
+                      background: isSelected ? "#4f8ef7" : "#334155",
+                      borderRadius: 2,
+                    }} />
+                  </div>
+                  <span style={{ fontSize: 10, color: "#475569" }}>
+                    {g.hits.length} hits · board {g.board_id}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right panel: game detail */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "row", overflow: "auto" }}>
+            {game ? (
+              <>
+                {/* Board canvas */}
+                <div style={{ padding: 20, flexShrink: 0, borderRight: "1px solid #1e293b" }}>
+                  {surface ? (
+                    <GameBoardView game={game} surface={surface} />
+                  ) : (
+                    <p style={{ color: "#475569", fontSize: 13 }}>Board surface not loaded.</p>
+                  )}
+                </div>
+
+                {/* Hit table */}
+                <div style={{ padding: "14px 20px", overflowY: "auto" }}>
+                  <p style={{ fontSize: 11, color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    Hit coordinates — {game.hits.length} hits
+                  </p>
+                  {game.hits.length === 0 ? (
+                    <span style={{ fontSize: 13, color: "#475569" }}>No hits recorded.</span>
+                  ) : (
+                    <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr>
+                          {["Hit #", "x", "y", "Score"].map((h) => (
+                            <th key={h} style={{ padding: "4px 20px 6px 0", color: "#64748b", textAlign: "left", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {game.hits.map((hit, hi) => {
+                          const hx = Math.floor(hit.x);
+                          const hy = Math.floor(hit.y);
+                          const hitScore = surface ? (surface[hx]?.[hy] ?? 0) : null;
+                          return (
+                            <tr key={hi} style={{ borderBottom: "1px solid #1e293b" }}>
+                              <td style={{ padding: "4px 20px 4px 0", color: "#475569" }}>{hi + 1}</td>
+                              <td style={{ padding: "4px 20px 4px 0", color: "#e2e8f0", fontFamily: "monospace" }}>{hit.x.toFixed(3)}</td>
+                              <td style={{ padding: "4px 20px 4px 0", color: "#e2e8f0", fontFamily: "monospace" }}>{hit.y.toFixed(3)}</td>
+                              <td style={{ padding: "4px 0", color: hitScore ? "#f1f5f9" : "#475569" }}>
+                                {hitScore != null ? hitScore : "—"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div style={{ padding: 24 }}>
+                <p style={{ color: "#475569", fontSize: 13 }}>No games in this session.</p>
+              </div>
+            )}
+          </div>
         </div>
-      )}
-
-      {!activeSession && (
-        <div className="chart-card">
+      ) : (
+        <div style={{ padding: 24 }}>
           <p style={{ color: "#475569", fontSize: 13 }}>No sessions found for this participant.</p>
         </div>
       )}

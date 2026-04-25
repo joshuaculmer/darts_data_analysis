@@ -22,12 +22,14 @@ interface Props {
 }
 
 export function IndividualView({ sessions, joined, trustQuestionId, surveyLoaded, boards }: Props) {
-  const [selectedUuid, setSelectedUuid] = useState<string | null>(null);
+  const [selectedUuid, setSelectedUuid] = useState<string>(
+    () => getParticipantList(sessions)[0]?.uuid ?? ""
+  );
   const [selectedSessionIndex, setSelectedSessionIndex] = useState<number>(1);
 
   const participants = useMemo(() => getParticipantList(sessions), [sessions]);
 
-  const activeUuid = selectedUuid ?? participants[0]?.uuid ?? null;
+  const activeUuid = selectedUuid || null;
   const activeTrustId = trustQuestionId ?? "";
 
   const timeline = useMemo(
@@ -53,7 +55,7 @@ export function IndividualView({ sessions, joined, trustQuestionId, surveyLoaded
         <select
           id="participant-select"
           className="trust-selector__select"
-          value={activeUuid ?? ""}
+          value={selectedUuid}
           onChange={(e) => { setSelectedUuid(e.target.value); setSelectedSessionIndex(1); }}
         >
           {participants.map(({ uuid, nickname }) => (
