@@ -1,3 +1,6 @@
+.env
+SUPABASE_PRIVATE.md
+
 # Logs
 logs
 *.log

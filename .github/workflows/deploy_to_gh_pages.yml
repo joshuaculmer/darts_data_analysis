@@ -39,6 +39,8 @@ jobs:
           fi
 
       - name: Build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
         run: npm run build -- --base="${{ env.VITE_BASE }}"
 
       - uses: actions/upload-pages-artifact@v3

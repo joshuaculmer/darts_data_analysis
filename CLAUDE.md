@@ -35,6 +35,24 @@ Loaders: `src/loaders/loadData.ts` — `loadGameSessions()`, `loadSurveyResponse
 - Only boards referenced in the uploaded session data are fetched
 - Loader: `src/loaders/loadBoards.ts` — `loadBoards(sessions)` returns `Map<number, RewardSurface>`
 
+### Supabase Direct Fetch (alternative to CSV upload)
+The header has a **Fetch Data** button that pulls both tables directly from Supabase instead of requiring manual CSV exports. This goes through a Supabase Edge Function rather than the public REST API.
+
+**Security model:** Both tables have RLS enabled with no public-read policies — the anon key cannot read data. The Edge Function validates a password server-side against a Supabase secret, then queries using the service role key. The only value bundled in the frontend is `VITE_SUPABASE_URL` (the project URL, which is not sensitive).
+
+**Flow:**
+1. User clicks Fetch Data → password modal
+2. Password sent as `x-fetch-password` header to `{SUPABASE_URL}/functions/v1/fetch-data`
+3. Edge Function validates password, returns `{ sessions, survey }` JSON
+4. Client maps rows to `ParsedGameSession[]` / `ParsedSurveyResponse[]` and stores under `darts:sessions_json` / `darts:survey_json` in localStorage
+
+**Relevant files:**
+- `supabase/functions/fetch-data/index.ts` — the Edge Function
+- `supabase/functions/_shared/cors.ts` — CORS headers
+- `src/loaders/fetchSupabase.ts` — `fetchData(password)`, `isSupabaseConfigured()`
+
+**To redeploy:** see `SUPABASE_PRIVATE.md` (gitignored). The only GitHub Actions secret needed is `VITE_SUPABASE_URL`.
+
 ## Score Computation
 Scores are computed from the Perlin noise surfaces, not from any field in the CSV.
 
