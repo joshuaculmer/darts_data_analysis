@@ -2,7 +2,8 @@ import type { RewardSurface } from "../types/dart";
 import type { ParsedGameSession } from "./loadData";
 
 function boardUrl(boardId: number): string {
-  return `/Perlin_Noise_Surfaces.ts/PerlinNoiseBoard${boardId}.json`;
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return `${base}/Perlin_Noise_Surfaces.ts/PerlinNoiseBoard${boardId}.json`;
 }
 
 export async function loadBoards(
