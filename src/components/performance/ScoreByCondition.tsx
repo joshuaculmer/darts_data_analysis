@@ -16,64 +16,82 @@ interface Props {
   stats: ScoreConditionStats[];
 }
 
-const TOOLTIP_STYLE = { background: "#1e293b", border: "1px solid #334155", fontSize: 12 };
+const TOOLTIP_STYLE = {
+  background: "#ffffff",
+  border: "1px solid #e5e7eb",
+  borderRadius: 6,
+  padding: "8px 12px",
+  boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+  fontSize: 12,
+};
 
 export function ScoreByCondition({ stats }: Props) {
-  const data = stats
-    .filter((s) => s.count > 0)
-    .map((s) => ({
-      condition: s.label,
-      mean: parseFloat(s.mean.toFixed(2)),
-      ci95: parseFloat(s.ci95.toFixed(2)),
-      color: s.color,
-      count: s.count,
-    }));
-
-  if (data.length === 0) {
+  if (stats.length === 0) {
     return (
       <ChartCard title="Mean Score by AI Condition">
-        <p style={{ color: "#475569", fontSize: 13 }}>No session data loaded.</p>
+        <p style={{ color: "#6b7280", fontSize: 13 }}>No session data loaded.</p>
       </ChartCard>
     );
   }
+
+  const data = stats.map((s) => ({
+    condition: s.label,
+    mean: s.count > 0 ? parseFloat(s.mean.toFixed(2)) : 0,
+    ci95: s.count > 0 ? parseFloat(s.ci95.toFixed(2)) : 0,
+    color: s.color,
+    count: s.count,
+  }));
 
   return (
     <ChartCard title="Mean Score by AI Condition">
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={data} margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-          <XAxis dataKey="condition" tick={{ fontSize: 11, fill: "#94a3b8" }} />
+          <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" strokeDasharray="none" />
+          <XAxis
+            dataKey="condition"
+            axisLine={false}
+            tickLine={false}
+            tick={{ fontSize: 11, fill: "#374151" }}
+          />
           <YAxis
-            tick={{ fontSize: 11, fill: "#94a3b8" }}
-            label={{ value: "Avg Score per Game", angle: -90, position: "insideLeft", fontSize: 11, fill: "#64748b" }}
+            axisLine={false}
+            tickLine={false}
+            tick={{ fontSize: 11, fill: "#374151" }}
+            label={{ value: "Avg Score per Game", angle: -90, position: "insideLeft", fontSize: 11, fill: "#374151" }}
           />
           <Tooltip
             contentStyle={TOOLTIP_STYLE}
-            labelStyle={{ color: "#94a3b8" }}
-            itemStyle={{ color: "#e2e8f0" }}
+            labelStyle={{ color: "#111827", fontWeight: 600 }}
+            itemStyle={{ color: "#374151" }}
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
               const d = payload[0].payload as typeof data[0];
               return (
-                <div style={{ ...TOOLTIP_STYLE, padding: "8px 12px", borderRadius: 6 }}>
-                  <p style={{ margin: 0, color: "#f1f5f9", fontWeight: 600 }}>{d.condition}</p>
-                  <p style={{ margin: "4px 0 0", color: "#e2e8f0" }}>Mean: {d.mean.toFixed(2)}</p>
-                  <p style={{ margin: "2px 0 0", color: "#94a3b8" }}>±CI95: {d.ci95.toFixed(2)}</p>
-                  <p style={{ margin: "2px 0 0", color: "#64748b" }}>n = {d.count} sessions</p>
+                <div style={TOOLTIP_STYLE}>
+                  <p style={{ margin: 0, color: "#111827", fontWeight: 600 }}>{d.condition}</p>
+                  {d.count > 0 ? (
+                    <>
+                      <p style={{ margin: "4px 0 0", color: "#374151" }}>Mean: {d.mean.toFixed(2)}</p>
+                      <p style={{ margin: "2px 0 0", color: "#374151" }}>±CI95: {d.ci95.toFixed(2)}</p>
+                      <p style={{ margin: "2px 0 0", color: "#6b7280" }}>n = {d.count} sessions</p>
+                    </>
+                  ) : (
+                    <p style={{ margin: "4px 0 0", color: "#6b7280" }}>No data yet</p>
+                  )}
                 </div>
               );
             }}
           />
-          <Bar dataKey="mean" isAnimationActive={false} radius={[4, 4, 0, 0]}>
+          <Bar dataKey="mean" isAnimationActive={false} radius={[0, 0, 0, 0]}>
             {data.map((d, i) => (
-              <Cell key={i} fill={d.color} fillOpacity={0.85} />
+              <Cell key={i} fill={d.color} fillOpacity={d.count > 0 ? 1 : 0.2} />
             ))}
-            <ErrorBar dataKey="ci95" width={4} strokeWidth={2} stroke="#f1f5f9" strokeOpacity={0.6} />
+            <ErrorBar dataKey="ci95" width={4} strokeWidth={1.5} stroke="#374151" />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-      <p style={{ fontSize: 11, color: "#64748b", marginTop: -4 }}>
-        Each bar = mean avg score per session for that AI condition. Error bars = 95% CI.
+      <p style={{ fontSize: 11, color: "#6b7280", marginTop: -4 }}>
+        Each bar = mean avg score per session for that AI condition. Error bars = 95% CI. Faded bars have no data.
       </p>
     </ChartCard>
   );

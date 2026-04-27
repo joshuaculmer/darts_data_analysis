@@ -2,6 +2,9 @@
 
 > **Rule for contributors and AI agents**: Update this file whenever a change is made or a feature is added. Keep the file structure tree, conventions, and findings sections current. A stale CLAUDE.md is worse than none.
 
+## Visual Design Palette
+All CSS, inline styles, and Recharts props must follow **`PALETTE.md`** at the project root. Do not introduce colors, fonts, or chart styling outside that document. See it for the full UI token set, graph rules, Okabe-Ito condition colors, and what to avoid.
+
 ## Project Purpose
 A Vite/React/TypeScript single-page app for analyzing a 7-condition darts experiment studying how AI advice quality and trajectory affect player performance and trust.
 

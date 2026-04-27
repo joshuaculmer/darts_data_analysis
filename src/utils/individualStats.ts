@@ -20,8 +20,8 @@ export function getParticipantList(sessions: ParsedGameSession[]): ParticipantEn
     }
   }
   return Array.from(map.entries())
-    .map(([uuid, { nickname }]) => ({ uuid, nickname: nickname ?? uuid }))
-    .sort((a, b) => a.nickname.localeCompare(b.nickname));
+    .map(([uuid, { nickname }]) => ({ uuid, nickname: nickname ?? uuid ?? "" }))
+    .sort((a, b) => (a.nickname ?? "").localeCompare(b.nickname ?? ""));
 }
 
 export interface IndividualSessionPoint {

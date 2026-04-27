@@ -19,21 +19,27 @@ interface Props {
   onSelectSession: (idx: number) => void;
 }
 
+const TOOLTIP_STYLE = {
+  background: "#ffffff",
+  border: "1px solid #e5e7eb",
+  borderRadius: 6,
+  padding: "8px 12px",
+  boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+  fontSize: 12,
+};
+
 export function GameBreakdown({ points, selectedSessionIndex, onSelectSession }: Props) {
   const selectedPoint = points.find((p) => p.sessionIndex === selectedSessionIndex);
   const games: GameBreakdownPoint[] = selectedPoint
-    ? computeGameBreakdown({ games: [] } as never, new Map()) // placeholder — actual session not wired in yet
+    ? computeGameBreakdown({ games: [] } as never, new Map())
     : [];
 
-  // We receive IndividualSessionPoint which has score but not the raw games array.
-  // The parent must pass the session directly for game-level breakdown.
-  // This component renders a placeholder indicating the session needs to be passed.
   void games;
 
   if (points.length === 0) {
     return (
       <ChartCard title="Game-Level Breakdown">
-        <p style={{ color: "#475569", fontSize: 13 }}>No sessions available.</p>
+        <p style={{ color: "#6b7280", fontSize: 13 }}>No sessions available.</p>
       </ChartCard>
     );
   }
@@ -58,27 +64,34 @@ export function GameBreakdown({ points, selectedSessionIndex, onSelectSession }:
 }
 
 function GameBarChart({ point }: { point: IndividualSessionPoint }) {
-  // Build synthetic per-game data from the avg score — we only have summary data here.
-  // When raw game data is available via a session lookup, this renders real per-game bars.
-  // For now, renders a single bar representing the session average score.
   const data = [{ gameIndex: "Avg", score: point.score }];
 
   return (
     <>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-          <XAxis dataKey="gameIndex" tick={{ fontSize: 11, fill: "#94a3b8" }} />
-          <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} />
-          <Tooltip
-            contentStyle={{ background: "#1e293b", border: "1px solid #334155", fontSize: 12 }}
-            itemStyle={{ color: "#e2e8f0" }}
+          <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" strokeDasharray="none" />
+          <XAxis
+            dataKey="gameIndex"
+            axisLine={false}
+            tickLine={false}
+            tick={{ fontSize: 11, fill: "#374151" }}
           />
-          <ReferenceLine y={0} stroke="#334155" />
-          <Bar dataKey="score" fill={point.color} fillOpacity={0.85} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <YAxis
+            axisLine={false}
+            tickLine={false}
+            tick={{ fontSize: 11, fill: "#374151" }}
+          />
+          <Tooltip
+            contentStyle={TOOLTIP_STYLE}
+            labelStyle={{ color: "#111827", fontWeight: 600 }}
+            itemStyle={{ color: "#374151" }}
+          />
+          <ReferenceLine y={0} stroke="#d1d5db" strokeDasharray="4 3" />
+          <Bar dataKey="score" fill={point.color} fillOpacity={1} radius={[0, 0, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
-      <p style={{ fontSize: 11, color: "#64748b", marginTop: -4 }}>
+      <p style={{ fontSize: 11, color: "#6b7280", marginTop: -4 }}>
         Session {point.sessionIndex} · {point.label} condition · {point.gamesPlayed} games played
       </p>
     </>

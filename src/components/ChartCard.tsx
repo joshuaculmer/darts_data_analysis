@@ -1,3 +1,4 @@
+// All colors in this file (including PNG export fill) must follow PALETTE.md at the project root.
 import { useRef, useState, useCallback } from "react";
 import { Download, Minus, Plus, X } from "lucide-react";
 
@@ -31,7 +32,7 @@ export function ChartCard({ title, children, downloadName, onClose, style }: Pro
     const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     bg.setAttribute("width", "100%");
     bg.setAttribute("height", "100%");
-    bg.setAttribute("fill", "#1e293b");
+    bg.setAttribute("fill", "#ffffff");
     clone.insertBefore(bg, clone.firstChild);
 
     const serialized = new XMLSerializer().serializeToString(clone);
@@ -47,7 +48,7 @@ export function ChartCard({ title, children, downloadName, onClose, style }: Pro
       const ctx = canvas.getContext("2d");
       if (!ctx) { URL.revokeObjectURL(url); return; }
       ctx.scale(scale, scale);
-      ctx.fillStyle = "#1e293b";
+      ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);

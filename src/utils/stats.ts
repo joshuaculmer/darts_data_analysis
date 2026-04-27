@@ -115,13 +115,13 @@ export const AI_TYPE_LABELS: Record<AI_Type, string> = {
 };
 
 export const AI_TYPE_COLORS: Record<AI_Type, string> = {
-  [AI_Type.NONE]: "#94a3b8",
-  [AI_Type.CORRECT]: "#22c55e",
-  [AI_Type.RANDOM]: "#f59e0b",
-  [AI_Type.WRONG]: "#ef4444",
-  [AI_Type.BAD]: "#f97316",
-  [AI_Type.GOOD_BAD]: "#8b5cf6",
-  [AI_Type.BAD_GOOD]: "#06b6d4",
+  [AI_Type.NONE]: "#6b7280",
+  [AI_Type.CORRECT]: "#0072B2",
+  [AI_Type.RANDOM]: "#E69F00",
+  [AI_Type.WRONG]: "#D55E00",
+  [AI_Type.BAD]: "#CC79A7",
+  [AI_Type.GOOD_BAD]: "#009E73",
+  [AI_Type.BAD_GOOD]: "#56B4E9",
 };
 
 export interface ConditionCount {

@@ -18,14 +18,23 @@ interface Props {
   showTrust: boolean;
 }
 
-const SCORE_COLOR = "#4f8ef7";
-const TRUST_COLOR = "#34d399";
+const SCORE_COLOR = "#1d4ed8";
+const TRUST_COLOR = "#16a34a";
+
+const TOOLTIP_STYLE = {
+  background: "#ffffff",
+  border: "1px solid #e5e7eb",
+  borderRadius: 6,
+  padding: "8px 12px",
+  boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+  fontSize: 12,
+};
 
 export function IndividualTimeline({ points, showTrust }: Props) {
   if (points.length === 0) {
     return (
       <ChartCard title="Score & Trust Over Sessions">
-        <p style={{ color: "#475569", fontSize: 13 }}>No sessions found for this participant.</p>
+        <p style={{ color: "#6b7280", fontSize: 13 }}>No sessions found for this participant.</p>
       </ChartCard>
     );
   }
@@ -34,33 +43,39 @@ export function IndividualTimeline({ points, showTrust }: Props) {
     <ChartCard title="Score & Trust Over Sessions">
       <ResponsiveContainer width="100%" height={320}>
         <ComposedChart data={points} margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+          <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" strokeDasharray="none" />
           <XAxis
             dataKey="sessionIndex"
             name="Session"
-            tick={{ fontSize: 11, fill: "#94a3b8" }}
-            label={{ value: "Session #", position: "insideBottom", offset: -4, fontSize: 11, fill: "#64748b" }}
+            axisLine={false}
+            tickLine={false}
+            tick={{ fontSize: 11, fill: "#374151" }}
+            label={{ value: "Session #", position: "insideBottom", offset: -4, fontSize: 11, fill: "#374151" }}
           />
           <YAxis
             yAxisId="score"
-            tick={{ fontSize: 11, fill: "#94a3b8" }}
-            label={{ value: "Avg Score", angle: -90, position: "insideLeft", fontSize: 11, fill: "#64748b" }}
+            axisLine={false}
+            tickLine={false}
+            tick={{ fontSize: 11, fill: "#374151" }}
+            label={{ value: "Avg Score", angle: -90, position: "insideLeft", fontSize: 11, fill: "#374151" }}
           />
           {showTrust && (
             <YAxis
               yAxisId="trust"
               orientation="right"
-              tick={{ fontSize: 11, fill: "#94a3b8" }}
-              label={{ value: "Trust", angle: 90, position: "insideRight", fontSize: 11, fill: "#64748b" }}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 11, fill: "#374151" }}
+              label={{ value: "Trust", angle: 90, position: "insideRight", fontSize: 11, fill: "#374151" }}
             />
           )}
           <Tooltip
-            contentStyle={{ background: "#1e293b", border: "1px solid #334155", fontSize: 12 }}
-            labelStyle={{ color: "#94a3b8" }}
-            itemStyle={{ color: "#e2e8f0" }}
+            contentStyle={TOOLTIP_STYLE}
+            labelStyle={{ color: "#111827", fontWeight: 600 }}
+            itemStyle={{ color: "#374151" }}
             labelFormatter={(v) => `Session ${v}`}
           />
-          <Legend wrapperStyle={{ fontSize: 12, color: "#94a3b8" }} />
+          <Legend wrapperStyle={{ fontSize: 12, color: "#374151" }} />
           <Line
             yAxisId="score"
             type="monotone"
@@ -70,7 +85,7 @@ export function IndividualTimeline({ points, showTrust }: Props) {
             strokeWidth={2}
             dot={(props) => {
               const { cx, cy, payload } = props as { cx: number; cy: number; payload: IndividualSessionPoint };
-              return <circle key={payload.sessionIndex} cx={cx} cy={cy} r={5} fill={payload.color} stroke="#0f172a" strokeWidth={1.5} />;
+              return <circle key={payload.sessionIndex} cx={cx} cy={cy} r={5} fill={payload.color} stroke="#ffffff" strokeWidth={1} />;
             }}
             isAnimationActive={false}
           />
@@ -83,12 +98,11 @@ export function IndividualTimeline({ points, showTrust }: Props) {
               stroke={TRUST_COLOR}
               strokeWidth={2}
               strokeDasharray="5 3"
-              dot={{ fill: TRUST_COLOR, r: 4 }}
+              dot={{ fill: TRUST_COLOR, r: 4, stroke: "#ffffff", strokeWidth: 1 }}
               connectNulls={false}
               isAnimationActive={false}
             />
           )}
-          {/* Invisible scatter layer just to drive the condition-colored tooltip dots */}
           <Scatter yAxisId="score" dataKey="score" name="Condition" isAnimationActive={false} legendType="none">
             {points.map((p) => (
               <Cell key={p.sessionIndex} fill={p.color} />
@@ -96,7 +110,7 @@ export function IndividualTimeline({ points, showTrust }: Props) {
           </Scatter>
         </ComposedChart>
       </ResponsiveContainer>
-      <p style={{ fontSize: 11, color: "#64748b", marginTop: -4 }}>
+      <p style={{ fontSize: 11, color: "#6b7280", marginTop: -4 }}>
         Score line dots are colored by AI condition. {showTrust ? "Dashed line = trust rating (right axis)." : "Load survey CSV and select a trust question to overlay trust."}
       </p>
     </ChartCard>

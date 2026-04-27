@@ -63,12 +63,12 @@ export function IndividualView({ sessions, joined, trustQuestionId, surveyLoaded
           ))}
         </select>
         {!surveyLoaded && (
-          <span style={{ fontSize: 12, color: "#475569" }}>
+          <span style={{ fontSize: 12, color: "#6b7280" }}>
             Load survey CSV to see trust data.
           </span>
         )}
         {surveyLoaded && !trustQuestionId && (
-          <span style={{ fontSize: 12, color: "#475569" }}>
+          <span style={{ fontSize: 12, color: "#6b7280" }}>
             Select a trust question in Trust & Influence to overlay trust.
           </span>
         )}

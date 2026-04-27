@@ -26,7 +26,7 @@ function KpiChip({ label, value, accent }: { label: string; value: string | numb
 }
 
 export function SessionView({ sessions, boards, initialParticipant, initialSessionIndex }: Props) {
-  const participantIds = [...new Set(sessions.map((s) => s.user_uuid))].sort();
+  const participantIds = [...new Set(sessions.map((s) => s.user_uuid))].filter(Boolean).sort();
 
   const [selectedParticipant, setSelectedParticipant] = useState<string>(
     initialParticipant ?? participantIds[0] ?? ""
@@ -107,7 +107,7 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
             const nick = sessions.find((s) => s.user_uuid === id)?.user_nickname;
             return (
               <option key={id} value={id}>
-                {nick ? `${nick} (${id.slice(0, 8)}…)` : id.slice(0, 12) + "…"}
+                {nick ? `${nick} (${id?.slice(0, 8) ?? ""}…)` : (id?.slice(0, 12) ?? id) + "…"}
               </option>
             );
           })}

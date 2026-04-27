@@ -29,7 +29,7 @@ export function ConditionExposure({ points }: Props) {
           </div>
         ))}
       </div>
-      <p style={{ fontSize: 11, color: "#64748b", marginTop: 8 }}>
+      <p style={{ fontSize: 11, color: "#6b7280", marginTop: 8 }}>
         Sessions in chronological order, colored by AI condition assigned by the admin.
       </p>
     </ChartCard>
