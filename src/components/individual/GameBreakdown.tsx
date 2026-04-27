@@ -11,6 +11,7 @@ import {
 import type { IndividualSessionPoint } from "../../utils/individualStats";
 import type { GameBreakdownPoint } from "../../utils/individualStats";
 import { computeGameBreakdown } from "../../utils/individualStats";
+import { ChartCard } from "../ChartCard";
 
 interface Props {
   points: IndividualSessionPoint[];
@@ -31,16 +32,14 @@ export function GameBreakdown({ points, selectedSessionIndex, onSelectSession }:
 
   if (points.length === 0) {
     return (
-      <div className="chart-card">
-        <h2>Game-Level Breakdown</h2>
+      <ChartCard title="Game-Level Breakdown">
         <p style={{ color: "#475569", fontSize: 13 }}>No sessions available.</p>
-      </div>
+      </ChartCard>
     );
   }
 
   return (
-    <div className="chart-card">
-      <h2>Game-Level Breakdown</h2>
+    <ChartCard title="Game-Level Breakdown">
       <div className="session-tabs">
         {points.map((p) => (
           <button
@@ -54,7 +53,7 @@ export function GameBreakdown({ points, selectedSessionIndex, onSelectSession }:
         ))}
       </div>
       {selectedPoint && <GameBarChart point={selectedPoint} />}
-    </div>
+    </ChartCard>
   );
 }
 

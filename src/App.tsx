@@ -9,6 +9,7 @@ import type { RewardSurface } from "./types/dart";
 import {
   computeScoreVsSkillPoints,
   computeProximityVsScorePoints,
+  computeScoreByCondition,
 } from "./utils/scoreStats";
 import { getCompleteUserIds } from "./utils/stats";
 import {
@@ -23,6 +24,7 @@ import { KpiCards } from "./components/sanity/KpiCards";
 import { SessionCalendar } from "./components/sanity/SessionCalendar";
 import { ConditionDistribution } from "./components/sanity/ConditionDistribution";
 import { ScoreVsSkillScatter } from "./components/performance/ScoreVsSkillScatter";
+import { ScoreByCondition } from "./components/performance/ScoreByCondition";
 import { TrustQuestionSelector } from "./components/trust/TrustQuestionSelector";
 import { TrustByCondition } from "./components/trust/TrustByCondition";
 import { TrustOverTime } from "./components/trust/TrustOverTime";
@@ -165,6 +167,10 @@ function App() {
 
   const scoreVsSkillPoints = useMemo(
     () => computeScoreVsSkillPoints(filteredSessions, boards),
+    [filteredSessions, boards],
+  );
+  const scoreByConditionStats = useMemo(
+    () => computeScoreByCondition(filteredSessions, boards),
     [filteredSessions, boards],
   );
   const joinedData = useMemo(
@@ -335,6 +341,7 @@ function App() {
             <p className="section-note">
               How game scores vary by AI condition and player trust.
             </p>
+            <ScoreByCondition stats={scoreByConditionStats} />
             <ScoreVsSkillScatter
               points={scoreVsSkillPoints}
               onSessionClick={(user_uuid, sessionIndex) => {

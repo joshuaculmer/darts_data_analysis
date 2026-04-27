@@ -1,6 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { countByCondition } from "../../utils/stats";
 import type { ParsedGameSession } from "../../loaders/loadData";
+import { ChartCard } from "../ChartCard";
 
 interface Props {
   sessions: ParsedGameSession[];
@@ -10,8 +11,7 @@ export function ConditionDistribution({ sessions }: Props) {
   const data = countByCondition(sessions);
 
   return (
-    <div className="chart-card">
-      <h2>Sessions by AI Condition</h2>
+    <ChartCard title="Sessions by AI Condition">
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={data} margin={{ top: 8, right: 24, left: 0, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" />
@@ -25,6 +25,6 @@ export function ConditionDistribution({ sessions }: Props) {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </ChartCard>
   );
 }

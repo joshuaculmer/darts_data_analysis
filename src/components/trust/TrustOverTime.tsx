@@ -11,6 +11,7 @@ import {
 import type { TrustTimePoint } from "../../utils/surveyStats";
 import { AI_TYPE_LABELS } from "../../utils/stats";
 import { AI_Type } from "../../types/dart";
+import { ChartCard } from "../ChartCard";
 
 interface Props {
   points: TrustTimePoint[];
@@ -19,16 +20,14 @@ interface Props {
 export function TrustOverTime({ points }: Props) {
   if (points.length === 0) {
     return (
-      <div className="chart-card">
-        <h2>Trust Over Time</h2>
+      <ChartCard title="Trust Over Time">
         <p style={{ color: "#475569", fontSize: 13 }}>No trust responses found for the selected question.</p>
-      </div>
+      </ChartCard>
     );
   }
 
   return (
-    <div className="chart-card">
-      <h2>Trust Over Time</h2>
+    <ChartCard title="Trust Over Time">
       <ResponsiveContainer width="100%" height={300}>
         <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -70,6 +69,6 @@ export function TrustOverTime({ points }: Props) {
       <p style={{ fontSize: 11, color: "#64748b", marginTop: -4 }}>
         Each point is one post-session survey response, colored by AI condition.
       </p>
-    </div>
+    </ChartCard>
   );
 }

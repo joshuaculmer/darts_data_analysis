@@ -15,6 +15,7 @@ import type { ParsedGameSession } from "../../loaders/loadData";
 import { AI_TYPE_LABELS } from "../../utils/stats";
 import { AI_Type } from "../../types/dart";
 import { computeGameProximity, gameScore } from "../../utils/scoreStats";
+import { ChartCard } from "../ChartCard";
 
 interface Props {
   points: ProximityScorePoint[];
@@ -44,13 +45,11 @@ function GameProximityScoreBreakdown({
   const noAdvice = data.filter((d) => d.proximity === null);
 
   return (
-    <div className="chart-card" style={{ marginTop: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <h3 style={{ margin: 0, fontSize: 14 }}>
-          Game-level proximity vs score — {session.user_nickname ?? session.user_uuid.slice(0, 8)} · {AI_TYPE_LABELS[session.ai_advice]}
-        </h3>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 16 }}>×</button>
-      </div>
+    <ChartCard
+      title={`Game-level proximity vs score — ${session.user_nickname ?? session.user_uuid.slice(0, 8)} · ${AI_TYPE_LABELS[session.ai_advice]}`}
+      onClose={onClose}
+      style={{ marginTop: 12 }}
+    >
 
       {withProximity.length === 0 ? (
         <p style={{ fontSize: 12, color: "#64748b" }}>No AI advice in this session — no suggested aiming coordinates to compare against.</p>
@@ -90,7 +89,7 @@ function GameProximityScoreBreakdown({
           {noAdvice.length} game(s) had no suggested coordinates and are excluded from the scatter.
         </p>
       )}
-    </div>
+    </ChartCard>
   );
 }
 
@@ -99,10 +98,9 @@ export function ProximityVsScore({ points, boards }: Props) {
 
   if (points.length === 0) {
     return (
-      <div className="chart-card">
-        <h2>Proximity to Advice → Score</h2>
+      <ChartCard title="Proximity to Advice → Score">
         <p style={{ color: "#475569", fontSize: 13 }}>No session data loaded.</p>
-      </div>
+      </ChartCard>
     );
   }
 
@@ -111,8 +109,7 @@ export function ProximityVsScore({ points, boards }: Props) {
 
   return (
     <>
-      <div className="chart-card">
-        <h2>Proximity to Advice → Score</h2>
+      <ChartCard title="Proximity to Advice → Score">
         <ResponsiveContainer width="100%" height={300}>
           <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -195,7 +192,7 @@ export function ProximityVsScore({ points, boards }: Props) {
             </div>
           </div>
         )}
-      </div>
+      </ChartCard>
       {selected && (
         <GameProximityScoreBreakdown session={selected} boards={boards} onClose={() => setSelected(null)} />
       )}

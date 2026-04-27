@@ -10,6 +10,7 @@ import {
   ErrorBar,
 } from "recharts";
 import type { TrustConditionStats } from "../../utils/surveyStats";
+import { ChartCard } from "../ChartCard";
 
 interface Props {
   stats: TrustConditionStats[];
@@ -25,8 +26,7 @@ export function TrustByCondition({ stats }: Props) {
   }));
 
   return (
-    <div className="chart-card">
-      <h2>Mean Trust Rating by AI Condition</h2>
+    <ChartCard title="Mean Trust Rating by AI Condition">
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={data} margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -53,6 +53,6 @@ export function TrustByCondition({ stats }: Props) {
       <p style={{ fontSize: 11, color: "#64748b", marginTop: -4 }}>
         Error bars show 95% confidence interval. Only sessions with a numeric trust response are included.
       </p>
-    </div>
+    </ChartCard>
   );
 }

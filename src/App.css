@@ -481,10 +481,43 @@ body {
   gap: 1rem;
 }
 
-.chart-card h2 {
+.chart-card h2,
+.chart-card__title {
   font-size: 0.9rem;
   font-weight: 600;
   color: #94a3b8;
+  margin: 0;
+}
+
+.chart-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.chart-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.chart-card__btn {
+  background: none;
+  border: none;
+  color: #475569;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+  line-height: 1;
+}
+
+.chart-card__btn:hover {
+  color: #94a3b8;
+  background: #334155;
 }
 
 @media (max-width: 768px) {

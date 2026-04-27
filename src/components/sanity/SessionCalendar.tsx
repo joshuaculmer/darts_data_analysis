@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { groupParticipantsByDate } from "../../utils/stats";
 import type { ParsedGameSession } from "../../loaders/loadData";
+import { ChartCard } from "../ChartCard";
 
 const CELL = 13;
 const GAP = 2;
@@ -108,10 +109,9 @@ export function SessionCalendar({ sessions }: Props) {
 
   if (sessions.length === 0) {
     return (
-      <div className="chart-card">
-        <h2>Participants Over Time</h2>
+      <ChartCard title="Participants Over Time">
         <p style={{ color: "#94a3b8", fontSize: 13 }}>No data loaded.</p>
-      </div>
+      </ChartCard>
     );
   }
 
@@ -120,8 +120,7 @@ export function SessionCalendar({ sessions }: Props) {
   const svgHeight = MONTH_ROW + gridHeight;
 
   return (
-    <div className="chart-card">
-      <h2>Participants Over Time</h2>
+    <ChartCard title="Participants Over Time">
       <div
         ref={containerRef}
         style={{ overflowX: "auto", position: "relative" }}
@@ -231,7 +230,7 @@ export function SessionCalendar({ sessions }: Props) {
           </div>
         )}
       </div>
-    </div>
+    </ChartCard>
   );
 }
 

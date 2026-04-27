@@ -11,6 +11,7 @@
 import type { ScoreSkillPoint } from "../../utils/scoreStats";
 import { AI_TYPE_LABELS } from "../../utils/stats";
 import { AI_Type } from "../../types/dart";
+import { ChartCard } from "../ChartCard";
 
 interface Props {
   points: ScoreSkillPoint[];
@@ -22,16 +23,14 @@ const TOOLTIP_STYLE = { background: "#1e293b", border: "1px solid #334155", font
 export function ScoreVsSkillScatter({ points, onSessionClick }: Props) {
   if (points.length === 0) {
     return (
-      <div className="chart-card">
-        <h2>Score vs Execution Skill</h2>
+      <ChartCard title="Score vs Execution Skill">
         <p style={{ color: "#475569", fontSize: 13 }}>No session data loaded.</p>
-      </div>
+      </ChartCard>
     );
   }
 
   return (
-    <div className="chart-card">
-      <h2>Score vs Execution Skill</h2>
+    <ChartCard title="Score vs Execution Skill">
       <ResponsiveContainer width="100%" height={300}>
         <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -85,6 +84,6 @@ export function ScoreVsSkillScatter({ points, onSessionClick }: Props) {
       <p style={{ fontSize: 11, color: "#64748b", marginTop: -4 }}>
         Each point is one session. Execution skill is admin-preset; score is derived from game data.
       </p>
-    </div>
+    </ChartCard>
   );
 }

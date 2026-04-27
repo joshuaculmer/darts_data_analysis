@@ -1,4 +1,5 @@
 import type { IndividualSessionPoint } from "../../utils/individualStats";
+import { ChartCard } from "../ChartCard";
 
 interface Props {
   points: IndividualSessionPoint[];
@@ -7,16 +8,14 @@ interface Props {
 export function ConditionExposure({ points }: Props) {
   if (points.length === 0) {
     return (
-      <div className="chart-card">
-        <h2>Condition Exposure</h2>
+      <ChartCard title="Condition Exposure">
         <p style={{ color: "#475569", fontSize: 13 }}>No sessions found.</p>
-      </div>
+      </ChartCard>
     );
   }
 
   return (
-    <div className="chart-card">
-      <h2>Condition Exposure</h2>
+    <ChartCard title="Condition Exposure">
       <div className="condition-exposure-track">
         {points.map((p) => (
           <div key={p.sessionIndex} className="condition-exposure-step">
@@ -33,6 +32,6 @@ export function ConditionExposure({ points }: Props) {
       <p style={{ fontSize: 11, color: "#64748b", marginTop: 8 }}>
         Sessions in chronological order, colored by AI condition assigned by the admin.
       </p>
-    </div>
+    </ChartCard>
   );
 }

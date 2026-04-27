@@ -17,6 +17,7 @@ import type { ParsedGameSession } from "../../loaders/loadData";
 import { AI_TYPE_LABELS } from "../../utils/stats";
 import { AI_Type } from "../../types/dart";
 import { computeGameProximity } from "../../utils/scoreStats";
+import { ChartCard } from "../ChartCard";
 
 interface Props {
   points: TrustVsProximityPoint[];
@@ -44,13 +45,11 @@ function GameProximityBreakdown({
   const hasAnyAdvice = data.some((d) => d.hasAdvice);
 
   return (
-    <div className="chart-card" style={{ marginTop: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <h3 style={{ margin: 0, fontSize: 14 }}>
-          Game-level proximity — {session.user_nickname ?? session.user_uuid.slice(0, 8)} · {AI_TYPE_LABELS[session.ai_advice]}
-        </h3>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 16 }}>×</button>
-      </div>
+    <ChartCard
+      title={`Game-level proximity — ${session.user_nickname ?? session.user_uuid.slice(0, 8)} · ${AI_TYPE_LABELS[session.ai_advice]}`}
+      onClose={onClose}
+      style={{ marginTop: 12 }}
+    >
       {!hasAnyAdvice ? (
         <p style={{ fontSize: 12, color: "#64748b" }}>No AI advice in this session — no suggested aiming coordinates to compare against.</p>
       ) : (
@@ -68,7 +67,7 @@ function GameProximityBreakdown({
           </BarChart>
         </ResponsiveContainer>
       )}
-    </div>
+    </ChartCard>
   );
 }
 
@@ -77,10 +76,9 @@ export function TrustVsProximity({ points }: Props) {
 
   if (points.length === 0) {
     return (
-      <div className="chart-card">
-        <h2>Trust → Proximity to Advice</h2>
+      <ChartCard title="Trust → Proximity to Advice">
         <p style={{ color: "#475569", fontSize: 13 }}>No matched session/survey pairs found.</p>
-      </div>
+      </ChartCard>
     );
   }
 
@@ -89,8 +87,7 @@ export function TrustVsProximity({ points }: Props) {
 
   return (
     <>
-      <div className="chart-card">
-        <h2>Trust → Proximity to Advice</h2>
+      <ChartCard title="Trust → Proximity to Advice">
         <ResponsiveContainer width="100%" height={300}>
           <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -173,7 +170,7 @@ export function TrustVsProximity({ points }: Props) {
             </div>
           </div>
         )}
-      </div>
+      </ChartCard>
       {selected && (
         <GameProximityBreakdown session={selected} onClose={() => setSelected(null)} />
       )}

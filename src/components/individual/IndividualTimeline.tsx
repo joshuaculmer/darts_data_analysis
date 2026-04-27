@@ -11,6 +11,7 @@ import {
   Cell,
 } from "recharts";
 import type { IndividualSessionPoint } from "../../utils/individualStats";
+import { ChartCard } from "../ChartCard";
 
 interface Props {
   points: IndividualSessionPoint[];
@@ -23,16 +24,14 @@ const TRUST_COLOR = "#34d399";
 export function IndividualTimeline({ points, showTrust }: Props) {
   if (points.length === 0) {
     return (
-      <div className="chart-card">
-        <h2>Score & Trust Over Sessions</h2>
+      <ChartCard title="Score & Trust Over Sessions">
         <p style={{ color: "#475569", fontSize: 13 }}>No sessions found for this participant.</p>
-      </div>
+      </ChartCard>
     );
   }
 
   return (
-    <div className="chart-card">
-      <h2>Score & Trust Over Sessions</h2>
+    <ChartCard title="Score & Trust Over Sessions">
       <ResponsiveContainer width="100%" height={320}>
         <ComposedChart data={points} margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -100,6 +99,6 @@ export function IndividualTimeline({ points, showTrust }: Props) {
       <p style={{ fontSize: 11, color: "#64748b", marginTop: -4 }}>
         Score line dots are colored by AI condition. {showTrust ? "Dashed line = trust rating (right axis)." : "Load survey CSV and select a trust question to overlay trust."}
       </p>
-    </div>
+    </ChartCard>
   );
 }

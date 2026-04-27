@@ -17,6 +17,7 @@ import type { ParsedGameSession } from "../../loaders/loadData";
 import { AI_TYPE_LABELS } from "../../utils/stats";
 import { AI_Type } from "../../types/dart";
 import { gameScore, computeGameProximity } from "../../utils/scoreStats";
+import { ChartCard } from "../ChartCard";
 
 interface Props {
   points: TrustScorePoint[];
@@ -43,13 +44,11 @@ function GameScoreBreakdown({
   });
 
   return (
-    <div className="chart-card" style={{ marginTop: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <h3 style={{ margin: 0, fontSize: 14 }}>
-          Game-level scores — {session.user_nickname ?? session.user_uuid.slice(0, 8)} · {AI_TYPE_LABELS[session.ai_advice]}
-        </h3>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 16 }}>×</button>
-      </div>
+    <ChartCard
+      title={`Game-level scores — ${session.user_nickname ?? session.user_uuid.slice(0, 8)} · ${AI_TYPE_LABELS[session.ai_advice]}`}
+      onClose={onClose}
+      style={{ marginTop: 12 }}
+    >
       <ResponsiveContainer width="100%" height={180}>
         <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -63,7 +62,7 @@ function GameScoreBreakdown({
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </ChartCard>
   );
 }
 
@@ -72,17 +71,15 @@ export function TrustVsScore({ points, boards }: Props) {
 
   if (points.length === 0) {
     return (
-      <div className="chart-card">
-        <h2>Trust → Score</h2>
+      <ChartCard title="Trust → Score">
         <p style={{ color: "#475569", fontSize: 13 }}>No matched session/survey pairs found.</p>
-      </div>
+      </ChartCard>
     );
   }
 
   return (
     <>
-      <div className="chart-card">
-        <h2>Trust → Score</h2>
+      <ChartCard title="Trust → Score">
         <ResponsiveContainer width="100%" height={300}>
           <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -136,7 +133,7 @@ export function TrustVsScore({ points, boards }: Props) {
         <p style={{ fontSize: 11, color: "#64748b", marginTop: -4 }}>
           Each point is one session. Click a point to see per-game scores.
         </p>
-      </div>
+      </ChartCard>
       {selected && (
         <GameScoreBreakdown session={selected} boards={boards} onClose={() => setSelected(null)} />
       )}

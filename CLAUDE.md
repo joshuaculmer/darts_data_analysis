@@ -61,7 +61,7 @@ Top navbar with six sections. See `PLANNING.md` for the full chart roadmap per s
 | Section | Key Components |
 |---|---|
 | Sanity Checks | KpiCards, SessionCalendar, ConditionDistribution |
-| Game Performance | ScoreVsSkillScatter (click → Session View), TrustVsScore (click → game scores), ProximityVsScore (click → game proximity/score) |
+| Game Performance | ScoreByCondition (mean ± CI95 per condition), ScoreVsSkillScatter (click → Session View), TrustVsScore (click → game scores), ProximityVsScore (click → game proximity/score) |
 | Trust & Influence | TrustQuestionSelector, TrustByCondition, TrustOverTime, TrustVsScore, TrustVsTime, TrustVsProximity |
 | Individual View | IndividualView (participant dropdown + timeline + breakdown) |
 | Session View | SessionView — participant + session dropdowns; session metadata table + per-game table with expandable hit rows |
@@ -116,6 +116,7 @@ src/
     │   └── ConditionDistribution.tsx
     │
     ├── performance/
+    │   ├── ScoreByCondition.tsx      # Mean score ± CI95 per AI condition (bar chart) — primary research finding
     │   ├── ScoreVsSkillScatter.tsx
     │   └── ProximityVsScore.tsx      # Proximity vs score scatter; click → per-game scatter breakdown
     │
@@ -161,12 +162,28 @@ Defined in `computeKpis(sessions, surveyResponses)` in `stats.ts`:
 | Avg Time / Session | Mean inter-session gap (consecutive `created_at` diffs) for complete participants only |
 | Avg Total Time | Per complete user: `avgGap × sessionCount` (treats each session including the first as one avg-gap unit), then averaged |
 
+## ChartCard — Reusable Chart Wrapper
+All chart components use `<ChartCard title="...">` from `src/components/ChartCard.tsx` instead of a plain `<div className="chart-card">`. This provides:
+- **Collapse toggle** (▲/▼ button in the header) — hides the chart body while keeping the title visible
+- **PNG download** (↓ button) — serializes the first SVG within the card to PNG at 2× resolution with dark background
+- **Drill-down cards** use `onClose` prop instead of collapse, showing a × button
+
 ## Tech Stack
 - **Vite + React + TypeScript**
 - **Recharts** — primary charting library
 - **PapaParse** — CSV parsing (installed; handles JSON column strings)
 - **TanStack Table v8** — sortable/filterable tables (planned)
 - **Tailwind CSS** — styling (planned; currently using `App.css`)
+
+## Development Process — TDD
+Follow red → green development for all new logic:
+1. **Write a failing test first.** Run `npx vitest run` and confirm it fails before writing any implementation.
+2. **Implement until the test passes.** Do not add more code than the test requires.
+3. **Use tests to validate, not just confirm.** A test that only passes trivially (e.g. checks that a function returns something) is not a test.
+
+Test files live alongside source files (`foo.ts` / `foo.test.ts`). Existing test coverage lives in `stats.test.ts`, `scoreStats.test.ts`, `surveyStats.test.ts`, `individualStats.test.ts`, and the loader tests — extend those when touching the corresponding utils.
+
+UI components (`ChartCard`, chart components) currently have no tests. If adding new component logic (e.g. download behaviour, computed props), write unit tests for the underlying util function rather than the component itself.
 
 ## Conventions
 - Chart components live in `src/components/<section>/`, one folder per navbar section: `sanity/`, `performance/`, `trust/`, `individual/`. No `phase1/` or `phase2/` folders.
