@@ -17,7 +17,9 @@ export function ChartCard({ title, children, downloadName, onClose, style }: Pro
   const handleDownload = useCallback(() => {
     const card = cardRef.current;
     if (!card) return;
-    const svg = card.querySelector<SVGSVGElement>("svg");
+    const svg = Array.from(card.querySelectorAll<SVGSVGElement>("svg")).find(
+      (s) => !s.closest("button")
+    );
     if (!svg) return;
 
     const bbox = svg.getBoundingClientRect();
