@@ -39,18 +39,17 @@ export function TrustOverTime({ points }: Props) {
   return (
     <ChartCard title="Trust Over Time">
       <ResponsiveContainer width="100%" height={300}>
-        <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
+        <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }}>
           <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
           <XAxis
-            dataKey="date"
-            name="Date"
-            type="category"
+            dataKey="sessionIndex"
+            name="Session"
+            type="number"
+            allowDecimals={false}
             axisLine={false}
             tickLine={false}
-            tick={{ fontSize: 10, fill: "#374151" }}
-            angle={-30}
-            textAnchor="end"
-            height={48}
+            tick={{ fontSize: 11, fill: "#374151" }}
+            label={{ value: "Session Number", position: "insideBottom", offset: -12, fontSize: 11, fill: "#374151" }}
           />
           <YAxis
             dataKey="trust"

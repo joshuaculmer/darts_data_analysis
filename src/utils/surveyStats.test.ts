@@ -79,7 +79,7 @@ describe("getAnswerValue", () => {
     expect(getAnswerValue(responses, "trust")).toBeCloseTo(3.5);
   });
 
-  it("maps Likert labels to the 1–5 scale — matches actual CSV format", () => {
+  it("maps Likert labels to the 1–5 scale", () => {
     const labels: [string, number][] = [
       ["Strongly Disagree", 1],
       ["Disagree", 2],
@@ -93,6 +93,18 @@ describe("getAnswerValue", () => {
     }
   });
 
+  it("maps the 3-point performance scale (poor/good/great)", () => {
+    const labels: [string, number][] = [
+      ["poor", 1],
+      ["good", 2],
+      ["great", 3],
+    ];
+    for (const [label, expected] of labels) {
+      const responses = [{ questionId: "perf", value: label }];
+      expect(getAnswerValue(responses, "perf"), `expected "${label}" → ${expected}`).toBe(expected);
+    }
+  });
+
   it("trims whitespace before mapping — real CSV has 'Strongly Disagree ' with trailing space", () => {
     const responses = [{ questionId: "trust", value: "Strongly Disagree " }];
     expect(getAnswerValue(responses, "trust")).toBe(1);
@@ -103,8 +115,8 @@ describe("getAnswerValue", () => {
     expect(getAnswerValue(responses, "trust")).toBe(5);
   });
 
-  it("returns null for non-numeric, non-Likert strings", () => {
-    const responses = [{ questionId: "open", value: "great" }];
+  it("returns null for free-text strings not in any ordinal scale", () => {
+    const responses = [{ questionId: "open", value: "it was pretty fun" }];
     expect(getAnswerValue(responses, "open")).toBeNull();
   });
 
@@ -242,7 +254,7 @@ describe("computeTrustOverTime", () => {
     expect(computeTrustOverTime([], "trust")).toEqual([]);
   });
 
-  it("returns one point per session that has a numeric trust answer, sorted by created_at", () => {
+  it("numbers each participant's sessions 1, 2, 3… ordered by created_at", () => {
     const joined = [
       {
         session: makeSession({ created_at: "2024-01-20T10:00:00Z" }),
@@ -255,10 +267,27 @@ describe("computeTrustOverTime", () => {
     ];
     const result = computeTrustOverTime(joined, "trust");
     expect(result).toHaveLength(2);
-    expect(result[0].date).toBe("2024-01-10");
+    expect(result[0].sessionIndex).toBe(1);
     expect(result[0].trust).toBe(5);
-    expect(result[1].date).toBe("2024-01-20");
+    expect(result[1].sessionIndex).toBe(2);
     expect(result[1].trust).toBe(3);
+  });
+
+  it("assigns independent session indices per participant", () => {
+    const joined = [
+      {
+        session: makeSession({ user_uuid: "uuid-a", created_at: "2024-01-10T10:00:00Z" }),
+        survey: makeSurvey({ user_uuid: "uuid-a", responses: [{ questionId: "trust", value: 4 }] }),
+      },
+      {
+        session: makeSession({ user_uuid: "uuid-b", created_at: "2024-01-11T10:00:00Z" }),
+        survey: makeSurvey({ user_uuid: "uuid-b", responses: [{ questionId: "trust", value: 2 }] }),
+      },
+    ];
+    const result = computeTrustOverTime(joined, "trust");
+    expect(result).toHaveLength(2);
+    // Both are each participant's first session
+    expect(result.every(p => p.sessionIndex === 1)).toBe(true);
   });
 
   it("handles numeric string trust values", () => {
@@ -284,7 +313,7 @@ describe("computeTrustOverTime", () => {
     expect(computeTrustOverTime(joined, "trust")).toHaveLength(0);
   });
 
-  it("carries aiType and color through each point", () => {
+  it("carries aiType, color, and sessionIndex through each point", () => {
     const joined = [
       {
         session: makeSession({ ai_advice: AI_Type.BAD_GOOD }),
@@ -293,7 +322,8 @@ describe("computeTrustOverTime", () => {
     ];
     const [point] = computeTrustOverTime(joined, "trust");
     expect(point.aiType).toBe(AI_Type.BAD_GOOD);
-    expect(point.color).toBe("#06b6d4");
+    expect(point.color).toBe("#56B4E9");
+    expect(point.sessionIndex).toBe(1);
   });
 });
 

@@ -270,6 +270,24 @@ function App() {
     [filteredSessions, boards],
   );
 
+  const matchedSurveyCount = useMemo(
+    () => joinedData.filter((j) => j.survey !== null).length,
+    [joinedData],
+  );
+  const hasAnyTrustData = trustByCondition.some((s) => s.count > 0);
+
+  // Finds the first raw answer value for the selected question across matched surveys.
+  // Used to surface what the data actually looks like when trust charts are empty.
+  const trustQuestionSampleValue = useMemo(() => {
+    if (!trustQuestionId) return undefined;
+    for (const { survey } of joinedData) {
+      if (!survey) continue;
+      const answer = survey.responses.find((r) => r.questionId === trustQuestionId);
+      if (answer !== undefined) return answer.value;
+    }
+    return undefined;
+  }, [joinedData, trustQuestionId]);
+
   const surveyLoaded = surveyResponses.length > 0;
   const anyDataLoaded = sessionsLoaded || surveyLoaded;
 
@@ -471,6 +489,19 @@ function App() {
               trustQuestionId={trustQuestionId}
               onChange={setTrustQuestionId}
             />
+            {trustQuestionId && matchedSurveyCount === 0 && joinedData.length > 0 && (
+              <p className="section-note" style={{ color: "#b45309" }}>
+                Sessions loaded but none matched to survey responses. Charts will be empty. Check that both datasets share the same participant IDs.
+              </p>
+            )}
+            {trustQuestionId && matchedSurveyCount > 0 && !hasAnyTrustData && (
+              <p className="section-note" style={{ color: "#b45309" }}>
+                {matchedSurveyCount} session{matchedSurveyCount !== 1 ? "s" : ""} matched to surveys, but &ldquo;{trustQuestionId}&rdquo; returned no numeric values.
+                {trustQuestionSampleValue === undefined
+                  ? " Question ID not found in any matched survey response — the ID in the selector may come from a different survey than the matched ones."
+                  : ` First stored value: ${JSON.stringify(trustQuestionSampleValue)} (type: ${typeof trustQuestionSampleValue}). Only numbers, numeric strings, and standard Likert labels are supported.`}
+              </p>
+            )}
             {trustQuestionId ? (
               <>
                 <TrustByCondition stats={trustByCondition} />

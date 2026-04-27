@@ -145,7 +145,7 @@ describe("computeScatterPoints", () => {
     ]);
     expect(point.aiType).toBe(AI_Type.GOOD_BAD);
     expect(point.label).toBe("Good→Bad");
-    expect(point.color).toBe("#8b5cf6");
+    expect(point.color).toBe("#009E73");
   });
 
   it("returns an empty array for no sessions", () => {

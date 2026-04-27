@@ -121,6 +121,9 @@ src/
 │   │                                #   SessionScore, ParticipantScore, ProximityScorePoint
 │   │                                #   ScoreSkillPoint includes user_uuid + sessionIndex for click-to-navigate
 │   ├── scoreStats.test.ts
+│   ├── surveyScales.ts              # ORDINAL_SCALES — single source for all ordinal label→score
+│   │                                #   mappings (Likert, performance scale, etc.). Update here
+│   │                                #   when the survey instrument changes.
 │   ├── surveyStats.ts               # joinSessionsWithSurvey, computeTrustByCondition,
 │   │                                #   computeTrustOverTime, computeTrustVsScorePoints,
 │   │                                #   computeTrustVsTimePoints, computeTrustVsProximityPoints

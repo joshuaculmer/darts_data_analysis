@@ -4,15 +4,7 @@ import type { Answer } from "../types/survey";
 import type { ParsedGameSession, ParsedSurveyResponse } from "../loaders/loadData";
 import { AI_TYPE_COLORS, AI_TYPE_LABELS } from "./stats";
 import { computeSessionScore, computeGameProximity, computeGameDurationSecs } from "./scoreStats";
-
-const LIKERT_SCALE: Record<string, number> = {
-  "strongly disagree": 1,
-  "disagree": 2,
-  "neutral": 3,
-  "neither agree nor disagree": 3,
-  "agree": 4,
-  "strongly agree": 5,
-};
+import { ORDINAL_SCALES } from "./surveyScales";
 
 export function getAnswerValue(responses: Answer[], questionId: string): number | null {
   const answer = responses.find((r) => r.questionId === questionId);
@@ -22,7 +14,7 @@ export function getAnswerValue(responses: Answer[], questionId: string): number 
     const trimmed = answer.value.trim();
     const n = Number(trimmed);
     if (!Number.isNaN(n) && trimmed !== "") return n;
-    return LIKERT_SCALE[trimmed.toLowerCase()] ?? null;
+    return ORDINAL_SCALES[trimmed.toLowerCase()] ?? null;
   }
   return null;
 }
@@ -109,7 +101,7 @@ export function computeTrustByCondition(
 }
 
 export interface TrustTimePoint {
-  date: string;
+  sessionIndex: number;
   trust: number;
   aiType: AI_Type;
   label: string;
@@ -120,20 +112,32 @@ export function computeTrustOverTime(
   joined: JoinedSessionSurvey[],
   trustQuestionId: string,
 ): TrustTimePoint[] {
-  return joined
-    .flatMap(({ session, survey }) => {
-      if (!survey) return [];
-      const trust = getAnswerValue(survey.responses, trustQuestionId);
-      if (trust === null) return [];
-      return [{
-        date: session.created_at.slice(0, 10),
+  // Collect valid pairs per participant so we can number sessions 1, 2, 3…
+  const byUser = new Map<string, Array<{ created_at: string; trust: number; aiType: AI_Type }>>();
+  for (const { session, survey } of joined) {
+    if (!survey) continue;
+    const trust = getAnswerValue(survey.responses, trustQuestionId);
+    if (trust === null) continue;
+    const entries = byUser.get(session.user_uuid) ?? [];
+    entries.push({ created_at: session.created_at, trust, aiType: session.ai_advice });
+    byUser.set(session.user_uuid, entries);
+  }
+
+  const result: TrustTimePoint[] = [];
+  for (const entries of byUser.values()) {
+    entries.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    entries.forEach(({ trust, aiType }, idx) => {
+      result.push({
+        sessionIndex: idx + 1,
         trust,
-        aiType: session.ai_advice,
-        label: AI_TYPE_LABELS[session.ai_advice],
-        color: AI_TYPE_COLORS[session.ai_advice],
-      }];
-    })
-    .sort((a, b) => a.date.localeCompare(b.date));
+        aiType,
+        label: AI_TYPE_LABELS[aiType],
+        color: AI_TYPE_COLORS[aiType],
+      });
+    });
+  }
+
+  return result.sort((a, b) => a.sessionIndex - b.sessionIndex);
 }
 
 export interface TrustScorePoint {

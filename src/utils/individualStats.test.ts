@@ -149,7 +149,7 @@ describe("computeIndividualTimeline", () => {
     const [point] = computeIndividualTimeline(joined, "uuid-a", "trust", new Map());
     expect(point.aiType).toBe(AI_Type.BAD_GOOD);
     expect(point.label).toBe("Bad→Good");
-    expect(point.color).toBe("#06b6d4");
+    expect(point.color).toBe("#56B4E9");
   });
 });
 
