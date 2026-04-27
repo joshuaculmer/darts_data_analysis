@@ -20,7 +20,7 @@ function exportCSV(rows: ReturnType<typeof buildRows>) {
     ...rows.map((r) =>
       [
         `"${r.participant}"`,
-        r.uuid,
+        r.uuid ?? "",
         `"${r.condition}"`,
         r.skill,
         r.gamesPlayed,
@@ -68,7 +68,7 @@ export function SessionsTable({ sessions, boards }: Props) {
       r = r.filter(
         (row) =>
           row.participant.toLowerCase().includes(q) ||
-          row.uuid.toLowerCase().includes(q)
+          (row.uuid ?? "").toLowerCase().includes(q)
       );
     }
     if (conditionFilter !== "all") {
@@ -160,8 +160,8 @@ export function SessionsTable({ sessions, boards }: Props) {
               <tr key={i}>
                 <td style={{ color: "#e2e8f0" }}>{r.participant || <span style={{ color: "#475569" }}>—</span>}</td>
                 <td>
-                  <span title={r.uuid} style={{ fontFamily: "monospace", fontSize: 11 }}>
-                    {r.uuid.slice(0, 8)}…
+                  <span title={r.uuid ?? ""} style={{ fontFamily: "monospace", fontSize: 11 }}>
+                    {r.uuid ? `${r.uuid.slice(0, 8)}…` : <span style={{ color: "#475569" }}>—</span>}
                   </span>
                 </td>
                 <td>

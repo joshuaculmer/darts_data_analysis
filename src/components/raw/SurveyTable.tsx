@@ -15,7 +15,7 @@ function exportCSV(rows: ParsedSurveyResponse[], questionIds: string[]) {
       const answerMap = Object.fromEntries(s.responses.map((r) => [r.questionId, r.value]));
       return [
         `"${s.user_nickname ?? ""}"`,
-        s.user_uuid,
+        s.user_uuid ?? "",
         s.created_at.slice(0, 10),
         ...questionIds.map((qId) => {
           const v = answerMap[qId];
@@ -50,7 +50,7 @@ export function SurveyTable({ surveys }: Props) {
     return surveys.filter(
       (s) =>
         (s.user_nickname ?? "").toLowerCase().includes(q) ||
-        s.user_uuid.toLowerCase().includes(q)
+        (s.user_uuid ?? "").toLowerCase().includes(q)
     );
   }, [surveys, search]);
 
@@ -61,8 +61,8 @@ export function SurveyTable({ surveys }: Props) {
         va = a.user_nickname ?? a.user_uuid;
         vb = b.user_nickname ?? b.user_uuid;
       } else if (sortCol === "uuid") {
-        va = a.user_uuid;
-        vb = b.user_uuid;
+        va = a.user_uuid ?? "";
+        vb = b.user_uuid ?? "";
       } else {
         va = a.created_at;
         vb = b.created_at;
@@ -136,8 +136,8 @@ export function SurveyTable({ surveys }: Props) {
                     {s.user_nickname || <span style={{ color: "#475569" }}>—</span>}
                   </td>
                   <td>
-                    <span title={s.user_uuid} style={{ fontFamily: "monospace", fontSize: 11 }}>
-                      {s.user_uuid.slice(0, 8)}…
+                    <span title={s.user_uuid ?? ""} style={{ fontFamily: "monospace", fontSize: 11 }}>
+                      {s.user_uuid ? `${s.user_uuid.slice(0, 8)}…` : <span style={{ color: "#475569" }}>—</span>}
                     </span>
                   </td>
                   <td>{s.created_at.slice(0, 10)}</td>
