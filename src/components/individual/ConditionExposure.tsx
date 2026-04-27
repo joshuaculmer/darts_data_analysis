@@ -9,7 +9,7 @@ export function ConditionExposure({ points }: Props) {
   if (points.length === 0) {
     return (
       <ChartCard title="Condition Exposure">
-        <p style={{ color: "#475569", fontSize: 13 }}>No sessions found.</p>
+        <p style={{ color: "#6b7280", fontSize: 13 }}>No sessions found.</p>
       </ChartCard>
     );
   }

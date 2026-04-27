@@ -1,3 +1,4 @@
+// All colors in this file must follow PALETTE.md at the project root.
 import { useState } from "react";
 import {
   ScatterChart,
@@ -22,7 +23,14 @@ interface Props {
   points: TrustVsTimePoint[];
 }
 
-const TOOLTIP_STYLE = { background: "#1e293b", border: "1px solid #334155", fontSize: 12 };
+const TOOLTIP_STYLE = {
+  background: "#ffffff",
+  border: "1px solid #e5e7eb",
+  borderRadius: 6,
+  padding: "8px 12px",
+  boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+  fontSize: 12,
+};
 
 function GameDurationBreakdown({
   session,
@@ -44,13 +52,13 @@ function GameDurationBreakdown({
     >
       <ResponsiveContainer width="100%" height={180}>
         <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-          <XAxis dataKey="game" tick={{ fontSize: 11, fill: "#94a3b8" }} label={{ value: "Game", position: "insideBottom", offset: -4, fontSize: 11, fill: "#64748b" }} />
-          <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} label={{ value: "Duration (s)", angle: -90, position: "insideLeft", fontSize: 11, fill: "#64748b" }} />
-          <Tooltip contentStyle={TOOLTIP_STYLE} itemStyle={{ color: "#e2e8f0" }} formatter={(v) => [`${v}s`, "Duration"]} />
-          <Bar dataKey="duration" isAnimationActive={false}>
+          <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
+          <XAxis dataKey="game" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#374151" }} label={{ value: "Game", position: "insideBottom", offset: -4, fontSize: 11, fill: "#374151" }} />
+          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#374151" }} label={{ value: "Duration (s)", angle: -90, position: "insideLeft", fontSize: 11, fill: "#374151" }} />
+          <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: "#111827", fontWeight: 600 }} itemStyle={{ color: "#374151" }} formatter={(v) => [`${v}s`, "Duration"]} />
+          <Bar dataKey="duration" isAnimationActive={false} radius={[0, 0, 0, 0]}>
             {data.map((_, i) => (
-              <Cell key={i} fill="#8b5cf6" fillOpacity={0.8} />
+              <Cell key={i} fill="#009E73" fillOpacity={1} />
             ))}
           </Bar>
         </BarChart>
@@ -65,7 +73,7 @@ export function TrustVsTime({ points }: Props) {
   if (points.length === 0) {
     return (
       <ChartCard title="Trust → Time per Game">
-        <p style={{ color: "#475569", fontSize: 13 }}>No matched session/survey pairs found.</p>
+        <p style={{ color: "#6b7280", fontSize: 13 }}>No matched session/survey pairs found.</p>
       </ChartCard>
     );
   }
@@ -75,26 +83,30 @@ export function TrustVsTime({ points }: Props) {
       <ChartCard title="Trust → Time per Game">
         <ResponsiveContainer width="100%" height={300}>
           <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
             <XAxis
               dataKey="avgTimeSecs"
               name="Avg Time (s)"
               type="number"
-              tick={{ fontSize: 11, fill: "#94a3b8" }}
-              label={{ value: "Avg Time per Game (s)", position: "insideBottom", offset: -12, fontSize: 11, fill: "#64748b" }}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 11, fill: "#374151" }}
+              label={{ value: "Avg Time per Game (s)", position: "insideBottom", offset: -12, fontSize: 11, fill: "#374151" }}
             />
             <YAxis
               dataKey="trust"
               name="Trust Rating"
               type="number"
-              tick={{ fontSize: 11, fill: "#94a3b8" }}
-              label={{ value: "Trust Rating", angle: -90, position: "insideLeft", fontSize: 11, fill: "#64748b" }}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 11, fill: "#374151" }}
+              label={{ value: "Trust Rating", angle: -90, position: "insideLeft", fontSize: 11, fill: "#374151" }}
             />
             <Tooltip
               cursor={{ strokeDasharray: "3 3" }}
               contentStyle={TOOLTIP_STYLE}
-              labelStyle={{ color: "#94a3b8" }}
-              itemStyle={{ color: "#e2e8f0" }}
+              labelStyle={{ color: "#111827", fontWeight: 600 }}
+              itemStyle={{ color: "#374151" }}
               formatter={(value, name) => [
                 typeof value === "number" ? value.toFixed(1) : value,
                 name === "avgTimeSecs" ? "Avg Time (s)" : name,
@@ -117,7 +129,7 @@ export function TrustVsTime({ points }: Props) {
                       key={i}
                       fill={p.color}
                       fillOpacity={selected?.user_uuid === p.session.user_uuid ? 1 : 0.75}
-                      stroke={selected?.user_uuid === p.session.user_uuid ? "#fff" : "none"}
+                      stroke={selected?.user_uuid === p.session.user_uuid ? "#ffffff" : "none"}
                       strokeWidth={2}
                     />
                   ))}
@@ -126,7 +138,7 @@ export function TrustVsTime({ points }: Props) {
             })}
           </ScatterChart>
         </ResponsiveContainer>
-        <p style={{ fontSize: 11, color: "#64748b", marginTop: -4 }}>
+        <p style={{ fontSize: 11, color: "#6b7280", marginTop: -4 }}>
           Each point is one session (avg game duration). Click a point to see per-game durations.
         </p>
       </ChartCard>

@@ -92,10 +92,10 @@ export function GameBoardView({ game, surface }: Props) {
         <span style={{ color: "#ef4444" }}>⊕ Actual aim</span>
         {game.suggested_aiming_coord
           ? <span style={{ color: "#ef4444", opacity: 0.6 }}>⊕ Suggested aim</span>
-          : <span style={{ color: "#475569" }}>No suggestion (NONE condition)</span>}
-        <span style={{ color: "#94a3b8" }}>● Hits</span>
-        <span style={{ color: "#94a3b8" }}>
-          Score: <strong style={{ color: "#e2e8f0" }}>{score.toFixed(2)}</strong>
+          : <span style={{ color: "#6b7280" }}>No suggestion (NONE condition)</span>}
+        <span style={{ color: "#6b7280" }}>● Hits</span>
+        <span style={{ color: "#6b7280" }}>
+          Score: <strong style={{ color: "#111827" }}>{score.toFixed(2)}</strong>
         </span>
       </div>
       <canvas
@@ -103,7 +103,7 @@ export function GameBoardView({ game, surface }: Props) {
         width={SIZE}
         height={SIZE}
         style={{
-          border: "1px solid #334155",
+          border: "1px solid #e5e7eb",
           imageRendering: "pixelated",
           width: SIZE,
           height: SIZE,

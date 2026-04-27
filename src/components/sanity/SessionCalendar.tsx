@@ -110,7 +110,7 @@ export function SessionCalendar({ sessions }: Props) {
   if (sessions.length === 0) {
     return (
       <ChartCard title="Participants Over Time">
-        <p style={{ color: "#94a3b8", fontSize: 13 }}>No data loaded.</p>
+        <p style={{ color: "#6b7280", fontSize: 13 }}>No data loaded.</p>
       </ChartCard>
     );
   }
@@ -133,7 +133,7 @@ export function SessionCalendar({ sessions }: Props) {
               x={DAY_COL + week * STEP}
               y={MONTH_ROW - 6}
               fontSize={10}
-              fill="#64748b"
+              fill="#6b7280"
             >
               {label}
             </text>
@@ -147,7 +147,7 @@ export function SessionCalendar({ sessions }: Props) {
                 x={DAY_COL - 4}
                 y={MONTH_ROW + i * STEP + CELL}
                 fontSize={9}
-                fill="#94a3b8"
+                fill="#6b7280"
                 textAnchor="end"
               >
                 {name}
@@ -182,7 +182,7 @@ export function SessionCalendar({ sessions }: Props) {
           ))}
 
           {/* Legend */}
-          <text x={DAY_COL} y={svgHeight + 20} fontSize={9} fill="#94a3b8">
+          <text x={DAY_COL} y={svgHeight + 20} fontSize={9} fill="#6b7280">
             Less
           </text>
           {COLOR_SCALE.map((color, i) => (
@@ -200,7 +200,7 @@ export function SessionCalendar({ sessions }: Props) {
             x={DAY_COL + 28 + COLOR_SCALE.length * (CELL + 2) + 4}
             y={svgHeight + 20}
             fontSize={9}
-            fill="#94a3b8"
+            fill="#6b7280"
           >
             More
           </text>
@@ -214,14 +214,16 @@ export function SessionCalendar({ sessions }: Props) {
               left: tooltip.x,
               top: tooltip.y - 34,
               transform: "translateX(-50%)",
-              background: "#1e293b",
-              color: "white",
+              background: "#ffffff",
+              border: "1px solid #e5e7eb",
+              color: "#111827",
               padding: "4px 8px",
               borderRadius: 4,
               fontSize: 11,
               whiteSpace: "nowrap",
               pointerEvents: "none",
               zIndex: 10,
+              boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
             }}
           >
             {tooltip.count === 0

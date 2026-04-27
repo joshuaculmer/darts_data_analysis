@@ -1,3 +1,4 @@
+// All colors in this file must follow PALETTE.md at the project root.
 import { useState, useMemo } from "react";
 import type { ParsedGameSession } from "../../loaders/loadData";
 import type { RewardSurface } from "../../types/dart";
@@ -99,17 +100,18 @@ export function SessionsTable({ sessions, boards }: Props) {
   }
 
   function SortIcon({ k }: { k: SortKey }) {
-    if (sort.key !== k) return <span style={{ color: "#334155", fontSize: 10 }}> ↕</span>;
+    if (sort.key !== k) return <span style={{ color: "#d1d5db", fontSize: 10 }}> ↕</span>;
     return <span style={{ fontSize: 10 }}> {sort.dir === "asc" ? "▲" : "▼"}</span>;
   }
 
   const inputStyle: React.CSSProperties = {
-    background: "#0f172a",
-    border: "1px solid #334155",
+    background: "#ffffff",
+    border: "1px solid #d1d5db",
     borderRadius: 6,
-    color: "#e2e8f0",
+    color: "#111827",
     padding: "4px 10px",
     fontSize: 12,
+    fontFamily: "inherit",
   };
 
   return (
@@ -135,7 +137,7 @@ export function SessionsTable({ sessions, boards }: Props) {
         </select>
         <button
           onClick={() => exportCSV(sorted)}
-          style={{ ...inputStyle, marginLeft: "auto", cursor: "pointer", color: "#94a3b8" }}
+          style={{ ...inputStyle, marginLeft: "auto", cursor: "pointer", color: "#374151" }}
         >
           Export CSV
         </button>
@@ -158,10 +160,10 @@ export function SessionsTable({ sessions, boards }: Props) {
           <tbody>
             {sorted.map((r, i) => (
               <tr key={i}>
-                <td style={{ color: "#e2e8f0" }}>{r.participant || <span style={{ color: "#475569" }}>—</span>}</td>
+                <td style={{ color: "#111827" }}>{r.participant || <span style={{ color: "#9ca3af" }}>—</span>}</td>
                 <td>
                   <span title={r.uuid ?? ""} style={{ fontFamily: "monospace", fontSize: 11 }}>
-                    {r.uuid ? `${r.uuid.slice(0, 8)}…` : <span style={{ color: "#475569" }}>—</span>}
+                    {r.uuid ? `${r.uuid.slice(0, 8)}…` : <span style={{ color: "#9ca3af" }}>—</span>}
                   </span>
                 </td>
                 <td>
@@ -171,10 +173,10 @@ export function SessionsTable({ sessions, boards }: Props) {
                 </td>
                 <td>{r.skill}</td>
                 <td>{r.gamesPlayed}</td>
-                <td style={{ color: r.gamesPlayed !== r.gamesActual ? "#f87171" : "#94a3b8" }}>
+                <td style={{ color: r.gamesPlayed !== r.gamesActual ? "#dc2626" : "#6b7280" }}>
                   {r.gamesActual}
                 </td>
-                <td style={{ color: "#f1f5f9", fontVariantNumeric: "tabular-nums" }}>
+                <td style={{ color: "#111827", fontVariantNumeric: "tabular-nums" }}>
                   {r.score.toFixed(2)}
                 </td>
                 <td>{r.date}</td>
@@ -183,7 +185,7 @@ export function SessionsTable({ sessions, boards }: Props) {
           </tbody>
         </table>
       </div>
-      <p style={{ fontSize: 11, color: "#475569" }}>
+      <p style={{ fontSize: 11, color: "#6b7280" }}>
         "Games (CSV)" is the games_played field; "Games (data)" is the actual games array length — highlighted red if they differ.
       </p>
     </div>

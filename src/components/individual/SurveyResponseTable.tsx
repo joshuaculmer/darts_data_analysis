@@ -16,7 +16,7 @@ export function SurveyResponseTable({ userId, joined, points }: Props) {
     return (
       <div className="chart-card">
         <h2>Survey Responses</h2>
-        <p style={{ color: "#475569", fontSize: 13 }}>No survey responses for this participant.</p>
+        <p style={{ color: "#6b7280", fontSize: 13 }}>No survey responses for this participant.</p>
       </div>
     );
   }

@@ -1,3 +1,4 @@
+// All colors in this file must follow PALETTE.md at the project root.
 import { useState, useMemo } from "react";
 import type { ParsedSurveyResponse } from "../../loaders/loadData";
 
@@ -81,17 +82,18 @@ export function SurveyTable({ surveys }: Props) {
   }
 
   function SortIcon({ k }: { k: "participant" | "uuid" | "date" }) {
-    if (sortCol !== k) return <span style={{ color: "#334155", fontSize: 10 }}> ↕</span>;
+    if (sortCol !== k) return <span style={{ color: "#d1d5db", fontSize: 10 }}> ↕</span>;
     return <span style={{ fontSize: 10 }}> {sortDir === "asc" ? "▲" : "▼"}</span>;
   }
 
   const inputStyle: React.CSSProperties = {
-    background: "#0f172a",
-    border: "1px solid #334155",
+    background: "#ffffff",
+    border: "1px solid #d1d5db",
     borderRadius: 6,
-    color: "#e2e8f0",
+    color: "#111827",
     padding: "4px 10px",
     fontSize: 12,
+    fontFamily: "inherit",
   };
 
   return (
@@ -107,7 +109,7 @@ export function SurveyTable({ surveys }: Props) {
         />
         <button
           onClick={() => exportCSV(sorted, questionIds)}
-          style={{ ...inputStyle, marginLeft: "auto", cursor: "pointer", color: "#94a3b8" }}
+          style={{ ...inputStyle, marginLeft: "auto", cursor: "pointer", color: "#374151" }}
         >
           Export CSV
         </button>
@@ -132,12 +134,12 @@ export function SurveyTable({ surveys }: Props) {
               );
               return (
                 <tr key={i}>
-                  <td style={{ color: "#e2e8f0" }}>
-                    {s.user_nickname || <span style={{ color: "#475569" }}>—</span>}
+                  <td style={{ color: "#111827" }}>
+                    {s.user_nickname || <span style={{ color: "#9ca3af" }}>—</span>}
                   </td>
                   <td>
                     <span title={s.user_uuid ?? ""} style={{ fontFamily: "monospace", fontSize: 11 }}>
-                      {s.user_uuid ? `${s.user_uuid.slice(0, 8)}…` : <span style={{ color: "#475569" }}>—</span>}
+                      {s.user_uuid ? `${s.user_uuid.slice(0, 8)}…` : <span style={{ color: "#9ca3af" }}>—</span>}
                     </span>
                   </td>
                   <td>{s.created_at.slice(0, 10)}</td>
@@ -145,7 +147,7 @@ export function SurveyTable({ surveys }: Props) {
                     const v = answerMap[qId];
                     return (
                       <td key={qId} style={{ fontVariantNumeric: "tabular-nums" }}>
-                        {v !== undefined ? String(v) : <span style={{ color: "#334155" }}>—</span>}
+                        {v !== undefined ? String(v) : <span style={{ color: "#9ca3af" }}>—</span>}
                       </td>
                     );
                   })}
@@ -156,7 +158,7 @@ export function SurveyTable({ surveys }: Props) {
         </table>
       </div>
       {questionIds.length > 0 && (
-        <p style={{ fontSize: 11, color: "#475569" }}>
+        <p style={{ fontSize: 11, color: "#6b7280" }}>
           {questionIds.length} question{questionIds.length !== 1 ? "s" : ""} found across all responses.
           Hover a UUID cell to see the full identifier.
         </p>

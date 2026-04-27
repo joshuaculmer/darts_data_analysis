@@ -319,7 +319,7 @@ function App() {
 
   const appHeader = (
     <header className="app-header">
-      <h1>Darts Research — Data Analysis</h1>
+      <h1>Darts Analysis</h1>
       <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
         {fetchBtn}
         {anyDataLoaded && (
@@ -391,7 +391,7 @@ function App() {
       <div className="app">
         {appHeader}
         <div className="upload-screen">
-          <p style={{ color: "#64748b", fontSize: 14 }}>
+          <p style={{ color: "#6b7280", fontSize: 14 }}>
             Loading board surfaces…
           </p>
         </div>

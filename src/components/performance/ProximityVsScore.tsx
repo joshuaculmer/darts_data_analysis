@@ -1,3 +1,4 @@
+// All colors in this file must follow PALETTE.md at the project root.
 import { useState } from "react";
 import {
   ScatterChart,
@@ -22,8 +23,17 @@ interface Props {
   boards: Map<number, RewardSurface>;
 }
 
-const TOOLTIP_STYLE = { background: "#1e293b", border: "1px solid #334155", fontSize: 12 };
-const NULL_COLOR = "#64748b";
+const TOOLTIP_STYLE = {
+  background: "#ffffff",
+  border: "1px solid #e5e7eb",
+  borderRadius: 6,
+  padding: "8px 12px",
+  boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+  fontSize: 12,
+};
+
+// Okabe-Ito amber for proximity scatter
+const PROXIMITY_COLOR = "#E69F00";
 
 function GameProximityScoreBreakdown({
   session,
@@ -50,42 +60,46 @@ function GameProximityScoreBreakdown({
       onClose={onClose}
       style={{ marginTop: 12 }}
     >
-
       {withProximity.length === 0 ? (
-        <p style={{ fontSize: 12, color: "#64748b" }}>No AI advice in this session — no suggested aiming coordinates to compare against.</p>
+        <p style={{ fontSize: 12, color: "#6b7280" }}>No AI advice in this session — no suggested aiming coordinates to compare against.</p>
       ) : (
         <ResponsiveContainer width="100%" height={180}>
           <ScatterChart margin={{ top: 8, right: 16, left: 0, bottom: 24 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
             <XAxis
               dataKey="proximity"
               name="Proximity (px)"
               type="number"
-              tick={{ fontSize: 11, fill: "#94a3b8" }}
-              label={{ value: "Distance from Suggested Aim (px)", position: "insideBottom", offset: -12, fontSize: 11, fill: "#64748b" }}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 11, fill: "#374151" }}
+              label={{ value: "Distance from Suggested Aim (px)", position: "insideBottom", offset: -12, fontSize: 11, fill: "#374151" }}
             />
             <YAxis
               dataKey="score"
               name="Game Score"
               type="number"
-              tick={{ fontSize: 11, fill: "#94a3b8" }}
-              label={{ value: "Game Score", angle: -90, position: "insideLeft", fontSize: 11, fill: "#64748b" }}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 11, fill: "#374151" }}
+              label={{ value: "Game Score", angle: -90, position: "insideLeft", fontSize: 11, fill: "#374151" }}
             />
             <Tooltip
               contentStyle={TOOLTIP_STYLE}
-              itemStyle={{ color: "#e2e8f0" }}
+              labelStyle={{ color: "#111827", fontWeight: 600 }}
+              itemStyle={{ color: "#374151" }}
               formatter={(value, name) => [typeof value === "number" ? value.toFixed(1) : value, name === "proximity" ? "Proximity (px)" : name]}
             />
             <Scatter data={withProximity} isAnimationActive={false}>
               {withProximity.map((_, i) => (
-                <Cell key={i} fill="#f59e0b" fillOpacity={0.85} />
+                <Cell key={i} fill={PROXIMITY_COLOR} fillOpacity={0.85} stroke="#ffffff" strokeWidth={1} />
               ))}
             </Scatter>
           </ScatterChart>
         </ResponsiveContainer>
       )}
       {noAdvice.length > 0 && (
-        <p style={{ fontSize: 11, color: "#64748b", marginTop: 6 }}>
+        <p style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
           {noAdvice.length} game(s) had no suggested coordinates and are excluded from the scatter.
         </p>
       )}
@@ -99,7 +113,7 @@ export function ProximityVsScore({ points, boards }: Props) {
   if (points.length === 0) {
     return (
       <ChartCard title="Proximity to Advice → Score">
-        <p style={{ color: "#475569", fontSize: 13 }}>No session data loaded.</p>
+        <p style={{ color: "#6b7280", fontSize: 13 }}>No session data loaded.</p>
       </ChartCard>
     );
   }
@@ -112,26 +126,30 @@ export function ProximityVsScore({ points, boards }: Props) {
       <ChartCard title="Proximity to Advice → Score">
         <ResponsiveContainer width="100%" height={300}>
           <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
             <XAxis
               dataKey="avgProximity"
               name="Avg Proximity (px)"
               type="number"
-              tick={{ fontSize: 11, fill: "#94a3b8" }}
-              label={{ value: "Avg Distance from Suggested Aim (px)", position: "insideBottom", offset: -12, fontSize: 11, fill: "#64748b" }}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 11, fill: "#374151" }}
+              label={{ value: "Avg Distance from Suggested Aim (px)", position: "insideBottom", offset: -12, fontSize: 11, fill: "#374151" }}
             />
             <YAxis
               dataKey="score"
               name="Avg Score"
               type="number"
-              tick={{ fontSize: 11, fill: "#94a3b8" }}
-              label={{ value: "Avg Score per Game", angle: -90, position: "insideLeft", fontSize: 11, fill: "#64748b" }}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 11, fill: "#374151" }}
+              label={{ value: "Avg Score per Game", angle: -90, position: "insideLeft", fontSize: 11, fill: "#374151" }}
             />
             <Tooltip
               cursor={{ strokeDasharray: "3 3" }}
               contentStyle={TOOLTIP_STYLE}
-              labelStyle={{ color: "#94a3b8" }}
-              itemStyle={{ color: "#e2e8f0" }}
+              labelStyle={{ color: "#111827", fontWeight: 600 }}
+              itemStyle={{ color: "#374151" }}
               formatter={(value, name) => [
                 typeof value === "number" ? value.toFixed(1) : value,
                 name === "avgProximity" ? "Avg Proximity (px)" : name,
@@ -154,7 +172,7 @@ export function ProximityVsScore({ points, boards }: Props) {
                       key={i}
                       fill={p.color}
                       fillOpacity={selected?.user_uuid === p.session.user_uuid ? 1 : 0.75}
-                      stroke={selected?.user_uuid === p.session.user_uuid ? "#fff" : "none"}
+                      stroke={selected?.user_uuid === p.session.user_uuid ? "#ffffff" : "none"}
                       strokeWidth={2}
                     />
                   ))}
@@ -163,14 +181,14 @@ export function ProximityVsScore({ points, boards }: Props) {
             })}
           </ScatterChart>
         </ResponsiveContainer>
-        <p style={{ fontSize: 11, color: "#64748b", marginTop: -4 }}>
+        <p style={{ fontSize: 11, color: "#6b7280", marginTop: -4 }}>
           Lower proximity = aiming closer to AI suggestion. Click a point to see per-game breakdown.
           {noAdvice.length > 0 && ` ${noAdvice.length} NONE-condition session(s) shown separately below.`}
         </p>
 
         {noAdvice.length > 0 && (
           <div style={{ marginTop: 12 }}>
-            <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 6 }}>No AI Advice sessions (scores without proximity):</p>
+            <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 6 }}>No AI Advice sessions (scores without proximity):</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {noAdvice.map((p, i) => (
                 <button
@@ -179,11 +197,12 @@ export function ProximityVsScore({ points, boards }: Props) {
                   style={{
                     fontSize: 11,
                     padding: "3px 8px",
-                    background: selected?.user_uuid === p.session.user_uuid ? "#334155" : "#1e293b",
-                    border: `1px solid ${NULL_COLOR}`,
-                    color: "#94a3b8",
+                    background: selected?.user_uuid === p.session.user_uuid ? "#f3f4f6" : "#ffffff",
+                    border: "1px solid #e5e7eb",
+                    color: "#374151",
                     borderRadius: 4,
                     cursor: "pointer",
+                    fontFamily: "inherit",
                   }}
                 >
                   {p.session.user_nickname ?? p.session.user_uuid.slice(0, 8)} — score: {p.score.toFixed(1)}

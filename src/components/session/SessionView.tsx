@@ -1,3 +1,4 @@
+// All colors in this file must follow PALETTE.md at the project root.
 import { useState, useEffect } from "react";
 import type { ParsedGameSession } from "../../loaders/loadData";
 import type { RewardSurface } from "../../types/dart";
@@ -15,10 +16,10 @@ interface Props {
 function KpiChip({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-      <span style={{ fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+      <span style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>
         {label}
       </span>
-      <span style={{ fontSize: 14, fontWeight: 600, color: accent ? "#f1f5f9" : "#94a3b8" }}>
+      <span style={{ fontSize: 14, fontWeight: 600, color: accent ? "#111827" : "#374151" }}>
         {value}
       </span>
     </div>
@@ -69,16 +70,16 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
 
   return (
     <div style={{
-      border: "1px solid #334155",
-      borderRadius: 10,
+      border: "1px solid #e5e7eb",
+      borderRadius: 8,
       overflow: "hidden",
-      background: "#0f172a",
+      background: "#ffffff",
     }}>
 
       {/* Zone 1: Navigation strip — participant + session pills */}
       <div style={{
-        background: "#1e293b",
-        borderBottom: "1px solid #334155",
+        background: "#f9fafb",
+        borderBottom: "1px solid #e5e7eb",
         padding: "10px 16px",
         display: "flex",
         alignItems: "center",
@@ -92,15 +93,16 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
             setSelectedSessionIndex(0);
           }}
           style={{
-            background: "#0f172a",
-            color: "#e2e8f0",
-            border: "1px solid #475569",
+            background: "#ffffff",
+            color: "#111827",
+            border: "1px solid #d1d5db",
             borderRadius: 6,
             padding: "5px 10px",
             fontSize: 13,
             fontWeight: 500,
             cursor: "pointer",
             flexShrink: 0,
+            fontFamily: "inherit",
           }}
         >
           {participantIds.map((id) => {
@@ -113,7 +115,7 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
           })}
         </select>
 
-        <span style={{ color: "#334155", userSelect: "none" }}>│</span>
+        <span style={{ color: "#e5e7eb", userSelect: "none" }}>│</span>
 
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {participantSessions.map(({ session }, localIdx) => {
@@ -126,9 +128,9 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
                 style={{
                   padding: "4px 11px",
                   border: `1.5px solid ${color}`,
-                  borderRadius: 99,
-                  background: isActive ? color : "transparent",
-                  color: isActive ? "#0f172a" : color,
+                  borderRadius: 999,
+                  background: isActive ? color : "#ffffff",
+                  color: isActive ? "#111827" : color,
                   fontSize: 12,
                   fontWeight: 600,
                   cursor: "pointer",
@@ -146,8 +148,8 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
       {/* Zone 2: Session KPI strip */}
       {activeSession && sessionScore && (
         <div style={{
-          background: "#111827",
-          borderBottom: "1px solid #1e293b",
+          background: "#ffffff",
+          borderBottom: "1px solid #e5e7eb",
           padding: "10px 18px",
           display: "flex",
           alignItems: "center",
@@ -172,7 +174,7 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
           <KpiChip label="Total Score" value={sessionScore.sum.toFixed(1)} accent />
           <KpiChip label="Avg / Game" value={sessionScore.avg.toFixed(1)} accent />
 
-          <span style={{ marginLeft: "auto", fontSize: 10, color: "#334155", fontFamily: "monospace" }}>
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "#9ca3af", fontFamily: "monospace" }}>
             {activeSession.user_uuid}
           </span>
         </div>
@@ -186,8 +188,8 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
           <div style={{
             width: 196,
             flexShrink: 0,
-            borderRight: "1px solid #1e293b",
-            background: "#0a1120",
+            borderRight: "1px solid #e5e7eb",
+            background: "#f9fafb",
             overflowY: "auto",
             paddingTop: 4,
             paddingBottom: 4,
@@ -203,33 +205,34 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
                   style={{
                     width: "100%",
                     textAlign: "left",
-                    background: isSelected ? "#1e293b" : "transparent",
+                    background: isSelected ? "#ffffff" : "transparent",
                     border: "none",
-                    borderLeft: `3px solid ${isSelected ? "#4f8ef7" : "transparent"}`,
+                    borderLeft: `3px solid ${isSelected ? "#1d4ed8" : "transparent"}`,
                     padding: "10px 12px",
                     cursor: "pointer",
                     display: "flex",
                     flexDirection: "column",
                     gap: 5,
+                    fontFamily: "inherit",
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <span style={{ fontSize: 13, fontWeight: isSelected ? 600 : 400, color: isSelected ? "#f1f5f9" : "#94a3b8" }}>
+                    <span style={{ fontSize: 13, fontWeight: isSelected ? 600 : 400, color: isSelected ? "#111827" : "#374151" }}>
                       Game {gi + 1}
                     </span>
-                    <span style={{ fontSize: 12, color: isSelected ? "#e2e8f0" : "#64748b", fontVariantNumeric: "tabular-nums" }}>
+                    <span style={{ fontSize: 12, color: isSelected ? "#111827" : "#6b7280", fontVariantNumeric: "tabular-nums" }}>
                       {gScore.toFixed(1)}
                     </span>
                   </div>
-                  <div style={{ height: 3, background: "#1e293b", borderRadius: 2, overflow: "hidden" }}>
+                  <div style={{ height: 3, background: "#e5e7eb", borderRadius: 2, overflow: "hidden" }}>
                     <div style={{
                       height: "100%",
                       width: `${barPct}%`,
-                      background: isSelected ? "#4f8ef7" : "#334155",
+                      background: isSelected ? "#1d4ed8" : "#d1d5db",
                       borderRadius: 2,
                     }} />
                   </div>
-                  <span style={{ fontSize: 10, color: "#475569" }}>
+                  <span style={{ fontSize: 10, color: "#9ca3af" }}>
                     {g.hits.length} hits · board {g.board_id}
                   </span>
                 </button>
@@ -242,27 +245,27 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
             {game ? (
               <>
                 {/* Board canvas */}
-                <div style={{ padding: 20, flexShrink: 0, borderRight: "1px solid #1e293b" }}>
+                <div style={{ padding: 20, flexShrink: 0, borderRight: "1px solid #e5e7eb" }}>
                   {surface ? (
                     <GameBoardView game={game} surface={surface} />
                   ) : (
-                    <p style={{ color: "#475569", fontSize: 13 }}>Board surface not loaded.</p>
+                    <p style={{ color: "#6b7280", fontSize: 13 }}>Board surface not loaded.</p>
                   )}
                 </div>
 
                 {/* Hit table */}
                 <div style={{ padding: "14px 20px", overflowY: "auto" }}>
-                  <p style={{ fontSize: 11, color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  <p style={{ fontSize: 11, color: "#6b7280", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                     Hit coordinates — {game.hits.length} hits
                   </p>
                   {game.hits.length === 0 ? (
-                    <span style={{ fontSize: 13, color: "#475569" }}>No hits recorded.</span>
+                    <span style={{ fontSize: 13, color: "#6b7280" }}>No hits recorded.</span>
                   ) : (
                     <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
                         <tr>
                           {["Hit #", "x", "y", "Score"].map((h) => (
-                            <th key={h} style={{ padding: "4px 20px 6px 0", color: "#64748b", textAlign: "left", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>
+                            <th key={h} style={{ padding: "4px 20px 6px 0", color: "#6b7280", textAlign: "left", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>
                               {h}
                             </th>
                           ))}
@@ -274,11 +277,11 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
                           const hy = Math.floor(hit.y);
                           const hitScore = surface ? (surface[hx]?.[hy] ?? 0) : null;
                           return (
-                            <tr key={hi} style={{ borderBottom: "1px solid #1e293b" }}>
-                              <td style={{ padding: "4px 20px 4px 0", color: "#475569" }}>{hi + 1}</td>
-                              <td style={{ padding: "4px 20px 4px 0", color: "#e2e8f0", fontFamily: "monospace" }}>{hit.x.toFixed(3)}</td>
-                              <td style={{ padding: "4px 20px 4px 0", color: "#e2e8f0", fontFamily: "monospace" }}>{hit.y.toFixed(3)}</td>
-                              <td style={{ padding: "4px 0", color: hitScore ? "#f1f5f9" : "#475569" }}>
+                            <tr key={hi} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                              <td style={{ padding: "4px 20px 4px 0", color: "#6b7280" }}>{hi + 1}</td>
+                              <td style={{ padding: "4px 20px 4px 0", color: "#111827", fontFamily: "monospace" }}>{hit.x.toFixed(3)}</td>
+                              <td style={{ padding: "4px 20px 4px 0", color: "#111827", fontFamily: "monospace" }}>{hit.y.toFixed(3)}</td>
+                              <td style={{ padding: "4px 0", color: hitScore ? "#111827" : "#6b7280" }}>
                                 {hitScore != null ? hitScore : "—"}
                               </td>
                             </tr>
@@ -291,14 +294,14 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
               </>
             ) : (
               <div style={{ padding: 24 }}>
-                <p style={{ color: "#475569", fontSize: 13 }}>No games in this session.</p>
+                <p style={{ color: "#6b7280", fontSize: 13 }}>No games in this session.</p>
               </div>
             )}
           </div>
         </div>
       ) : (
         <div style={{ padding: 24 }}>
-          <p style={{ color: "#475569", fontSize: 13 }}>No sessions found for this participant.</p>
+          <p style={{ color: "#6b7280", fontSize: 13 }}>No sessions found for this participant.</p>
         </div>
       )}
     </div>
