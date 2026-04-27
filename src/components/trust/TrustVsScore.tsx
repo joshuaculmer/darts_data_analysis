@@ -25,7 +25,6 @@ interface Props {
 }
 
 const TOOLTIP_STYLE = { background: "#1e293b", border: "1px solid #334155", fontSize: 12 };
-const NULL_COLOR = "#64748b";
 
 function GameScoreBreakdown({
   session,

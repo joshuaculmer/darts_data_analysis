@@ -10,7 +10,6 @@ import {
   BarChart,
   Bar,
   Cell,
-  ReferenceLine,
 } from "recharts";
 import type { TrustVsProximityPoint } from "../../utils/surveyStats";
 import type { ParsedGameSession } from "../../loaders/loadData";
