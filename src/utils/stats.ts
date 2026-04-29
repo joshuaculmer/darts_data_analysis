@@ -2,7 +2,7 @@ import { AI_Type } from "../types/dart";
 import type { ParsedGameSession, ParsedSurveyResponse } from "../loaders/loadData";
 
 // Change this to update the completeness threshold everywhere at once
-export const MIN_SESSIONS_REQUIRED = 5;
+export const MIN_SESSIONS_REQUIRED = 20;
 
 export interface Kpis {
   uniqueParticipants: number;

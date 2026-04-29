@@ -74,7 +74,7 @@ participantTotalScore = sum of session sums across all sessions for a user
 - The 7 AI conditions (`AI_Type` values 0–6): NONE, CORRECT, RANDOM, WRONG, BAD, GOOD_BAD, BAD_GOOD.
 - GOOD_BAD and BAD_GOOD are ordering conditions — same advice quality, different trajectory. Comparing them is a key research question.
 - Core research questions: Does AI condition affect game score? Does trust mediate performance? Does trust improve score?
-- `MIN_SESSIONS_REQUIRED = 5` in `stats.ts` — change this single constant to update the completeness threshold everywhere. A participant is "complete" when `sessionCount === MIN_SESSIONS_REQUIRED && surveyCount === MIN_SESSIONS_REQUIRED`.
+- `MIN_SESSIONS_REQUIRED = 20` in `stats.ts` — change this single constant to update the completeness threshold everywhere. A participant is "complete" when `sessionCount === MIN_SESSIONS_REQUIRED && surveyCount === MIN_SESSIONS_REQUIRED`.
 
 ## Navigation Structure
 Top navbar with six sections. See `PLANNING.md` for the full chart roadmap per section.
