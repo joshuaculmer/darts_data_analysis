@@ -87,7 +87,7 @@ export function IndividualView({ sessions, joined, trustQuestionId, surveyLoaded
       />
 
       {surveyLoaded && (
-        <SurveyResponseTable userId={activeUuid ?? ""} joined={joined} points={timeline} />
+        <SurveyResponseTable userId={activeUuid ?? ""} joined={joined} />
       )}
     </div>
   );
