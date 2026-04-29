@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import type { ParsedGameSession } from "../../loaders/loadData";
+import type { ParsedGameSession, ParsedSurveyResponse } from "../../loaders/loadData";
 import type { RewardSurface } from "../../types/dart";
 import type { JoinedSessionSurvey } from "../../utils/surveyStats";
 import {
@@ -15,13 +15,14 @@ import { SurveyResponseTable } from "./SurveyResponseTable";
 
 interface Props {
   sessions: ParsedGameSession[];
+  surveys: ParsedSurveyResponse[];
   joined: JoinedSessionSurvey[];
   trustQuestionId: string | null;
   surveyLoaded: boolean;
   boards: Map<number, RewardSurface>;
 }
 
-export function IndividualView({ sessions, joined, trustQuestionId, surveyLoaded, boards }: Props) {
+export function IndividualView({ sessions, surveys, joined, trustQuestionId, surveyLoaded, boards }: Props) {
   const [selectedUuid, setSelectedUuid] = useState<string>(
     () => getParticipantList(sessions)[0]?.uuid ?? ""
   );
@@ -87,7 +88,7 @@ export function IndividualView({ sessions, joined, trustQuestionId, surveyLoaded
       />
 
       {surveyLoaded && (
-        <SurveyResponseTable userId={activeUuid ?? ""} joined={joined} />
+        <SurveyResponseTable userId={activeUuid ?? ""} surveys={surveys} sessions={sessions} />
       )}
     </div>
   );

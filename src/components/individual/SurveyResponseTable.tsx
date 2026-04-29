@@ -1,15 +1,31 @@
-import type { JoinedSessionSurvey } from "../../utils/surveyStats";
-import { AI_TYPE_COLORS, AI_TYPE_LABELS } from "../../utils/stats";
+import type { ParsedGameSession, ParsedSurveyResponse } from "../../loaders/loadData";
+
+const fmt = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Denver",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+});
+
+function toMST(ts: number): string {
+  return fmt.format(new Date(ts));
+}
 
 interface Props {
   userId: string;
-  joined: JoinedSessionSurvey[];
+  surveys: ParsedSurveyResponse[];
+  sessions: ParsedGameSession[];
 }
 
-export function SurveyResponseTable({ userId, joined }: Props) {
-  const mine = joined
-    .filter((j) => j.session.user_uuid === userId && j.survey !== null)
-    .sort((a, b) => a.session.created_at.localeCompare(b.session.created_at));
+export function SurveyResponseTable({ userId, surveys, sessions }: Props) {
+  const mine = surveys
+    .filter((s) => s.user_uuid === userId)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+
+  const userSessions = sessions
+    .filter((s) => s.user_uuid === userId)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
 
   if (mine.length === 0) {
     return (
@@ -21,7 +37,7 @@ export function SurveyResponseTable({ userId, joined }: Props) {
   }
 
   const allQuestionIds = Array.from(
-    new Set(mine.flatMap((j) => j.survey!.responses.map((r) => r.questionId))),
+    new Set(mine.flatMap((s) => s.responses.map((r) => r.questionId))),
   ).sort();
 
   return (
@@ -31,27 +47,36 @@ export function SurveyResponseTable({ userId, joined }: Props) {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Session</th>
+              <th>#</th>
               <th>Date</th>
-              <th>Condition</th>
+              <th>First Game Start (MST)</th>
+              <th>Last Game End (MST)</th>
+              <th>Survey Submitted (MST)</th>
+              <th>Survey Duration (s)</th>
               {allQuestionIds.map((id) => <th key={id}>{id}</th>)}
             </tr>
           </thead>
           <tbody>
-            {mine.map((j, i) => {
-              const date = j.session.created_at.slice(0, 10);
-              const aiType = j.session.ai_advice;
+            {mine.map((s, i) => {
+              const session = userSessions[i];
+              const games = session?.games ?? [];
+              const firstStart = games.length > 0 ? games[0].start : null;
+              const lastEnd = games.length > 0 ? games[games.length - 1].end : null;
+              const surveyTime = new Date(s.created_at).getTime();
+              const surveyDuration = lastEnd !== null
+                ? Math.round((surveyTime - lastEnd) / 1000)
+                : null;
+
               return (
-                <tr key={i}>
+                <tr key={s.id}>
                   <td>{i + 1}</td>
-                  <td>{date}</td>
-                  <td>
-                    <span className="condition-badge" style={{ background: AI_TYPE_COLORS[aiType] }}>
-                      {AI_TYPE_LABELS[aiType]}
-                    </span>
-                  </td>
+                  <td>{s.created_at.slice(0, 10)}</td>
+                  <td>{firstStart !== null ? toMST(firstStart) : "—"}</td>
+                  <td>{lastEnd !== null ? toMST(lastEnd) : "—"}</td>
+                  <td>{toMST(surveyTime)}</td>
+                  <td>{surveyDuration !== null ? surveyDuration : "—"}</td>
                   {allQuestionIds.map((id) => {
-                    const ans = j.survey!.responses.find((r) => r.questionId === id);
+                    const ans = s.responses.find((r) => r.questionId === id);
                     return <td key={id}>{ans !== undefined ? String(ans.value) : "—"}</td>;
                   })}
                 </tr>

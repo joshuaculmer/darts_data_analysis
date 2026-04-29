@@ -528,6 +528,7 @@ function App() {
             </p>
             <IndividualView
               sessions={filteredSessions}
+              surveys={filteredSurveyResponses}
               joined={joinedData}
               trustQuestionId={trustQuestionId}
               surveyLoaded={surveyLoaded}
