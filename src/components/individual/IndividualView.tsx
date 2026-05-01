@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import type { ParsedGameSession, ParsedSurveyResponse } from "../../loaders/loadData";
 import type { RewardSurface } from "../../types/dart";
 import type { JoinedSessionSurvey } from "../../utils/surveyStats";
@@ -21,17 +21,34 @@ interface Props {
   surveyLoaded: boolean;
   boards: Map<number, RewardSurface>;
   onNavigateToSession?: (participantUuid: string, globalSessionIndex: number) => void;
+  filterUuids?: string[];
 }
 
-export function IndividualView({ sessions, surveys, joined, trustQuestionId, surveyLoaded, boards, onNavigateToSession }: Props) {
+export function IndividualView({ sessions, surveys, joined, trustQuestionId, surveyLoaded, boards, onNavigateToSession, filterUuids }: Props) {
   const [selectedUuid, setSelectedUuid] = useState<string>(
     () => getParticipantList(sessions)[0]?.uuid ?? ""
   );
   const [selectedSessionIndex, setSelectedSessionIndex] = useState<number>(1);
 
-  const participants = useMemo(() => getParticipantList(sessions), [sessions]);
+  const participants = useMemo(() => {
+    const all = getParticipantList(sessions);
+    if (!filterUuids || filterUuids.length === 0) return all;
+    const filterSet = new Set(filterUuids);
+    return all.filter((p) => filterSet.has(p.uuid));
+  }, [sessions, filterUuids]);
 
-  const activeUuid = selectedUuid || null;
+  // Derive the active UUID — if selectedUuid isn't in the (possibly filtered) list, fall back to first
+  const effectiveUuid = useMemo(() => {
+    if (participants.some((p) => p.uuid === selectedUuid)) return selectedUuid;
+    return participants[0]?.uuid ?? "";
+  }, [participants, selectedUuid]);
+
+  // Reset session index whenever the active participant changes
+  useEffect(() => {
+    setSelectedSessionIndex(1);
+  }, [effectiveUuid]);
+
+  const activeUuid = effectiveUuid || null;
   const activeTrustId = trustQuestionId ?? "";
 
   const timeline = useMemo(
@@ -66,7 +83,7 @@ export function IndividualView({ sessions, surveys, joined, trustQuestionId, sur
         <select
           id="participant-select"
           className="trust-selector__select"
-          value={selectedUuid}
+          value={effectiveUuid}
           onChange={(e) => { setSelectedUuid(e.target.value); setSelectedSessionIndex(1); }}
         >
           {participants.map(({ uuid, nickname }) => (

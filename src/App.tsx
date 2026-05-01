@@ -71,6 +71,7 @@ function App() {
     string | null
   >(null);
   const [sessionViewIndex, setSessionViewIndex] = useState<number | null>(null);
+  const [individualFilterUuids, setIndividualFilterUuids] = useState<string[] | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [isFetching, setIsFetching] = useState(false);
@@ -143,6 +144,7 @@ function App() {
     setTrustQuestionId(null);
     setSessionViewParticipant(null);
     setSessionViewIndex(null);
+    setIndividualFilterUuids(null);
     setFetchError(null);
   }, []);
 
@@ -426,7 +428,10 @@ function App() {
           <button
             key={id}
             className={`nav-tab${activeSection === id ? " nav-tab--active" : ""}`}
-            onClick={() => setActiveSection(id)}
+            onClick={() => {
+              if (id === "individual") setIndividualFilterUuids(null);
+              setActiveSection(id);
+            }}
           >
             {label}
           </button>
@@ -451,7 +456,13 @@ function App() {
               onToggleCompleteOnly={() => setCompleteOnly((v) => !v)}
             />
             <div className="chart-row">
-              <SessionCalendar sessions={filteredSessions} />
+              <SessionCalendar
+                sessions={filteredSessions}
+                onDayClick={(uuids) => {
+                  setIndividualFilterUuids(uuids);
+                  setActiveSection("individual");
+                }}
+              />
               <ConditionDistribution sessions={filteredSessions} />
             </div>
           </section>
@@ -533,6 +544,7 @@ function App() {
               trustQuestionId={trustQuestionId}
               surveyLoaded={surveyLoaded}
               boards={boards}
+              filterUuids={individualFilterUuids ?? undefined}
               onNavigateToSession={(uuid, idx) => {
                 setSessionViewParticipant(uuid);
                 setSessionViewIndex(idx);

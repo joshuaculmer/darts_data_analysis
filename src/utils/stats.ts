@@ -267,6 +267,7 @@ export function computeUserConditionAverages(sessions: ParsedGameSession[]): Use
 export interface DateParticipantCount {
   date: string;
   count: number;
+  uuids: string[];
 }
 
 export function groupParticipantsByDate(sessions: ParsedGameSession[]): DateParticipantCount[] {
@@ -277,7 +278,7 @@ export function groupParticipantsByDate(sessions: ParsedGameSession[]): DatePart
   }, {});
   return Object.entries(byDate)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, uuids]) => ({ date, count: uuids.size }));
+    .map(([date, uuids]) => ({ date, count: uuids.size, uuids: [...uuids] }));
 }
 
 export function getCompleteUserIds(

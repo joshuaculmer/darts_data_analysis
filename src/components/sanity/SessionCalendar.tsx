@@ -51,19 +51,21 @@ interface TooltipState {
 
 interface Props {
   sessions: ParsedGameSession[];
+  onDayClick?: (uuids: string[]) => void;
 }
 
-export function SessionCalendar({ sessions }: Props) {
+export function SessionCalendar({ sessions, onDayClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
-  const { cells, numWeeks, monthLabels, maxCount } = useMemo(() => {
+  const { cells, numWeeks, monthLabels, maxCount, uuidsMap } = useMemo(() => {
     if (sessions.length === 0) {
-      return { cells: [], numWeeks: 0, monthLabels: [], maxCount: 0 };
+      return { cells: [], numWeeks: 0, monthLabels: [], maxCount: 0, uuidsMap: new Map<string, string[]>() };
     }
 
     const byDate = groupParticipantsByDate(sessions);
     const countMap = new Map(byDate.map((d) => [d.date, d.count]));
+    const uuidsMap = new Map(byDate.map((d) => [d.date, d.uuids]));
     const sortedDates = byDate.map((d) => d.date).sort();
     const firstDate = sortedDates[0];
     const lastDate = sortedDates[sortedDates.length - 1];
@@ -104,7 +106,7 @@ export function SessionCalendar({ sessions }: Props) {
       }
     }
 
-    return { cells, numWeeks: week, monthLabels, maxCount };
+    return { cells, numWeeks: week, monthLabels, maxCount, uuidsMap };
   }, [sessions]);
 
   if (sessions.length === 0) {
@@ -165,7 +167,11 @@ export function SessionCalendar({ sessions }: Props) {
               height={CELL}
               rx={2}
               fill={cellColor(cell.count, maxCount)}
-              style={{ cursor: "default" }}
+              style={{ cursor: onDayClick && cell.count > 0 ? "pointer" : "default" }}
+              onClick={onDayClick && cell.count > 0 ? () => {
+                const uuids = uuidsMap.get(cell.date) ?? [];
+                if (uuids.length > 0) onDayClick(uuids);
+              } : undefined}
               onMouseEnter={(e) => {
                 if (!containerRef.current) return;
                 const cr = containerRef.current.getBoundingClientRect();
