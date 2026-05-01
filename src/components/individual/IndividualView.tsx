@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import type { ParsedGameSession, ParsedSurveyResponse } from "../../loaders/loadData";
 import type { RewardSurface } from "../../types/dart";
-import type { JoinedSessionSurvey } from "../../utils/surveyStats";
+import type { JoinedSessionSurvey, TrustTimePoint } from "../../utils/surveyStats";
 import {
   getParticipantList,
   computeIndividualTimeline,
@@ -12,6 +12,7 @@ import { IndividualTimeline } from "./IndividualTimeline";
 import { ConditionExposure } from "./ConditionExposure";
 import { GameBreakdown } from "./GameBreakdown";
 import { SurveyResponseTable } from "./SurveyResponseTable";
+import { TrustOverTime } from "../trust/TrustOverTime";
 
 interface Props {
   sessions: ParsedGameSession[];
@@ -70,11 +71,25 @@ export function IndividualView({ sessions, surveys, joined, trustQuestionId, sur
     [joined, activeUuid, activeTrustId, boards],
   );
 
+  const hasTrust = surveyLoaded && trustQuestionId !== null;
+
+  const individualTrustPoints = useMemo<TrustTimePoint[]>(() => {
+    if (!hasTrust || !activeUuid) return [];
+    return timeline
+      .filter((p) => p.trust !== null)
+      .map((p) => ({
+        sessionIndex: p.sessionIndex,
+        trust: p.trust as number,
+        aiType: p.aiType,
+        label: p.label,
+        color: p.color,
+        user_uuid: activeUuid,
+      }));
+  }, [timeline, hasTrust, activeUuid]);
+
   if (participants.length === 0) {
     return <p className="section-note">No participants loaded.</p>;
   }
-
-  const hasTrust = surveyLoaded && trustQuestionId !== null;
 
   return (
     <div className="individual-view">
@@ -105,6 +120,10 @@ export function IndividualView({ sessions, surveys, joined, trustQuestionId, sur
       {kpis && <ParticipantKpiCards kpis={kpis} />}
 
       <IndividualTimeline points={timeline} showTrust={hasTrust} onPointClick={handleTimelinePointClick} />
+
+      {hasTrust && (
+        <TrustOverTime points={individualTrustPoints} title="Trust Over Sessions" />
+      )}
 
       <ConditionExposure points={timeline} />
 

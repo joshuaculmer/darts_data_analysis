@@ -106,6 +106,7 @@ export interface TrustTimePoint {
   aiType: AI_Type;
   label: string;
   color: string;
+  user_uuid: string;
 }
 
 export function computeTrustOverTime(
@@ -124,7 +125,7 @@ export function computeTrustOverTime(
   }
 
   const result: TrustTimePoint[] = [];
-  for (const entries of byUser.values()) {
+  for (const [uuid, entries] of byUser.entries()) {
     entries.sort((a, b) => a.created_at.localeCompare(b.created_at));
     entries.forEach(({ trust, aiType }, idx) => {
       result.push({
@@ -133,6 +134,7 @@ export function computeTrustOverTime(
         aiType,
         label: AI_TYPE_LABELS[aiType],
         color: AI_TYPE_COLORS[aiType],
+        user_uuid: uuid,
       });
     });
   }

@@ -18,7 +18,6 @@ interface Props {
   onPointClick?: (sessionIndex: number) => void;
 }
 
-const SCORE_COLOR = "#1d4ed8";
 const TRUST_COLOR = "#16a34a";
 
 const TOOLTIP_STYLE = {
