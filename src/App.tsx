@@ -533,6 +533,11 @@ function App() {
               trustQuestionId={trustQuestionId}
               surveyLoaded={surveyLoaded}
               boards={boards}
+              onNavigateToSession={(uuid, idx) => {
+                setSessionViewParticipant(uuid);
+                setSessionViewIndex(idx);
+                setActiveSection("session");
+              }}
             />
           </section>
         )}

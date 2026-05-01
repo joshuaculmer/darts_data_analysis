@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type { ParsedGameSession, ParsedSurveyResponse } from "../../loaders/loadData";
 import type { RewardSurface } from "../../types/dart";
 import type { JoinedSessionSurvey } from "../../utils/surveyStats";
@@ -20,9 +20,10 @@ interface Props {
   trustQuestionId: string | null;
   surveyLoaded: boolean;
   boards: Map<number, RewardSurface>;
+  onNavigateToSession?: (participantUuid: string, globalSessionIndex: number) => void;
 }
 
-export function IndividualView({ sessions, surveys, joined, trustQuestionId, surveyLoaded, boards }: Props) {
+export function IndividualView({ sessions, surveys, joined, trustQuestionId, surveyLoaded, boards, onNavigateToSession }: Props) {
   const [selectedUuid, setSelectedUuid] = useState<string>(
     () => getParticipantList(sessions)[0]?.uuid ?? ""
   );
@@ -37,6 +38,15 @@ export function IndividualView({ sessions, surveys, joined, trustQuestionId, sur
     () => (activeUuid ? computeIndividualTimeline(joined, activeUuid, activeTrustId, boards) : []),
     [joined, activeUuid, activeTrustId, boards],
   );
+
+  const handleTimelinePointClick = useCallback((sessionIndex: number) => {
+    if (!onNavigateToSession || !activeUuid) return;
+    const participantSessions = sessions
+      .map((s, i) => ({ session: s, globalIndex: i }))
+      .filter(({ session }) => session.user_uuid === activeUuid);
+    const entry = participantSessions[sessionIndex - 1];
+    if (entry != null) onNavigateToSession(activeUuid, entry.globalIndex);
+  }, [onNavigateToSession, activeUuid, sessions]);
 
   const kpis = useMemo(
     () => (activeUuid ? computeIndividualKpis(joined, activeUuid, activeTrustId, boards) : null),
@@ -77,7 +87,7 @@ export function IndividualView({ sessions, surveys, joined, trustQuestionId, sur
 
       {kpis && <ParticipantKpiCards kpis={kpis} />}
 
-      <IndividualTimeline points={timeline} showTrust={hasTrust} />
+      <IndividualTimeline points={timeline} showTrust={hasTrust} onPointClick={handleTimelinePointClick} />
 
       <ConditionExposure points={timeline} />
 
