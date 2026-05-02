@@ -144,6 +144,18 @@ describe("computeIndividualTimeline", () => {
     expect(point.trust).toBe(4);
   });
 
+  it("extracts performance from matched survey responses with performance question ids", () => {
+    const survey = makeSurvey({
+      responses: [
+        { questionId: "trust", value: 4 },
+        { questionId: "post_session_performance_rating", value: "very good" },
+      ],
+    });
+    const joined = [makeJoined(makeSession({ user_uuid: "uuid-a" }), survey)];
+    const [point] = computeIndividualTimeline(joined, "uuid-a", "trust", new Map());
+    expect(point.performance).toBe(5);
+  });
+
   it("carries aiType, label, and color", () => {
     const joined = [makeJoined(makeSession({ user_uuid: "uuid-a", ai_advice: AI_Type.BAD_GOOD }))];
     const [point] = computeIndividualTimeline(joined, "uuid-a", "trust", new Map());

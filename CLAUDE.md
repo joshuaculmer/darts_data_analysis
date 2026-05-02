@@ -84,7 +84,7 @@ Top navbar with six sections. See `PLANNING.md` for the full chart roadmap per s
 | Sanity Checks | KpiCards, SessionCalendar, ConditionDistribution |
 | Game Performance | ScoreByCondition (mean ± CI95 per condition), ScoreVsSkillScatter (click → Session View), TrustVsScore (click → game scores), ProximityVsScore (click → game proximity/score) |
 | Trust & Influence | TrustQuestionSelector, TrustByCondition, TrustOverTime, TrustVsScore, TrustVsTime, TrustVsProximity |
-| Individual View | IndividualView (participant dropdown + timeline + breakdown) |
+| Individual View | IndividualView (participant dropdown + wholistic score/trust/performance graph + breakdown) |
 | Session View | SessionView — participant + session dropdowns; session metadata table + per-game table with expandable hit rows |
 | Raw Data | Coming soon (filterable/sortable tables) |
 
@@ -132,7 +132,8 @@ src/
 │   │                                #   computeTrustOverTime, computeTrustVsScorePoints,
 │   │                                #   computeTrustVsTimePoints, computeTrustVsProximityPoints
 │   ├── surveyStats.test.ts
-│   ├── individualStats.ts           # getParticipantList, computeIndividualTimeline,
+│   ├── individualStats.ts           # getParticipantList, computeIndividualTimeline
+│   │                                #   (score + trust + performance per session),
 │   │                                #   computeIndividualKpis, computeGameBreakdown
 │   └── individualStats.test.ts
 │
@@ -158,7 +159,9 @@ src/
     │
     ├── individual/
     │   ├── IndividualView.tsx       # Parent: participant selector, wires all sub-components
-    │   ├── IndividualTimeline.tsx
+    │   ├── IndividualTimeline.tsx   # Wholistic Individual Graph (score, trust, performance)
+    │   │                            #   with on-the-fly switch controls + dynamic axes
+    │   │                            #   and shared right-axis trust/performance Likert mapping
     │   ├── GameBreakdown.tsx        # Stub — renders session avg; game-level bars need raw session passed in
     │   ├── ConditionExposure.tsx
     │   ├── ParticipantKpiCards.tsx
@@ -195,6 +198,8 @@ All chart components use `<ChartCard title="...">` from `src/components/ChartCar
 - **Collapse toggle** (▲/▼ button in the header) — hides the chart body while keeping the title visible
 - **PNG download** (↓ button) — serializes the first SVG within the card to PNG at 2× resolution with dark background
 - **Drill-down cards** use `onClose` prop instead of collapse, showing a × button
+
+PNG export selects the largest non-button SVG in the card so legend marker SVGs are not exported by mistake.
 
 ## Tech Stack
 - **Vite + React + TypeScript**

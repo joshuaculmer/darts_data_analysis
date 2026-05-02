@@ -17,9 +17,11 @@ export function ChartCard({ title, children, downloadName, onClose, style }: Pro
   const handleDownload = useCallback(() => {
     const card = cardRef.current;
     if (!card) return;
-    const svg = Array.from(card.querySelectorAll<SVGSVGElement>("svg")).find(
-      (s) => !s.closest("button")
-    );
+    const svg = Array.from(card.querySelectorAll<SVGSVGElement>("svg"))
+      .filter((s) => !s.closest("button"))
+      .map((s) => ({ svg: s, rect: s.getBoundingClientRect() }))
+      .filter(({ rect }) => rect.width > 0 && rect.height > 0)
+      .sort((a, b) => (b.rect.width * b.rect.height) - (a.rect.width * a.rect.height))[0]?.svg;
     if (!svg) return;
 
     const bbox = svg.getBoundingClientRect();

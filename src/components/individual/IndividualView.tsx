@@ -127,7 +127,7 @@ export function IndividualView({ sessions, surveys, joined, trustQuestionId, sur
         <TrustOverTime points={individualTrustPoints} title="Trust Over Sessions" likertScale={likertScale} />
       )}
 
-      <ConditionExposure points={timeline} />
+      {/* <ConditionExposure points={timeline} /> */}
 
       <GameBreakdown
         points={timeline}

@@ -29,6 +29,7 @@ export interface IndividualSessionPoint {
   date: string;
   score: number;
   trust: number | null;
+  performance: number | null;
   aiType: AI_Type;
   label: string;
   color: string;
@@ -41,6 +42,13 @@ export function computeIndividualTimeline(
   trustQuestionId: string,
   boards: Map<number, RewardSurface>,
 ): IndividualSessionPoint[] {
+  const getPerformanceValue = (survey: JoinedSessionSurvey["survey"]): number | null => {
+    if (!survey) return null;
+    const response = survey.responses.find((r) => r.questionId.toLowerCase().includes("perform"));
+    if (!response) return null;
+    return getAnswerValue(survey.responses, response.questionId);
+  };
+
   return joined
     .filter((j) => j.session.user_uuid === userId)
     .sort((a, b) => a.session.created_at.localeCompare(b.session.created_at))
@@ -49,6 +57,7 @@ export function computeIndividualTimeline(
       date: session.created_at.slice(0, 10),
       score: computeSessionScore(session, boards).avg,
       trust: survey ? getAnswerValue(survey.responses, trustQuestionId) : null,
+      performance: getPerformanceValue(survey),
       aiType: session.ai_advice,
       label: AI_TYPE_LABELS[session.ai_advice],
       color: AI_TYPE_COLORS[session.ai_advice],
