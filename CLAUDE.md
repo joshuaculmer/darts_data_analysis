@@ -124,6 +124,10 @@ src/
 │   ├── surveyScales.ts              # ORDINAL_SCALES — single source for all ordinal label→score
 │   │                                #   mappings (Likert, performance scale, etc.). Update here
 │   │                                #   when the survey instrument changes.
+│   │                                #   Current performance scale: Very Poor, Poor,
+│   │                                #   Average, Good, Very Good (1..5).
+│   │                                #   Also includes display helpers so charts
+│   │                                #   show Likert labels (not raw numbers).
 │   ├── surveyStats.ts               # joinSessionsWithSurvey, computeTrustByCondition,
 │   │                                #   computeTrustOverTime, computeTrustVsScorePoints,
 │   │                                #   computeTrustVsTimePoints, computeTrustVsProximityPoints

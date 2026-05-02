@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import type { ParsedGameSession, ParsedSurveyResponse } from "../../loaders/loadData";
 import type { RewardSurface } from "../../types/dart";
 import type { JoinedSessionSurvey, TrustTimePoint } from "../../utils/surveyStats";
+import type { LikertScale } from "../../utils/surveyScales";
 import {
   getParticipantList,
   computeIndividualTimeline,
@@ -23,9 +24,10 @@ interface Props {
   boards: Map<number, RewardSurface>;
   onNavigateToSession?: (participantUuid: string, globalSessionIndex: number) => void;
   filterUuids?: string[];
+  likertScale: LikertScale;
 }
 
-export function IndividualView({ sessions, surveys, joined, trustQuestionId, surveyLoaded, boards, onNavigateToSession, filterUuids }: Props) {
+export function IndividualView({ sessions, surveys, joined, trustQuestionId, surveyLoaded, boards, onNavigateToSession, filterUuids, likertScale }: Props) {
   const [selectedUuid, setSelectedUuid] = useState<string>(
     () => getParticipantList(sessions)[0]?.uuid ?? ""
   );
@@ -117,12 +119,12 @@ export function IndividualView({ sessions, surveys, joined, trustQuestionId, sur
         )}
       </div>
 
-      {kpis && <ParticipantKpiCards kpis={kpis} />}
+      {kpis && <ParticipantKpiCards kpis={kpis} likertScale={likertScale} />}
 
-      <IndividualTimeline points={timeline} showTrust={hasTrust} onPointClick={handleTimelinePointClick} />
+      <IndividualTimeline points={timeline} showTrust={hasTrust} likertScale={likertScale} onPointClick={handleTimelinePointClick} />
 
       {hasTrust && (
-        <TrustOverTime points={individualTrustPoints} title="Trust Over Sessions" />
+        <TrustOverTime points={individualTrustPoints} title="Trust Over Sessions" likertScale={likertScale} />
       )}
 
       <ConditionExposure points={timeline} />

@@ -11,10 +11,12 @@ import {
   ErrorBar,
 } from "recharts";
 import type { TrustConditionStats } from "../../utils/surveyStats";
+import { LIKERT_TICKS, formatLikertValue, type LikertScale } from "../../utils/surveyScales";
 import { ChartCard } from "../ChartCard";
 
 interface Props {
   stats: TrustConditionStats[];
+  likertScale: LikertScale;
 }
 
 const TOOLTIP_STYLE = {
@@ -26,7 +28,7 @@ const TOOLTIP_STYLE = {
   fontSize: 12,
 };
 
-export function TrustByCondition({ stats }: Props) {
+export function TrustByCondition({ stats, likertScale }: Props) {
   const data = stats.map((s) => ({
     condition: s.label,
     mean: s.count > 0 ? s.mean : null,
@@ -38,10 +40,17 @@ export function TrustByCondition({ stats }: Props) {
   return (
     <ChartCard title="Mean Trust Rating by AI Condition">
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
+        <BarChart data={data} margin={{ top: 16, right: 24, left: 0, bottom: 8 }} aria-label={`Mean ${likertScale} Likert rating by AI condition`}>
           <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
           <XAxis dataKey="condition" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#374151" }} />
-          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#374151" }} />
+          <YAxis
+            axisLine={false}
+            tickLine={false}
+            domain={[1, 5]}
+            ticks={LIKERT_TICKS as unknown as number[]}
+            tickFormatter={(v) => formatLikertValue(Number(v), likertScale)}
+            tick={{ fontSize: 11, fill: "#374151" }}
+          />
           <Tooltip
             contentStyle={TOOLTIP_STYLE}
             labelStyle={{ color: "#111827", fontWeight: 600 }}
@@ -49,7 +58,7 @@ export function TrustByCondition({ stats }: Props) {
             formatter={(value, _name, item) => {
               if (typeof value !== "number") return ["N/A", "Mean Trust"];
               const count = (item.payload as typeof data[0] | undefined)?.count ?? 0;
-              return [`${value.toFixed(2)} (n=${count})`, "Mean Trust"];
+              return [`${formatLikertValue(value, likertScale)} (${value.toFixed(2)}, n=${count})`, "Mean Trust"];
             }}
           />
           <Bar dataKey="mean" radius={[0, 0, 0, 0]} isAnimationActive={false}>

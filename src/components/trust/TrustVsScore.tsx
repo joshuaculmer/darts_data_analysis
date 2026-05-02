@@ -18,11 +18,13 @@ import type { ParsedGameSession } from "../../loaders/loadData";
 import { AI_TYPE_LABELS } from "../../utils/stats";
 import { AI_Type } from "../../types/dart";
 import { gameScore, computeGameProximity } from "../../utils/scoreStats";
+import { LIKERT_TICKS, formatLikertValue, type LikertScale } from "../../utils/surveyScales";
 import { ChartCard } from "../ChartCard";
 
 interface Props {
   points: TrustScorePoint[];
   boards: Map<number, RewardSurface>;
+  likertScale: LikertScale;
 }
 
 const TOOLTIP_STYLE = {
@@ -73,7 +75,7 @@ function GameScoreBreakdown({
   );
 }
 
-export function TrustVsScore({ points, boards }: Props) {
+export function TrustVsScore({ points, boards, likertScale }: Props) {
   const [selected, setSelected] = useState<ParsedGameSession | null>(null);
 
   if (points.length === 0) {
@@ -88,12 +90,15 @@ export function TrustVsScore({ points, boards }: Props) {
     <>
       <ChartCard title="Trust → Score">
         <ResponsiveContainer width="100%" height={300}>
-          <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }}>
+          <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }} aria-label={`${likertScale} Likert rating versus score`}>
             <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
             <XAxis
               dataKey="trust"
               name="Trust Rating"
               type="number"
+              domain={[1, 5]}
+              ticks={LIKERT_TICKS as unknown as number[]}
+              tickFormatter={(v) => formatLikertValue(Number(v), likertScale)}
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 11, fill: "#374151" }}
@@ -113,7 +118,10 @@ export function TrustVsScore({ points, boards }: Props) {
               contentStyle={TOOLTIP_STYLE}
               labelStyle={{ color: "#111827", fontWeight: 600 }}
               itemStyle={{ color: "#374151" }}
-              formatter={(value, name) => [typeof value === "number" ? value.toFixed(1) : value, name]}
+              formatter={(value, name) => {
+                if (name === "trust" && typeof value === "number") return [formatLikertValue(value, likertScale), "Trust Rating"];
+                return [typeof value === "number" ? value.toFixed(1) : value, name];
+              }}
             />
             {(Object.values(AI_Type).filter((v) => typeof v === "number") as AI_Type[]).map((type) => {
               const group = points.filter((p) => p.aiType === type);

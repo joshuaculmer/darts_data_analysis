@@ -93,11 +93,13 @@ describe("getAnswerValue", () => {
     }
   });
 
-  it("maps the 3-point performance scale (poor/good/great)", () => {
+  it("maps the 5-point performance scale (very poor → very good)", () => {
     const labels: [string, number][] = [
-      ["poor", 1],
-      ["good", 2],
-      ["great", 3],
+      ["very poor", 1],
+      ["poor", 2],
+      ["average", 3],
+      ["good", 4],
+      ["very good", 5],
     ];
     for (const [label, expected] of labels) {
       const responses = [{ questionId: "perf", value: label }];

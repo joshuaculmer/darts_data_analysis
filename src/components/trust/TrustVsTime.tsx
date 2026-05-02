@@ -17,10 +17,12 @@ import type { ParsedGameSession } from "../../loaders/loadData";
 import { AI_TYPE_LABELS } from "../../utils/stats";
 import { AI_Type } from "../../types/dart";
 import { computeGameDurationSecs } from "../../utils/scoreStats";
+import { LIKERT_TICKS, formatLikertValue, type LikertScale } from "../../utils/surveyScales";
 import { ChartCard } from "../ChartCard";
 
 interface Props {
   points: TrustVsTimePoint[];
+  likertScale: LikertScale;
 }
 
 const TOOLTIP_STYLE = {
@@ -67,7 +69,7 @@ function GameDurationBreakdown({
   );
 }
 
-export function TrustVsTime({ points }: Props) {
+export function TrustVsTime({ points, likertScale }: Props) {
   const [selected, setSelected] = useState<ParsedGameSession | null>(null);
 
   if (points.length === 0) {
@@ -82,7 +84,7 @@ export function TrustVsTime({ points }: Props) {
     <>
       <ChartCard title="Trust → Time per Game">
         <ResponsiveContainer width="100%" height={300}>
-          <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }}>
+          <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }} aria-label={`${likertScale} Likert rating versus time per game`}>
             <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
             <XAxis
               dataKey="avgTimeSecs"
@@ -97,6 +99,9 @@ export function TrustVsTime({ points }: Props) {
               dataKey="trust"
               name="Trust Rating"
               type="number"
+              domain={[1, 5]}
+              ticks={LIKERT_TICKS as unknown as number[]}
+              tickFormatter={(v) => formatLikertValue(Number(v), likertScale)}
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 11, fill: "#374151" }}
@@ -108,8 +113,10 @@ export function TrustVsTime({ points }: Props) {
               labelStyle={{ color: "#111827", fontWeight: 600 }}
               itemStyle={{ color: "#374151" }}
               formatter={(value, name) => [
-                typeof value === "number" ? value.toFixed(1) : value,
-                name === "avgTimeSecs" ? "Avg Time (s)" : name,
+                typeof value === "number"
+                  ? (name === "trust" ? formatLikertValue(value, likertScale) : value.toFixed(1))
+                  : value,
+                name === "avgTimeSecs" ? "Avg Time (s)" : name === "trust" ? "Trust Rating" : name,
               ]}
             />
             {(Object.values(AI_Type).filter((v) => typeof v === "number") as AI_Type[]).map((type) => {

@@ -10,11 +10,13 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { IndividualSessionPoint } from "../../utils/individualStats";
+import { LIKERT_TICKS, formatLikertValue, type LikertScale } from "../../utils/surveyScales";
 import { ChartCard } from "../ChartCard";
 
 interface Props {
   points: IndividualSessionPoint[];
   showTrust: boolean;
+  likertScale: LikertScale;
   onPointClick?: (sessionIndex: number) => void;
 }
 
@@ -29,7 +31,7 @@ const TOOLTIP_STYLE = {
   fontSize: 12,
 };
 
-export function IndividualTimeline({ points, showTrust, onPointClick }: Props) {
+export function IndividualTimeline({ points, showTrust, likertScale, onPointClick }: Props) {
   if (points.length === 0) {
     return (
       <ChartCard title="Score & Trust Over Sessions">
@@ -46,6 +48,7 @@ export function IndividualTimeline({ points, showTrust, onPointClick }: Props) {
         <ComposedChart
           data={points}
           margin={{ top: 16, right: 24, left: 0, bottom: 8 }}
+          aria-label={`${likertScale} Likert trust and score over sessions`}
         >
           <CartesianGrid
             horizontal
@@ -84,6 +87,9 @@ export function IndividualTimeline({ points, showTrust, onPointClick }: Props) {
             <YAxis
               yAxisId="trust"
               orientation="right"
+              domain={[1, 5]}
+              ticks={LIKERT_TICKS as unknown as number[]}
+              tickFormatter={(v) => formatLikertValue(Number(v), likertScale)}
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 11, fill: "#374151" }}
@@ -101,6 +107,12 @@ export function IndividualTimeline({ points, showTrust, onPointClick }: Props) {
             labelStyle={{ color: "#111827", fontWeight: 600 }}
             itemStyle={{ color: "#374151" }}
             labelFormatter={(v) => `Session ${v}`}
+            formatter={(value, name) => {
+              if (name === "Trust Rating" && typeof value === "number") {
+                return [formatLikertValue(value, likertScale), "Trust Rating"];
+              }
+              return [typeof value === "number" ? value.toFixed(1) : value, name];
+            }}
           />
           <Legend wrapperStyle={{ fontSize: 12, color: "#374151" }} />
 

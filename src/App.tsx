@@ -21,6 +21,7 @@ import {
   computeTrustVsTimePoints,
   computeTrustVsProximityPoints,
 } from "./utils/surveyStats";
+import { inferLikertScaleFromQuestionId } from "./utils/surveyScales";
 import { KpiCards } from "./components/sanity/KpiCards";
 import { SessionCalendar } from "./components/sanity/SessionCalendar";
 import { ConditionDistribution } from "./components/sanity/ConditionDistribution";
@@ -277,6 +278,10 @@ function App() {
     [joinedData],
   );
   const hasAnyTrustData = trustByCondition.some((s) => s.count > 0);
+  const selectedLikertScale = useMemo(
+    () => inferLikertScaleFromQuestionId(trustQuestionId),
+    [trustQuestionId],
+  );
 
   // Finds the first raw answer value for the selected question across matched surveys.
   // Used to surface what the data actually looks like when trust charts are empty.
@@ -483,7 +488,7 @@ function App() {
               }}
             />
             {trustQuestionId && (
-              <TrustVsScore points={trustVsScorePoints} boards={boards} />
+              <TrustVsScore points={trustVsScorePoints} boards={boards} likertScale={selectedLikertScale} />
             )}
             <ProximityVsScore points={proximityVsScorePoints} boards={boards} />
           </section>
@@ -515,13 +520,13 @@ function App() {
             )}
             {trustQuestionId ? (
               <>
-                <TrustByCondition stats={trustByCondition} />
+                <TrustByCondition stats={trustByCondition} likertScale={selectedLikertScale} />
                 <div className="chart-row">
-                  <TrustOverTime points={trustOverTime} />
-                  <TrustVsScore points={trustVsScorePoints} boards={boards} />
+                  <TrustOverTime points={trustOverTime} likertScale={selectedLikertScale} />
+                  <TrustVsScore points={trustVsScorePoints} boards={boards} likertScale={selectedLikertScale} />
                 </div>
-                <TrustVsTime points={trustVsTimePoints} />
-                <TrustVsProximity points={trustVsProximityPoints} />
+                <TrustVsTime points={trustVsTimePoints} likertScale={selectedLikertScale} />
+                <TrustVsProximity points={trustVsProximityPoints} likertScale={selectedLikertScale} />
               </>
             ) : (
               <p className="section-note">
@@ -550,6 +555,7 @@ function App() {
                 setSessionViewIndex(idx);
                 setActiveSection("session");
               }}
+              likertScale={selectedLikertScale}
             />
           </section>
         )}
