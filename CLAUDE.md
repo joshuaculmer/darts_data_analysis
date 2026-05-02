@@ -18,6 +18,7 @@ The app has three sequential gates before showing the dashboard:
 Both CSVs are persisted in `localStorage` (`darts:sessions_csv`, `darts:survey_csv`) so the dashboard reloads automatically on page refresh without re-uploading. A red **Clear Data** button in the top-right of the header removes both keys and resets all app state to the upload screen.
 
 The trust question selector auto-selects the first available question on survey load.
+The Trust & Influence graph-type selector (Dot+CI vs Median+IQR vs Stacked Likert) is shared across TrustByCondition and TrustBySession and persisted in `localStorage` under `darts:trust_summary_graph_type`.
 
 ## Data Sources
 
@@ -83,7 +84,7 @@ Top navbar with six sections. See `PLANNING.md` for the full chart roadmap per s
 |---|---|
 | Sanity Checks | KpiCards, SessionCalendar, ConditionDistribution |
 | Game Performance | ScoreByCondition (mean ± CI95 per condition), ScoreVsSkillScatter (click → Session View), TrustVsScore (click → game scores), ProximityVsScore (click → game proximity/score) |
-| Trust & Influence | TrustQuestionSelector (nav-tab style toggle between Trust and Performance Perception; no question-ID dropdown), TrustByCondition, TrustOverTime, TrustVsScore, TrustVsTime, TrustVsProximity (titles auto-switch between Trust and Performance Perception based on selected question scale) |
+| Trust & Influence | TrustQuestionSelector (nav-tab style toggle between Trust and Performance Perception; no question-ID dropdown), TrustByCondition, TrustBySession, TrustOverTime, TrustVsScore, TrustVsTime, TrustVsProximity (titles auto-switch between Trust and Performance Perception based on selected question scale) |
 | Individual View | IndividualView (participant dropdown + wholistic score/trust/performance graph + breakdown) |
 | Session View | SessionView — participant + session dropdowns; session metadata table + per-game table with expandable hit rows |
 | Raw Data | Coming soon (filterable/sortable tables) |
@@ -151,7 +152,8 @@ src/
     │
     ├── trust/
 │   ├── TrustQuestionSelector.tsx # Nav-tab style toggle (Trust vs Performance Perception) that auto-selects first matching question per scale
-│   ├── TrustByCondition.tsx      # Mean trust/performance-perception rating by condition (label adapts to selected question scale)
+│   ├── TrustByCondition.tsx      # Mean trust/performance-perception rating by condition with graph-type selector (Dot+CI or Stacked Likert); condition colors retained; CI whiskers clipped to Likert bounds (1..5)
+│   ├── TrustBySession.tsx        # Mean trust/performance-perception rating by participant session number (Session 1, Session 2, ...) with graph-type selector (Dot+CI or Stacked Likert); shared persisted selector
 │   ├── TrustOverTime.tsx         # Trust/performance-perception over session index (title adapts to selected question scale)
 │   ├── TrustVsScore.tsx          # Trust/performance-perception vs avg score; click → per-game score bars; needs boards prop
 │   ├── TrustVsTime.tsx           # Trust/performance-perception vs avg game duration; click → per-game duration bars

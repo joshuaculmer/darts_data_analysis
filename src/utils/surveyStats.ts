@@ -57,10 +57,85 @@ export interface TrustConditionStats {
   color: string;
   count: number;
   mean: number;
+  median: number;
+  q1: number;
+  q3: number;
   stdDev: number;
   ci95: number;
   min: number;
   max: number;
+}
+
+export interface TrustSessionStats {
+  sessionIndex: number;
+  label: string;
+  count: number;
+  mean: number;
+  median: number;
+  q1: number;
+  q3: number;
+  stdDev: number;
+  ci95: number;
+  min: number;
+  max: number;
+}
+
+export interface LikertBreakdown {
+  count1: number;
+  count2: number;
+  count3: number;
+  count4: number;
+  count5: number;
+  pct1: number;
+  pct2: number;
+  pct3: number;
+  pct4: number;
+  pct5: number;
+}
+
+export interface TrustConditionLikertBreakdown extends LikertBreakdown {
+  aiType: AI_Type;
+  label: string;
+  color: string;
+  count: number;
+}
+
+export interface TrustSessionLikertBreakdown extends LikertBreakdown {
+  sessionIndex: number;
+  label: string;
+  count: number;
+}
+
+function countLikert(values: number[]): LikertBreakdown {
+  const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<1 | 2 | 3 | 4 | 5, number>;
+  values.forEach((value) => {
+    const rounded = Math.round(value) as 1 | 2 | 3 | 4 | 5;
+    if (rounded >= 1 && rounded <= 5) counts[rounded] += 1;
+  });
+  const total = values.length;
+  const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
+  return {
+    count1: counts[1],
+    count2: counts[2],
+    count3: counts[3],
+    count4: counts[4],
+    count5: counts[5],
+    pct1: pct(counts[1]),
+    pct2: pct(counts[2]),
+    pct3: pct(counts[3]),
+    pct4: pct(counts[4]),
+    pct5: pct(counts[5]),
+  };
+}
+
+function quantileSorted(sortedValues: number[], q: number): number {
+  if (sortedValues.length === 0) return 0;
+  const pos = (sortedValues.length - 1) * q;
+  const base = Math.floor(pos);
+  const rest = pos - base;
+  const next = sortedValues[base + 1];
+  if (next === undefined) return sortedValues[base];
+  return sortedValues[base] + rest * (next - sortedValues[base]);
 }
 
 export function computeTrustByCondition(
@@ -78,9 +153,26 @@ export function computeTrustByCondition(
   return (Object.values(AI_Type).filter((v) => typeof v === "number") as AI_Type[]).map((type) => {
     const values = grouped[type] ?? [];
     if (values.length === 0) {
-      return { aiType: type, label: AI_TYPE_LABELS[type], color: AI_TYPE_COLORS[type], count: 0, mean: 0, stdDev: 0, ci95: 0, min: 0, max: 0 };
+      return {
+        aiType: type,
+        label: AI_TYPE_LABELS[type],
+        color: AI_TYPE_COLORS[type],
+        count: 0,
+        mean: 0,
+        median: 0,
+        q1: 0,
+        q3: 0,
+        stdDev: 0,
+        ci95: 0,
+        min: 0,
+        max: 0,
+      };
     }
+    const sorted = [...values].sort((a, b) => a - b);
     const mean = values.reduce((s, v) => s + v, 0) / values.length;
+    const median = quantileSorted(sorted, 0.5);
+    const q1 = quantileSorted(sorted, 0.25);
+    const q3 = quantileSorted(sorted, 0.75);
     const variance = values.length > 1
       ? values.reduce((s, v) => s + (v - mean) ** 2, 0) / (values.length - 1)
       : 0;
@@ -92,12 +184,130 @@ export function computeTrustByCondition(
       color: AI_TYPE_COLORS[type],
       count: values.length,
       mean,
+      median,
+      q1,
+      q3,
       stdDev: sd,
       ci95,
       min: Math.min(...values),
       max: Math.max(...values),
     };
   });
+}
+
+export function computeTrustLikertByCondition(
+  joined: JoinedSessionSurvey[],
+  trustQuestionId: string,
+): TrustConditionLikertBreakdown[] {
+  const grouped = joined.reduce<Partial<Record<AI_Type, number[]>>>((acc, { session, survey }) => {
+    if (!survey) return acc;
+    const trust = getAnswerValue(survey.responses, trustQuestionId);
+    if (trust === null) return acc;
+    (acc[session.ai_advice] ??= []).push(trust);
+    return acc;
+  }, {});
+
+  return (Object.values(AI_Type).filter((v) => typeof v === "number") as AI_Type[]).map((type) => {
+    const values = grouped[type] ?? [];
+    return {
+      aiType: type,
+      label: AI_TYPE_LABELS[type],
+      color: AI_TYPE_COLORS[type],
+      count: values.length,
+      ...countLikert(values),
+    };
+  });
+}
+
+export function computeTrustBySession(
+  joined: JoinedSessionSurvey[],
+  trustQuestionId: string,
+): TrustSessionStats[] {
+  // Number sessions per participant by timestamp, then aggregate trust by session number.
+  const byUser = new Map<string, Array<{ created_at: string; trust: number }>>();
+  for (const { session, survey } of joined) {
+    if (!survey) continue;
+    const trust = getAnswerValue(survey.responses, trustQuestionId);
+    if (trust === null) continue;
+    const entries = byUser.get(session.user_uuid) ?? [];
+    entries.push({ created_at: session.created_at, trust });
+    byUser.set(session.user_uuid, entries);
+  }
+
+  const groupedBySession = new Map<number, number[]>();
+  for (const entries of byUser.values()) {
+    entries.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    entries.forEach(({ trust }, idx) => {
+      const sessionIndex = idx + 1;
+      const values = groupedBySession.get(sessionIndex) ?? [];
+      values.push(trust);
+      groupedBySession.set(sessionIndex, values);
+    });
+  }
+
+  return [...groupedBySession.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([sessionIndex, values]) => {
+      const sorted = [...values].sort((a, b) => a - b);
+      const mean = values.reduce((s, v) => s + v, 0) / values.length;
+      const median = quantileSorted(sorted, 0.5);
+      const q1 = quantileSorted(sorted, 0.25);
+      const q3 = quantileSorted(sorted, 0.75);
+      const variance = values.length > 1
+        ? values.reduce((s, v) => s + (v - mean) ** 2, 0) / (values.length - 1)
+        : 0;
+      const sd = Math.sqrt(variance);
+      const ci95 = values.length > 1 ? (1.96 * sd) / Math.sqrt(values.length) : 0;
+      return {
+        sessionIndex,
+        label: `Session ${sessionIndex}`,
+        count: values.length,
+        mean,
+        median,
+        q1,
+        q3,
+        stdDev: sd,
+        ci95,
+        min: Math.min(...values),
+        max: Math.max(...values),
+      };
+    });
+}
+
+export function computeTrustLikertBySession(
+  joined: JoinedSessionSurvey[],
+  trustQuestionId: string,
+): TrustSessionLikertBreakdown[] {
+  // Number sessions per participant by timestamp, then aggregate trust by session number.
+  const byUser = new Map<string, Array<{ created_at: string; trust: number }>>();
+  for (const { session, survey } of joined) {
+    if (!survey) continue;
+    const trust = getAnswerValue(survey.responses, trustQuestionId);
+    if (trust === null) continue;
+    const entries = byUser.get(session.user_uuid) ?? [];
+    entries.push({ created_at: session.created_at, trust });
+    byUser.set(session.user_uuid, entries);
+  }
+
+  const groupedBySession = new Map<number, number[]>();
+  for (const entries of byUser.values()) {
+    entries.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    entries.forEach(({ trust }, idx) => {
+      const sessionIndex = idx + 1;
+      const values = groupedBySession.get(sessionIndex) ?? [];
+      values.push(trust);
+      groupedBySession.set(sessionIndex, values);
+    });
+  }
+
+  return [...groupedBySession.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([sessionIndex, values]) => ({
+      sessionIndex,
+      label: `Session ${sessionIndex}`,
+      count: values.length,
+      ...countLikert(values),
+    }));
 }
 
 export interface TrustTimePoint {

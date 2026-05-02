@@ -8,12 +8,11 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Cell,
   ErrorBar,
   ComposedChart,
   Scatter,
 } from "recharts";
-import type { TrustConditionStats, TrustConditionLikertBreakdown } from "../../utils/surveyStats";
+import type { TrustSessionStats, TrustSessionLikertBreakdown } from "../../utils/surveyStats";
 import {
   LIKERT_TICKS,
   formatLikertValue,
@@ -24,8 +23,8 @@ import {
 import { ChartCard } from "../ChartCard";
 
 interface Props {
-  stats: TrustConditionStats[];
-  likertStats: TrustConditionLikertBreakdown[];
+  stats: TrustSessionStats[];
+  likertStats: TrustSessionLikertBreakdown[];
   likertScale: LikertScale;
   graphType?: GraphType;
   onGraphTypeChange?: (next: GraphType) => void;
@@ -50,7 +49,7 @@ const LIKERT_STACK_COLORS = {
   5: "#009E73",
 } as const;
 
-export function TrustByCondition({
+export function TrustBySession({
   stats,
   likertStats,
   likertScale,
@@ -61,32 +60,29 @@ export function TrustByCondition({
   const graphType = graphTypeProp ?? graphTypeState;
   const metricTitle = likertScale === "performance" ? "Performance Perception" : "Trust";
   const meanData = stats.map((s) => ({
-    condition: s.label,
+    session: s.label,
     mean: s.count > 0 ? s.mean : null,
     ci95: s.ci95,
     ci95Bounded:
       s.count > 0 && s.mean >= 1 && s.mean <= 5
         ? [Math.max(0, Math.min(s.ci95, s.mean - 1)), Math.max(0, Math.min(s.ci95, 5 - s.mean))]
         : [0, 0],
-    color: s.color,
     count: s.count,
   }));
   const medianData = stats.map((s) => ({
-    condition: s.label,
+    session: s.label,
     median: s.count > 0 ? s.median : null,
     iqr:
       s.count > 0 && s.median >= 1 && s.median <= 5
         ? [Math.max(0, Math.min(s.median - s.q1, s.median - 1)), Math.max(0, Math.min(s.q3 - s.median, 5 - s.median))]
         : [0, 0],
-    color: s.color,
     count: s.count,
     q1: s.q1,
     q3: s.q3,
   }));
   const distributionData = likertStats.map((s) => ({
-    condition: s.label,
+    session: s.label,
     count: s.count,
-    color: s.color,
     pct1: s.pct1,
     pct2: s.pct2,
     pct3: s.pct3,
@@ -105,7 +101,7 @@ export function TrustByCondition({
   );
 
   return (
-    <ChartCard title={`Mean ${metricTitle} Rating by AI Condition`}>
+    <ChartCard title={`Mean ${metricTitle} Rating by Session`}>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
         <label style={{ fontSize: 12, color: "#374151", display: "flex", alignItems: "center", gap: 6 }}>
           Graph Type
@@ -126,9 +122,9 @@ export function TrustByCondition({
       </div>
       <ResponsiveContainer width="100%" height={300}>
         {graphType === "dot_ci" ? (
-          <ComposedChart data={meanData} margin={{ top: 16, right: 24, left: 0, bottom: 8 }} aria-label={`Mean ${likertScale} Likert rating by AI condition`}>
+          <ComposedChart data={meanData} margin={{ top: 16, right: 24, left: 0, bottom: 8 }} aria-label={`Mean ${likertScale} Likert rating by session`}>
             <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
-            <XAxis dataKey="condition" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#374151" }} />
+            <XAxis dataKey="session" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#374151" }} />
             <YAxis
               axisLine={false}
               tickLine={false}
@@ -152,17 +148,14 @@ export function TrustByCondition({
                 ];
               }}
             />
-            <Scatter dataKey="mean" isAnimationActive={false}>
-              {meanData.map((entry, i) => (
-                <Cell key={i} fill={entry.color} fillOpacity={entry.count === 0 ? 0.25 : 1} stroke="#ffffff" strokeWidth={1} />
-              ))}
+            <Scatter dataKey="mean" isAnimationActive={false} fill="#0072B2" stroke="#ffffff" strokeWidth={1}>
               <ErrorBar dataKey="ci95Bounded" width={4} strokeWidth={1.5} stroke="#374151" />
             </Scatter>
           </ComposedChart>
         ) : graphType === "median_iqr" ? (
-          <ComposedChart data={medianData} margin={{ top: 16, right: 24, left: 0, bottom: 8 }} aria-label={`Median ${likertScale} Likert rating by AI condition`}>
+          <ComposedChart data={medianData} margin={{ top: 16, right: 24, left: 0, bottom: 8 }} aria-label={`Median ${likertScale} Likert rating by session`}>
             <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
-            <XAxis dataKey="condition" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#374151" }} />
+            <XAxis dataKey="session" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#374151" }} />
             <YAxis
               axisLine={false}
               tickLine={false}
@@ -187,24 +180,14 @@ export function TrustByCondition({
                 ];
               }}
             />
-            <Scatter dataKey="median" isAnimationActive={false}>
-              {medianData.map((entry, i) => (
-                <Cell key={i} fill={entry.color} fillOpacity={entry.count === 0 ? 0.25 : 1} stroke="#ffffff" strokeWidth={1} />
-              ))}
+            <Scatter dataKey="median" isAnimationActive={false} fill="#0072B2" stroke="#ffffff" strokeWidth={1}>
               <ErrorBar dataKey="iqr" width={4} strokeWidth={1.5} stroke="#374151" />
             </Scatter>
           </ComposedChart>
         ) : (
-          <BarChart data={distributionData} margin={{ top: 16, right: 24, left: 0, bottom: 8 }} aria-label={`${likertScale} response distribution by AI condition`}>
+          <BarChart data={distributionData} margin={{ top: 16, right: 24, left: 0, bottom: 8 }} aria-label={`${likertScale} response distribution by session`}>
             <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
-            <XAxis dataKey="condition" axisLine={false} tickLine={false} tick={({ x, y, payload }) => {
-              const row = distributionData.find((d) => d.condition === payload.value);
-              return (
-                <text x={Number(x)} y={Number(y) + 12} textAnchor="middle" fill={row?.color ?? "#374151"} fontSize={11}>
-                  {payload.value}
-                </text>
-              );
-            }} />
+            <XAxis dataKey="session" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#374151" }} />
             <YAxis axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: "#374151" }} />
             <Tooltip
               contentStyle={TOOLTIP_STYLE}
@@ -219,11 +202,7 @@ export function TrustByCondition({
               }}
             />
             {(LIKERT_TICKS as unknown as number[]).map((v) => (
-              <Bar key={v} dataKey={`pct${v}`} stackId="likert" isAnimationActive={false} fill={LIKERT_STACK_COLORS[v as 1 | 2 | 3 | 4 | 5]}>
-                {distributionData.map((entry, idx) => (
-                  <Cell key={idx} stroke={entry.color} strokeWidth={1} />
-                ))}
-              </Bar>
+              <Bar key={v} dataKey={`pct${v}`} stackId="likert" isAnimationActive={false} fill={LIKERT_STACK_COLORS[v as 1 | 2 | 3 | 4 | 5]} />
             ))}
           </BarChart>
         )}
@@ -232,8 +211,8 @@ export function TrustByCondition({
         {graphType === "dot_ci"
           ? "Error bars show 95% confidence interval and are clipped to the valid Likert range (1-5). Disclaimer: CI bars cannot extend beyond the Likert scale."
           : graphType === "median_iqr"
-            ? "Error bars show interquartile range (Q1 to Q3) around the median, clipped to the valid Likert range (1-5)."
-            : `Stacked bars show response distribution within each condition (100% scale). Segment outlines and labels use AI condition colors. Legend order: ${stackedLegend}.`}
+            ? "Error bars show interquartile range (Q1 to Q3) around the median, clipped to the valid Likert range (1-5). Session numbering is per participant (Session 1, Session 2, ...)."
+            : `Stacked bars show response distribution within each session number (100% scale). Legend order: ${stackedLegend}.`}
       </p>
     </ChartCard>
   );

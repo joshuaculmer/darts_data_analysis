@@ -6,6 +6,9 @@ import {
   getAnswerValue,
   joinSessionsWithSurvey,
   computeTrustByCondition,
+  computeTrustBySession,
+  computeTrustLikertByCondition,
+  computeTrustLikertBySession,
   computeTrustOverTime,
   computeTrustVsScorePoints,
   computeTrustVsTimePoints,
@@ -237,6 +240,9 @@ describe("computeTrustByCondition", () => {
     const correct = computeTrustByCondition(joined, "trust").find((s) => s.aiType === AI_Type.CORRECT)!;
     expect(correct.count).toBe(2);
     expect(correct.mean).toBeCloseTo(3);
+    expect(correct.median).toBeCloseTo(3);
+    expect(correct.q1).toBeCloseTo(2.5);
+    expect(correct.q3).toBeCloseTo(3.5);
   });
 
   it("excludes sessions with a null survey from the count", () => {
@@ -245,6 +251,143 @@ describe("computeTrustByCondition", () => {
     ];
     const bad = computeTrustByCondition(joined, "trust").find((s) => s.aiType === AI_Type.BAD)!;
     expect(bad.count).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeTrustLikertByCondition
+// ---------------------------------------------------------------------------
+describe("computeTrustLikertByCondition", () => {
+  it("returns 7 entries even with no joined sessions", () => {
+    expect(computeTrustLikertByCondition([], "trust")).toHaveLength(7);
+  });
+
+  it("computes per-condition Likert counts and percentages", () => {
+    const joined = [
+      {
+        session: makeSession({ ai_advice: AI_Type.CORRECT }),
+        survey: makeSurvey({ responses: [{ questionId: "trust", value: 4 }] }),
+      },
+      {
+        session: makeSession({ ai_advice: AI_Type.CORRECT }),
+        survey: makeSurvey({ responses: [{ questionId: "trust", value: 5 }] }),
+      },
+    ];
+    const row = computeTrustLikertByCondition(joined, "trust").find((r) => r.aiType === AI_Type.CORRECT)!;
+    expect(row.count).toBe(2);
+    expect(row.count4).toBe(1);
+    expect(row.count5).toBe(1);
+    expect(row.pct4).toBe(50);
+    expect(row.pct5).toBe(50);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeTrustBySession
+// ---------------------------------------------------------------------------
+describe("computeTrustBySession", () => {
+  it("returns an empty array when there are no joined sessions", () => {
+    expect(computeTrustBySession([], "trust")).toEqual([]);
+  });
+
+  it("aggregates mean trust by participant session index", () => {
+    const joined = [
+      {
+        session: makeSession({ user_uuid: "uuid-a", created_at: "2024-01-01T10:00:00Z" }),
+        survey: makeSurvey({ user_uuid: "uuid-a", responses: [{ questionId: "trust", value: 2 }] }),
+      },
+      {
+        session: makeSession({ user_uuid: "uuid-a", created_at: "2024-01-02T10:00:00Z" }),
+        survey: makeSurvey({ user_uuid: "uuid-a", responses: [{ questionId: "trust", value: 4 }] }),
+      },
+      {
+        session: makeSession({ user_uuid: "uuid-b", created_at: "2024-01-03T10:00:00Z" }),
+        survey: makeSurvey({ user_uuid: "uuid-b", responses: [{ questionId: "trust", value: 5 }] }),
+      },
+    ];
+
+    const result = computeTrustBySession(joined, "trust");
+    expect(result).toHaveLength(2);
+    expect(result[0].sessionIndex).toBe(1);
+    expect(result[0].count).toBe(2);
+    expect(result[0].mean).toBeCloseTo(3.5); // (2 + 5) / 2
+    expect(result[1].sessionIndex).toBe(2);
+    expect(result[1].count).toBe(1);
+    expect(result[1].mean).toBe(4);
+    expect(result[0].median).toBeCloseTo(3.5);
+    expect(result[1].median).toBe(4);
+  });
+
+  it("sorts each participant by created_at before assigning session index", () => {
+    const joined = [
+      {
+        session: makeSession({ user_uuid: "uuid-a", created_at: "2024-01-02T10:00:00Z" }),
+        survey: makeSurvey({ user_uuid: "uuid-a", responses: [{ questionId: "trust", value: 5 }] }),
+      },
+      {
+        session: makeSession({ user_uuid: "uuid-a", created_at: "2024-01-01T10:00:00Z" }),
+        survey: makeSurvey({ user_uuid: "uuid-a", responses: [{ questionId: "trust", value: 1 }] }),
+      },
+    ];
+    const result = computeTrustBySession(joined, "trust");
+    expect(result).toHaveLength(2);
+    expect(result[0].mean).toBe(1);
+    expect(result[1].mean).toBe(5);
+  });
+
+  it("handles numeric string trust values and skips missing/non-numeric values", () => {
+    const joined = [
+      {
+        session: makeSession({ user_uuid: "uuid-a", created_at: "2024-01-01T10:00:00Z" }),
+        survey: makeSurvey({ user_uuid: "uuid-a", responses: [{ questionId: "trust", value: "4" }] }),
+      },
+      {
+        session: makeSession({ user_uuid: "uuid-a", created_at: "2024-01-02T10:00:00Z" }),
+        survey: makeSurvey({ user_uuid: "uuid-a", responses: [{ questionId: "other", value: 3 }] }),
+      },
+      {
+        session: makeSession({ user_uuid: "uuid-b", created_at: "2024-01-01T10:00:00Z" }),
+        survey: null,
+      },
+    ];
+    const result = computeTrustBySession(joined, "trust");
+    expect(result).toHaveLength(1);
+    expect(result[0].count).toBe(1);
+    expect(result[0].mean).toBe(4);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeTrustLikertBySession
+// ---------------------------------------------------------------------------
+describe("computeTrustLikertBySession", () => {
+  it("returns an empty array when there are no joined sessions", () => {
+    expect(computeTrustLikertBySession([], "trust")).toEqual([]);
+  });
+
+  it("computes session-wise Likert counts based on per-user session index", () => {
+    const joined = [
+      {
+        session: makeSession({ user_uuid: "uuid-a", created_at: "2024-01-01T10:00:00Z" }),
+        survey: makeSurvey({ user_uuid: "uuid-a", responses: [{ questionId: "trust", value: 1 }] }),
+      },
+      {
+        session: makeSession({ user_uuid: "uuid-a", created_at: "2024-01-02T10:00:00Z" }),
+        survey: makeSurvey({ user_uuid: "uuid-a", responses: [{ questionId: "trust", value: 5 }] }),
+      },
+      {
+        session: makeSession({ user_uuid: "uuid-b", created_at: "2024-01-03T10:00:00Z" }),
+        survey: makeSurvey({ user_uuid: "uuid-b", responses: [{ questionId: "trust", value: 5 }] }),
+      },
+    ];
+    const result = computeTrustLikertBySession(joined, "trust");
+    expect(result).toHaveLength(2);
+    expect(result[0].count).toBe(2);
+    expect(result[0].count1).toBe(1);
+    expect(result[0].count5).toBe(1);
+    expect(result[1].count).toBe(1);
+    expect(result[1].count5).toBe(1);
+    expect(result[1].pct5).toBe(100);
   });
 });
 

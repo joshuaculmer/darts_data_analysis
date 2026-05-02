@@ -16,6 +16,9 @@ import { getCompleteUserIds } from "./utils/stats";
 import {
   joinSessionsWithSurvey,
   computeTrustByCondition,
+  computeTrustLikertByCondition,
+  computeTrustBySession,
+  computeTrustLikertBySession,
   computeTrustOverTime,
   computeTrustVsScorePoints,
   computeTrustVsTimePoints,
@@ -29,6 +32,7 @@ import { ScoreVsSkillScatter } from "./components/performance/ScoreVsSkillScatte
 import { ScoreByCondition } from "./components/performance/ScoreByCondition";
 import { TrustQuestionSelector } from "./components/trust/TrustQuestionSelector";
 import { TrustByCondition } from "./components/trust/TrustByCondition";
+import { TrustBySession } from "./components/trust/TrustBySession";
 import { TrustOverTime } from "./components/trust/TrustOverTime";
 import { TrustVsScore } from "./components/trust/TrustVsScore";
 import { TrustVsTime } from "./components/trust/TrustVsTime";
@@ -57,6 +61,8 @@ const NAV_ITEMS: { id: NavSection; label: string }[] = [
   { id: "raw", label: "Raw Data" },
 ];
 
+type TrustSummaryGraphType = "dot_ci" | "median_iqr" | "stacked_likert";
+
 function App() {
   const [sessions, setSessions] = useState<ParsedGameSession[]>([]);
   const [surveyResponses, setSurveyResponses] = useState<
@@ -77,6 +83,11 @@ function App() {
   const [passwordInput, setPasswordInput] = useState("");
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [trustSummaryGraphType, setTrustSummaryGraphType] = useState<TrustSummaryGraphType>(() => {
+    const saved = localStorage.getItem("darts:trust_summary_graph_type");
+    if (saved === "median_iqr") return "median_iqr";
+    return saved === "stacked_likert" ? "stacked_likert" : "dot_ci";
+  });
 
   // Restore persisted data on mount — JSON (fetched) takes priority over CSV (uploaded)
   useEffect(() => {
@@ -249,9 +260,26 @@ function App() {
         : [],
     [joinedData, trustQuestionId],
   );
+  const trustLikertByCondition = useMemo(
+    () =>
+      trustQuestionId
+        ? computeTrustLikertByCondition(joinedData, trustQuestionId)
+        : [],
+    [joinedData, trustQuestionId],
+  );
   const trustOverTime = useMemo(
     () =>
       trustQuestionId ? computeTrustOverTime(joinedData, trustQuestionId) : [],
+    [joinedData, trustQuestionId],
+  );
+  const trustBySession = useMemo(
+    () =>
+      trustQuestionId ? computeTrustBySession(joinedData, trustQuestionId) : [],
+    [joinedData, trustQuestionId],
+  );
+  const trustLikertBySession = useMemo(
+    () =>
+      trustQuestionId ? computeTrustLikertBySession(joinedData, trustQuestionId) : [],
     [joinedData, trustQuestionId],
   );
   const trustVsScorePoints = useMemo(
@@ -304,6 +332,10 @@ function App() {
 
   const surveyLoaded = surveyResponses.length > 0;
   const anyDataLoaded = sessionsLoaded || surveyLoaded;
+
+  useEffect(() => {
+    localStorage.setItem("darts:trust_summary_graph_type", trustSummaryGraphType);
+  }, [trustSummaryGraphType]);
 
   const passwordModal = showPasswordModal && (
     <div className="modal-overlay">
@@ -527,7 +559,20 @@ function App() {
             )}
             {trustQuestionId ? (
               <>
-                <TrustByCondition stats={trustByCondition} likertScale={selectedLikertScale} />
+                <TrustByCondition
+                  stats={trustByCondition}
+                  likertStats={trustLikertByCondition}
+                  likertScale={selectedLikertScale}
+                  graphType={trustSummaryGraphType}
+                  onGraphTypeChange={setTrustSummaryGraphType}
+                />
+                <TrustBySession
+                  stats={trustBySession}
+                  likertStats={trustLikertBySession}
+                  likertScale={selectedLikertScale}
+                  graphType={trustSummaryGraphType}
+                  onGraphTypeChange={setTrustSummaryGraphType}
+                />
                 <div className="chart-row">
                   <TrustOverTime points={trustOverTime} likertScale={selectedLikertScale} />
                   <TrustVsScore points={trustVsScorePoints} boards={boards} likertScale={selectedLikertScale} />

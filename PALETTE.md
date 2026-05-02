@@ -107,6 +107,22 @@ These replace any previously assigned `color` values on `AI_Type` conditions. Th
 
 ---
 
+## Likert Distribution Stack Colors
+
+For 100% stacked Likert bars (1→5), use a fixed low→high progression:
+
+| Likert bucket | Hex |
+|---|---|
+| 1 (lowest agreement/perception) | `#D55E00` |
+| 2 | `#E69F00` |
+| 3 (neutral) | `#9ca3af` |
+| 4 | `#56B4E9` |
+| 5 (highest agreement/perception) | `#009E73` |
+
+These colors are used for response level segments, while AI condition identity remains encoded by condition labels/outlines where applicable.
+
+---
+
 ## What NOT to do
 
 - No dark backgrounds anywhere (`#0f172a`, `#1e293b`, `#334155`, etc.)
