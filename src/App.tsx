@@ -185,11 +185,18 @@ function App() {
     [passwordInput, doFetch],
   );
 
-  // Auto-select the first available trust question whenever survey data loads
+  // Auto-select a default trust/performance metric question whenever survey data loads.
+  // Prefer trust if available, otherwise fall back to the first available question ID.
   useEffect(() => {
     if (surveyResponses.length === 0) return;
-    const firstId = surveyResponses[0]?.responses[0]?.questionId ?? null;
-    if (firstId) setTrustQuestionId(firstId);
+    const questionIds = Array.from(
+      new Set(surveyResponses.flatMap((s) => s.responses.map((r) => r.questionId))),
+    );
+    const firstTrustId = questionIds.find(
+      (id) => inferLikertScaleFromQuestionId(id) === "trust",
+    );
+    const fallbackId = questionIds[0] ?? null;
+    setTrustQuestionId(firstTrustId ?? fallbackId);
   }, [surveyResponses]);
 
   // Load board surfaces once both CSVs are ready
@@ -530,7 +537,7 @@ function App() {
               </>
             ) : (
               <p className="section-note">
-                Select a trust question above to load the charts.
+                Select Trust or Performance Perception above to load the charts.
               </p>
             )}
           </section>

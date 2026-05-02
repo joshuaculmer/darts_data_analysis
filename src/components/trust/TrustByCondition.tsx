@@ -29,6 +29,7 @@ const TOOLTIP_STYLE = {
 };
 
 export function TrustByCondition({ stats, likertScale }: Props) {
+  const metricTitle = likertScale === "performance" ? "Performance Perception" : "Trust";
   const data = stats.map((s) => ({
     condition: s.label,
     mean: s.count > 0 ? s.mean : null,
@@ -38,7 +39,7 @@ export function TrustByCondition({ stats, likertScale }: Props) {
   }));
 
   return (
-    <ChartCard title="Mean Trust Rating by AI Condition">
+    <ChartCard title={`Mean ${metricTitle} Rating by AI Condition`}>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={data} margin={{ top: 16, right: 24, left: 0, bottom: 8 }} aria-label={`Mean ${likertScale} Likert rating by AI condition`}>
           <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
@@ -56,9 +57,12 @@ export function TrustByCondition({ stats, likertScale }: Props) {
             labelStyle={{ color: "#111827", fontWeight: 600 }}
             itemStyle={{ color: "#374151" }}
             formatter={(value, _name, item) => {
-              if (typeof value !== "number") return ["N/A", "Mean Trust"];
+              if (typeof value !== "number") return ["N/A", `Mean ${metricTitle}`];
               const count = (item.payload as typeof data[0] | undefined)?.count ?? 0;
-              return [`${formatLikertValue(value, likertScale)} (${value.toFixed(2)}, n=${count})`, "Mean Trust"];
+              return [
+                `${formatLikertValue(value, likertScale)} (${value.toFixed(2)}, n=${count})`,
+                `Mean ${metricTitle}`,
+              ];
             }}
           />
           <Bar dataKey="mean" radius={[0, 0, 0, 0]} isAnimationActive={false}>
@@ -70,7 +74,7 @@ export function TrustByCondition({ stats, likertScale }: Props) {
         </BarChart>
       </ResponsiveContainer>
       <p style={{ fontSize: 11, color: "#6b7280", marginTop: -4 }}>
-        Error bars show 95% confidence interval. Only sessions with a numeric trust response are included.
+        Error bars show 95% confidence interval. Only sessions with a numeric response are included.
       </p>
     </ChartCard>
   );

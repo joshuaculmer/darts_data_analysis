@@ -67,6 +67,7 @@ function CustomTooltip({
   }
 
   if (points.length === 0) return null;
+  const metricTitle = likertScale === "performance" ? "Performance Perception" : "Trust";
 
   return (
     <div style={TOOLTIP_STYLE}>
@@ -74,7 +75,7 @@ function CustomTooltip({
         <div key={i} style={{ marginBottom: i < points.length - 1 ? 6 : 0 }}>
           <div style={{ fontWeight: 600, color: "#111827" }}>Session {d.sessionIndex}</div>
           <div style={{ color: d.color, marginTop: 2 }}>{d.label}</div>
-          <div style={{ color: "#374151", marginTop: 1 }}>Trust: {formatLikertValue(d.trust, likertScale)}</div>
+          <div style={{ color: "#374151", marginTop: 1 }}>{metricTitle}: {formatLikertValue(d.trust, likertScale)}</div>
         </div>
       ))}
     </div>
@@ -82,6 +83,9 @@ function CustomTooltip({
 }
 
 export function TrustOverTime({ points, title = "Trust Over Time", likertScale }: Props) {
+  const resolvedTitle = title === "Trust Over Time" && likertScale === "performance"
+    ? "Performance Perception Over Time"
+    : title;
   const [selectedUuid, setSelectedUuid] = useState<string | null>(null);
   // Prevents the chart background click from immediately deselecting after a line click
   const lineClickedRef = useRef(false);
@@ -101,8 +105,8 @@ export function TrustOverTime({ points, title = "Trust Over Time", likertScale }
 
   if (points.length === 0) {
     return (
-      <ChartCard title={title}>
-        <p style={{ color: "#6b7280", fontSize: 13 }}>No trust responses found for the selected question.</p>
+      <ChartCard title={resolvedTitle}>
+        <p style={{ color: "#6b7280", fontSize: 13 }}>No numeric responses found for the selected question.</p>
       </ChartCard>
     );
   }
@@ -113,7 +117,7 @@ export function TrustOverTime({ points, title = "Trust Over Time", likertScale }
   };
 
   return (
-    <ChartCard title={title}>
+    <ChartCard title={resolvedTitle}>
       <ResponsiveContainer width="100%" height={300}>
         <ComposedChart
           margin={{ top: 16, right: 24, left: 0, bottom: 24 }}

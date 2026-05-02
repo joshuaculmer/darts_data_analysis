@@ -71,10 +71,11 @@ function GameDurationBreakdown({
 
 export function TrustVsTime({ points, likertScale }: Props) {
   const [selected, setSelected] = useState<ParsedGameSession | null>(null);
+  const metricTitle = likertScale === "performance" ? "Performance Perception" : "Trust";
 
   if (points.length === 0) {
     return (
-      <ChartCard title="Trust → Time per Game">
+      <ChartCard title={`${metricTitle} vs Time per Game`}>
         <p style={{ color: "#6b7280", fontSize: 13 }}>No matched session/survey pairs found.</p>
       </ChartCard>
     );
@@ -82,7 +83,7 @@ export function TrustVsTime({ points, likertScale }: Props) {
 
   return (
     <>
-      <ChartCard title="Trust → Time per Game">
+      <ChartCard title={`${metricTitle} vs Time per Game`}>
         <ResponsiveContainer width="100%" height={300}>
           <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }} aria-label={`${likertScale} Likert rating versus time per game`}>
             <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />

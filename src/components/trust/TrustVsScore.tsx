@@ -77,10 +77,12 @@ function GameScoreBreakdown({
 
 export function TrustVsScore({ points, boards, likertScale }: Props) {
   const [selected, setSelected] = useState<ParsedGameSession | null>(null);
+  const metricTitle = likertScale === "performance" ? "Performance Perception" : "Trust";
+  const metricAxisLabel = likertScale === "performance" ? "Performance Perception Rating" : "Trust Rating";
 
   if (points.length === 0) {
     return (
-      <ChartCard title="Trust → Score">
+      <ChartCard title={`${metricTitle} vs Score`}>
         <p style={{ color: "#6b7280", fontSize: 13 }}>No matched session/survey pairs found.</p>
       </ChartCard>
     );
@@ -88,13 +90,13 @@ export function TrustVsScore({ points, boards, likertScale }: Props) {
 
   return (
     <>
-      <ChartCard title="Trust → Score">
+      <ChartCard title={`${metricTitle} vs Score`}>
         <ResponsiveContainer width="100%" height={300}>
           <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }} aria-label={`${likertScale} Likert rating versus score`}>
             <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
             <XAxis
               dataKey="trust"
-              name="Trust Rating"
+              name={metricAxisLabel}
               type="number"
               domain={[1, 5]}
               ticks={LIKERT_TICKS as unknown as number[]}
@@ -102,7 +104,7 @@ export function TrustVsScore({ points, boards, likertScale }: Props) {
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 11, fill: "#374151" }}
-              label={{ value: "Trust Rating", position: "insideBottom", offset: -12, fontSize: 11, fill: "#374151" }}
+              label={{ value: metricAxisLabel, position: "insideBottom", offset: -12, fontSize: 11, fill: "#374151" }}
             />
             <YAxis
               dataKey="score"
@@ -119,7 +121,7 @@ export function TrustVsScore({ points, boards, likertScale }: Props) {
               labelStyle={{ color: "#111827", fontWeight: 600 }}
               itemStyle={{ color: "#374151" }}
               formatter={(value, name) => {
-                if (name === "trust" && typeof value === "number") return [formatLikertValue(value, likertScale), "Trust Rating"];
+                if (name === "trust" && typeof value === "number") return [formatLikertValue(value, likertScale), metricAxisLabel];
                 return [typeof value === "number" ? value.toFixed(1) : value, name];
               }}
             />

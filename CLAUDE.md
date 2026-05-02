@@ -83,7 +83,7 @@ Top navbar with six sections. See `PLANNING.md` for the full chart roadmap per s
 |---|---|
 | Sanity Checks | KpiCards, SessionCalendar, ConditionDistribution |
 | Game Performance | ScoreByCondition (mean ± CI95 per condition), ScoreVsSkillScatter (click → Session View), TrustVsScore (click → game scores), ProximityVsScore (click → game proximity/score) |
-| Trust & Influence | TrustQuestionSelector, TrustByCondition, TrustOverTime, TrustVsScore, TrustVsTime, TrustVsProximity |
+| Trust & Influence | TrustQuestionSelector (nav-tab style toggle between Trust and Performance Perception; no question-ID dropdown), TrustByCondition, TrustOverTime, TrustVsScore, TrustVsTime, TrustVsProximity (titles auto-switch between Trust and Performance Perception based on selected question scale) |
 | Individual View | IndividualView (participant dropdown + wholistic score/trust/performance graph + breakdown) |
 | Session View | SessionView — participant + session dropdowns; session metadata table + per-game table with expandable hit rows |
 | Raw Data | Coming soon (filterable/sortable tables) |
@@ -150,12 +150,12 @@ src/
     │   └── ProximityVsScore.tsx      # Proximity vs score scatter; click → per-game scatter breakdown
     │
     ├── trust/
-    │   ├── TrustQuestionSelector.tsx
-    │   ├── TrustByCondition.tsx
-    │   ├── TrustOverTime.tsx
-    │   ├── TrustVsScore.tsx          # Trust vs avg score; click → per-game score bars; needs boards prop
-    │   ├── TrustVsTime.tsx           # Trust vs avg game duration; click → per-game duration bars
-    │   └── TrustVsProximity.tsx      # Trust vs avg proximity to AI suggestion; null sessions listed separately; click → per-game proximity bars
+│   ├── TrustQuestionSelector.tsx # Nav-tab style toggle (Trust vs Performance Perception) that auto-selects first matching question per scale
+│   ├── TrustByCondition.tsx      # Mean trust/performance-perception rating by condition (label adapts to selected question scale)
+│   ├── TrustOverTime.tsx         # Trust/performance-perception over session index (title adapts to selected question scale)
+│   ├── TrustVsScore.tsx          # Trust/performance-perception vs avg score; click → per-game score bars; needs boards prop
+│   ├── TrustVsTime.tsx           # Trust/performance-perception vs avg game duration; click → per-game duration bars
+│   └── TrustVsProximity.tsx      # Trust/performance-perception vs avg proximity to AI suggestion; null sessions listed separately; click → per-game proximity bars
     │
     ├── individual/
     │   ├── IndividualView.tsx       # Parent: participant selector, wires all sub-components

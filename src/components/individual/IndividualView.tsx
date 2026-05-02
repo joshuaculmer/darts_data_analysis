@@ -10,7 +10,6 @@ import {
 } from "../../utils/individualStats";
 import { ParticipantKpiCards } from "./ParticipantKpiCards";
 import { IndividualTimeline } from "./IndividualTimeline";
-import { ConditionExposure } from "./ConditionExposure";
 import { GameBreakdown } from "./GameBreakdown";
 import { SurveyResponseTable } from "./SurveyResponseTable";
 import { TrustOverTime } from "../trust/TrustOverTime";

@@ -84,10 +84,11 @@ function GameProximityBreakdown({
 
 export function TrustVsProximity({ points, likertScale }: Props) {
   const [selected, setSelected] = useState<ParsedGameSession | null>(null);
+  const metricTitle = likertScale === "performance" ? "Performance Perception" : "Trust";
 
   if (points.length === 0) {
     return (
-      <ChartCard title="Trust → Proximity to Advice">
+      <ChartCard title={`${metricTitle} vs Proximity to Advice`}>
         <p style={{ color: "#6b7280", fontSize: 13 }}>No matched session/survey pairs found.</p>
       </ChartCard>
     );
@@ -98,7 +99,7 @@ export function TrustVsProximity({ points, likertScale }: Props) {
 
   return (
     <>
-      <ChartCard title="Trust → Proximity to Advice">
+      <ChartCard title={`${metricTitle} vs Proximity to Advice`}>
         <ResponsiveContainer width="100%" height={300}>
           <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }} aria-label={`${likertScale} Likert rating versus proximity to advice`}>
             <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
