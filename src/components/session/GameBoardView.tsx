@@ -13,9 +13,10 @@ const SIZE = 512;
 interface Props {
   game: DartGameDTO;
   surface: RewardSurface;
+  optimalAiming?: { x: number; y: number } | null;
 }
 
-export function GameBoardView({ game, surface }: Props) {
+export function GameBoardView({ game, surface, optimalAiming }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const score = gameScore(game, surface);
 
@@ -58,6 +59,24 @@ export function GameBoardView({ game, surface }: Props) {
       ctx.stroke();
     }
 
+    // Optimal aiming coord from precomputed JSON — blue X with white outline
+    if (optimalAiming) {
+      const { x, y } = optimalAiming;
+      const d = 9;
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "rgba(255,255,255,0.85)";
+      ctx.beginPath();
+      ctx.moveTo(x - d, y - d); ctx.lineTo(x + d, y + d);
+      ctx.moveTo(x + d, y - d); ctx.lineTo(x - d, y + d);
+      ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#1d4ed8";
+      ctx.beginPath();
+      ctx.moveTo(x - d, y - d); ctx.lineTo(x + d, y + d);
+      ctx.moveTo(x + d, y - d); ctx.lineTo(x - d, y + d);
+      ctx.stroke();
+    }
+
     // Actual aiming coord — white fill with red outline (drawn second, under hits)
     {
       const { x, y } = game.actual_aiming_coord;
@@ -84,7 +103,7 @@ export function GameBoardView({ game, surface }: Props) {
       ctx.lineWidth = 1;
       ctx.stroke();
     }
-  }, [game, surface]);
+  }, [game, surface, optimalAiming]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -93,6 +112,9 @@ export function GameBoardView({ game, surface }: Props) {
         {game.suggested_aiming_coord
           ? <span style={{ color: "#ef4444", opacity: 0.6 }}>⊕ Suggested aim</span>
           : <span style={{ color: "#6b7280" }}>No suggestion (NONE condition)</span>}
+        {optimalAiming
+          ? <span style={{ color: "#1d4ed8" }}>✕ Optimal</span>
+          : null}
         <span style={{ color: "#6b7280" }}>● Hits</span>
         <span style={{ color: "#6b7280" }}>
           Score: <strong style={{ color: "#111827" }}>{score.toFixed(2)}</strong>

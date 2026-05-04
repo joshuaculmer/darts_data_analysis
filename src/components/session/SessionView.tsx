@@ -6,6 +6,7 @@ import { chronologicalParticipantSessionEntries } from "../../utils/individualSt
 import { computeSessionScore } from "../../utils/scoreStats";
 import { AI_TYPE_LABELS, AI_TYPE_COLORS } from "../../utils/stats";
 import { GameBoardView } from "./GameBoardView";
+import { getOptimalAimingCoord } from "../../utils/aimingLookup";
 
 interface Props {
   sessions: ParsedGameSession[];
@@ -76,6 +77,9 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
   const game = activeSession?.games[selectedGame] ?? null;
   const surface = game ? (boards.get(game.board_id) ?? null) : null;
   const maxGameScore = sessionScore ? Math.max(...sessionScore.gameScores, 1) : 1;
+  const optimalAiming = game && activeSession
+    ? getOptimalAimingCoord(game.board_id, activeSession.execution_skill)
+    : null;
 
   return (
     <div style={{
@@ -268,7 +272,7 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
                     Board {game.board_id} — Seed {getBoardSeed(game) ?? "—"}
                   </p>
                   {surface ? (
-                    <GameBoardView game={game} surface={surface} />
+                    <GameBoardView game={game} surface={surface} optimalAiming={optimalAiming} />
                   ) : (
                     <p style={{ color: "#6b7280", fontSize: 13 }}>Board surface not loaded.</p>
                   )}

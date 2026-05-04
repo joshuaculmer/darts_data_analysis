@@ -12,7 +12,7 @@ A Vite/React/TypeScript single-page app for analyzing a 7-condition darts experi
 The app has three sequential gates before showing the dashboard:
 
 1. **Upload screen** — user must provide both CSV files (game sessions + survey responses)
-2. **Board loading screen** — app auto-fetches the Perlin noise board surfaces referenced in the session data
+2. **Board loading screen** — app auto-fetches the board surfaces (Perlin or Gaussian) referenced in the session data
 3. **Dashboard** — all data available, all charts active
 
 Both CSVs are persisted in `localStorage` (`darts:sessions_csv`, `darts:survey_csv`) so the dashboard reloads automatically on page refresh without re-uploading. A red **Clear Data** button in the top-right of the header removes both keys and resets all app state to the upload screen.
@@ -32,12 +32,18 @@ Both must be loaded before the dashboard is accessible. Neither is bundled.
 
 Loaders: `src/loaders/loadData.ts` — `loadGameSessions()`, `loadSurveyResponses()`.
 
-### Perlin Noise Board Surfaces (auto-fetched)
-- 100 boards (0–99), each a 512×512 `number[][]`
-- Stored in `public/Perlin_Noise_Surfaces.ts/` as `PerlinNoiseBoard0.json` through `PerlinNoiseBoard99.json` — **no zero-padding** in filenames
-- Fetched at runtime from `/Perlin_Noise_Surfaces.ts/PerlinNoiseBoard{id}.json` (Vite serves `public/` at root; in dev this is localhost, in production it's the deployed host — both correct)
-- Only boards referenced in the uploaded session data are fetched
+### Board Surfaces (auto-fetched)
+The experiment uses two surface families in a **unified ID space** — the `board_id` in session data alone determines which family to fetch; there is no separate `surface_type` field.
+
+| ID range | Family | Files | URL pattern |
+|---|---|---|---|
+| 0–99 | Perlin | `public/Perlin_Noise_Surfaces.ts/PerlinNoiseBoard{id}.json` | `/Perlin_Noise_Surfaces.ts/PerlinNoiseBoard{id}.json` |
+| 100–199 | Gaussian | `public/Gaussian_Sum/GaussianSumBoard{id-100}.json` | `/Gaussian_Sum/GaussianSumBoard{id-100}.json` |
+
+Each board is a 512×512 `number[][]`. Filenames have **no zero-padding**. Only boards referenced in the uploaded session data are fetched. Vite serves `public/` at root so the paths work identically in dev and production.
+
 - Loader: `src/loaders/loadBoards.ts` — `loadBoards(sessions)` returns `Map<number, RewardSurface>`
+- `boardUrl(id)` in that file handles the family routing; update it if the ID ranges or directory names change.
 
 ### Supabase Direct Fetch (alternative to CSV upload)
 The header has a **Fetch Data** button that pulls both tables directly from Supabase instead of requiring manual CSV exports. This goes through a Supabase Edge Function rather than the public REST API.
@@ -58,7 +64,7 @@ The header has a **Fetch Data** button that pulls both tables directly from Supa
 **To redeploy:** see `SUPABASE_PRIVATE.md` (gitignored). The only GitHub Actions secret needed is `VITE_SUPABASE_URL`.
 
 ## Score Computation
-Scores are computed from the Perlin noise surfaces, not from any field in the CSV.
+Scores are computed from the board surfaces (Perlin or Gaussian depending on `board_id`), not from any field in the CSV.
 
 ```
 gameScore   = sum of surface[floor(hit.x)][floor(hit.y)] for each hit in game.hits
@@ -110,6 +116,12 @@ src/
 │   ├── loadBoards.ts                # loadBoards(sessions) → Map<number, RewardSurface>
 │   └── loadBoards.test.ts
 │
+├── data/
+│   ├── Perlin_Aiming.json           # Optimal aiming coords for Perlin boards (IDs 0–99);
+│   │                                #   shape: [boardId][skillRowIdx][x, y] where skillRowIdx = (skill−5)/5
+│   └── Gaussian_Aiming.json         # Optimal aiming coords for Gaussian boards (IDs 100–199);
+│                                    #   inner index = boardId − 100; same shape as Perlin
+│
 ├── utils/
 │   ├── stats.ts                     # computeKpis, groupSessionsByDate, groupParticipantsByDate,
 │   │                                #   countByCondition, computeConditionStats, MIN_SESSIONS_REQUIRED
@@ -137,7 +149,10 @@ src/
 │   │                                #   (score + trust + performance per session),
 │   │                                #   computeIndividualKpis, computeGameBreakdown,
 │   │                                #   chronologicalParticipantSessionEntries (Session View order + navigate)
-│   └── individualStats.test.ts
+│   ├── individualStats.test.ts
+│   └── aimingLookup.ts              # getOptimalAimingCoord(boardId, executionSkill) → canvas {x,y} | null
+│                                    #   routes to Perlin (0–99) or Gaussian (100–199) JSON;
+│                                    #   JSON [a,b] → canvas x=b, y=a (matches AI_Correct toCoord convention)
 │
 └── components/
     ├── sanity/
@@ -180,7 +195,8 @@ src/
         └── SurveyTable.tsx          # Sortable/filterable survey table; dynamic question columns; CSV export
 
 public/
-├── Perlin_Noise_Surfaces.ts/        # 100 board JSON files (PerlinNoiseBoard0.json … PerlinNoiseBoard99.json)
+├── Perlin_Noise_Surfaces.ts/        # 100 board JSON files (PerlinNoiseBoard0.json … PerlinNoiseBoard99.json); board_id 0–99
+├── Gaussian_Sum/                    # 100 board JSON files (GaussianSumBoard0.json … GaussianSumBoard99.json); board_id 100–199 → file index = id−100
 ├── favicon.svg
 └── icons.svg
 ```
