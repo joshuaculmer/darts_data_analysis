@@ -359,6 +359,7 @@ export interface TrustScorePoint {
   label: string;
   color: string;
   session: ParsedGameSession;
+  sessionIndex: number;
 }
 
 export function computeTrustVsScorePoints(
@@ -366,7 +367,7 @@ export function computeTrustVsScorePoints(
   trustQuestionId: string,
   boards: Map<number, RewardSurface>,
 ): TrustScorePoint[] {
-  return joined.flatMap(({ session, survey }) => {
+  return joined.flatMap(({ session, survey }, idx) => {
     if (!survey) return [];
     const trust = getAnswerValue(survey.responses, trustQuestionId);
     if (trust === null) return [];
@@ -377,6 +378,7 @@ export function computeTrustVsScorePoints(
       label: AI_TYPE_LABELS[session.ai_advice],
       color: AI_TYPE_COLORS[session.ai_advice],
       session,
+      sessionIndex: idx,
     }];
   });
 }

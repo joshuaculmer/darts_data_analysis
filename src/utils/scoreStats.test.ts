@@ -7,7 +7,11 @@ import {
   computeSessionScore,
   computeScoreByCondition,
   computeScoreVsSkillPoints,
+  computeGameOptimalProximity,
+  computeOptimalProximityVsScorePoints,
+  computeProximityVsScorePoints,
 } from "./scoreStats";
+import { getOptimalAimingCoord } from "./aimingLookup";
 
 function makeGame(boardId: number, hits: { x: number; y: number }[] = []): DartGameDTO {
   return {
@@ -186,5 +190,117 @@ describe("computeScoreVsSkillPoints", () => {
     expect(point.aiType).toBe(AI_Type.GOOD_BAD);
     expect(point.label).toBe("Good→Bad");
     expect(point.color).toBe("#009E73");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeGameOptimalProximity
+// ---------------------------------------------------------------------------
+describe("computeGameOptimalProximity", () => {
+  // board_id 0, execution_skill 5 is a valid Perlin lookup
+  const VALID_BOARD = 0;
+  const VALID_SKILL = 5;
+
+  it("returns null when the board/skill lookup fails (invalid boardId)", () => {
+    const game = makeGame(999, []); // boardId 999 has no entry
+    game.actual_aiming_coord = { x: 256, y: 256 };
+    expect(computeGameOptimalProximity(game, VALID_SKILL)).toBeNull();
+  });
+
+  it("returns null when executionSkill is not a valid multiple of 5", () => {
+    const game = makeGame(VALID_BOARD, []);
+    game.actual_aiming_coord = { x: 256, y: 256 };
+    expect(computeGameOptimalProximity(game, 52)).toBeNull();
+  });
+
+  it("returns 0 when actual_aiming_coord equals the optimal coord", () => {
+    const optimal = getOptimalAimingCoord(VALID_BOARD, VALID_SKILL)!;
+    const game = makeGame(VALID_BOARD, []);
+    game.actual_aiming_coord = { x: optimal.x, y: optimal.y };
+    expect(computeGameOptimalProximity(game, VALID_SKILL)).toBeCloseTo(0);
+  });
+
+  it("returns the correct Euclidean distance from actual aim to optimal", () => {
+    const optimal = getOptimalAimingCoord(VALID_BOARD, VALID_SKILL)!;
+    // Offset by 3 in x and 4 in y → distance should be 5 (3-4-5 right triangle)
+    const game = makeGame(VALID_BOARD, []);
+    game.actual_aiming_coord = { x: optimal.x + 3, y: optimal.y + 4 };
+    expect(computeGameOptimalProximity(game, VALID_SKILL)).toBeCloseTo(5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeOptimalProximityVsScorePoints
+// ---------------------------------------------------------------------------
+describe("computeOptimalProximityVsScorePoints", () => {
+  it("returns an empty array for no sessions", () => {
+    expect(computeOptimalProximityVsScorePoints([], new Map())).toEqual([]);
+  });
+
+  it("returns one point per session", () => {
+    const sessions = [makeSession({}), makeSession({ user_uuid: "uuid-b" })];
+    expect(computeOptimalProximityVsScorePoints(sessions, new Map())).toHaveLength(2);
+  });
+
+  it("sessionIndex matches the session's position in the input array", () => {
+    const sessions = [
+      makeSession({ user_uuid: "uuid-a" }),
+      makeSession({ user_uuid: "uuid-b" }),
+      makeSession({ user_uuid: "uuid-c" }),
+    ];
+    const points = computeOptimalProximityVsScorePoints(sessions, new Map());
+    expect(points[0].sessionIndex).toBe(0);
+    expect(points[1].sessionIndex).toBe(1);
+    expect(points[2].sessionIndex).toBe(2);
+  });
+
+  it("avgProximity is null when boardId has no lookup entry", () => {
+    // board_id 999 has no entry in either aiming table
+    const session = makeSession({
+      execution_skill: 50,
+      games: [makeGame(999, [])],
+    });
+    const [point] = computeOptimalProximityVsScorePoints([session], new Map());
+    expect(point.avgProximity).toBeNull();
+  });
+
+  it("avgProximity is the mean of per-game optimal distances", () => {
+    // Using a valid board so the lookup succeeds; distance depends on actual_aiming_coord
+    const optimal = getOptimalAimingCoord(0, 50)!;
+
+    const game1 = makeGame(0, []);
+    game1.actual_aiming_coord = { x: optimal.x + 3, y: optimal.y + 4 }; // dist = 5
+
+    const game2 = makeGame(0, []);
+    game2.actual_aiming_coord = { x: optimal.x, y: optimal.y + 10 }; // dist = 10
+
+    const session = makeSession({ execution_skill: 50, games: [game1, game2] });
+    const [point] = computeOptimalProximityVsScorePoints([session], new Map());
+    expect(point.avgProximity).toBeCloseTo(7.5);
+  });
+
+  it("carries aiType, color, and session reference", () => {
+    const session = makeSession({ ai_advice: AI_Type.CORRECT });
+    const [point] = computeOptimalProximityVsScorePoints([session], new Map());
+    expect(point.aiType).toBe(AI_Type.CORRECT);
+    expect(point.color).toBe("#0072B2");
+    expect(point.session).toBe(session);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeProximityVsScorePoints — sessionIndex regression
+// ---------------------------------------------------------------------------
+describe("computeProximityVsScorePoints sessionIndex", () => {
+  it("sessionIndex matches the session's position in the input array", () => {
+    const sessions = [
+      makeSession({ user_uuid: "uuid-a" }),
+      makeSession({ user_uuid: "uuid-b" }),
+      makeSession({ user_uuid: "uuid-c" }),
+    ];
+    const points = computeProximityVsScorePoints(sessions, new Map());
+    expect(points[0].sessionIndex).toBe(0);
+    expect(points[1].sessionIndex).toBe(1);
+    expect(points[2].sessionIndex).toBe(2);
   });
 });

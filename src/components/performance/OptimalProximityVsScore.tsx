@@ -10,17 +10,17 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import type { ProximityScorePoint } from "../../utils/scoreStats";
+import type { OptimalProximityScorePoint } from "../../utils/scoreStats";
 import type { RewardSurface } from "../../types/dart";
 import type { ParsedGameSession } from "../../loaders/loadData";
 import { AI_TYPE_LABELS } from "../../utils/stats";
 import { AI_Type } from "../../types/dart";
-import { computeGameProximity, gameScore } from "../../utils/scoreStats";
+import { computeGameOptimalProximity, gameScore } from "../../utils/scoreStats";
 import { ChartCard } from "../ChartCard";
 import { PointClickModeToggle, type PointClickMode } from "../PointClickModeToggle";
 
 interface Props {
-  points: ProximityScorePoint[];
+  points: OptimalProximityScorePoint[];
   boards: Map<number, RewardSurface>;
   onSessionClick?: (user_uuid: string, sessionIndex: number) => void;
 }
@@ -34,9 +34,7 @@ const TOOLTIP_STYLE = {
   fontSize: 12,
 };
 
-const PROXIMITY_COLOR = "#E69F00";
-
-function GameProximityScoreBreakdown({
+function GameOptimalProximityBreakdown({
   session,
   boards,
   onClose,
@@ -48,21 +46,21 @@ function GameProximityScoreBreakdown({
   const data = session.games.map((g, i) => {
     const surface = boards.get(g.board_id);
     const score = surface ? gameScore(g, surface) : 0;
-    const proximity = computeGameProximity(g);
+    const proximity = computeGameOptimalProximity(g, session.execution_skill);
     return { game: i + 1, score, proximity };
   });
 
   const withProximity = data.filter((d) => d.proximity !== null) as { game: number; score: number; proximity: number }[];
-  const noAdvice = data.filter((d) => d.proximity === null);
+  const noLookup = data.filter((d) => d.proximity === null);
 
   return (
     <ChartCard
-      title={`Game-level proximity vs score — ${session.user_nickname ?? session.user_uuid.slice(0, 8)} · ${AI_TYPE_LABELS[session.ai_advice]}`}
+      title={`Game-level proximity to optimal → score — ${session.user_nickname ?? session.user_uuid.slice(0, 8)} · ${AI_TYPE_LABELS[session.ai_advice]}`}
       onClose={onClose}
       style={{ marginTop: 12 }}
     >
       {withProximity.length === 0 ? (
-        <p style={{ fontSize: 12, color: "#6b7280" }}>No AI advice in this session — no suggested aiming coordinates to compare against.</p>
+        <p style={{ fontSize: 12, color: "#6b7280" }}>No optimal aiming data available for this session's boards.</p>
       ) : (
         <ResponsiveContainer width="100%" height={180}>
           <ScatterChart margin={{ top: 8, right: 16, left: 0, bottom: 24 }}>
@@ -74,7 +72,7 @@ function GameProximityScoreBreakdown({
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 11, fill: "#374151" }}
-              label={{ value: "Distance from Suggested Aim (px)", position: "insideBottom", offset: -12, fontSize: 11, fill: "#374151" }}
+              label={{ value: "Distance from Optimal Aim (px)", position: "insideBottom", offset: -12, fontSize: 11, fill: "#374151" }}
             />
             <YAxis
               dataKey="score"
@@ -93,22 +91,22 @@ function GameProximityScoreBreakdown({
             />
             <Scatter data={withProximity} isAnimationActive={false}>
               {withProximity.map((_, i) => (
-                <Cell key={i} fill={PROXIMITY_COLOR} fillOpacity={0.85} stroke="#ffffff" strokeWidth={1} />
+                <Cell key={i} fill="#1d4ed8" fillOpacity={0.85} stroke="#ffffff" strokeWidth={1} />
               ))}
             </Scatter>
           </ScatterChart>
         </ResponsiveContainer>
       )}
-      {noAdvice.length > 0 && (
+      {noLookup.length > 0 && (
         <p style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
-          {noAdvice.length} game(s) had no suggested coordinates and are excluded from the scatter.
+          {noLookup.length} game(s) had no optimal aiming data available and are excluded from the scatter.
         </p>
       )}
     </ChartCard>
   );
 }
 
-export function ProximityVsScore({ points, boards, onSessionClick }: Props) {
+export function OptimalProximityVsScore({ points, boards, onSessionClick }: Props) {
   const [mode, setMode] = useState<PointClickMode>("navigate");
   const [selectedSession, setSelectedSession] = useState<ParsedGameSession | null>(null);
 
@@ -117,7 +115,7 @@ export function ProximityVsScore({ points, boards, onSessionClick }: Props) {
     setSelectedSession(null);
   }
 
-  function handleClick(p: ProximityScorePoint) {
+  function handleClick(p: OptimalProximityScorePoint) {
     if (mode === "navigate") {
       onSessionClick?.(p.session.user_uuid, p.sessionIndex);
     } else {
@@ -127,19 +125,18 @@ export function ProximityVsScore({ points, boards, onSessionClick }: Props) {
 
   if (points.length === 0) {
     return (
-      <ChartCard title="Proximity to Advice → Score">
+      <ChartCard title="Proximity to Optimal Aim → Score">
         <p style={{ color: "#6b7280", fontSize: 13 }}>No session data loaded.</p>
       </ChartCard>
     );
   }
 
-  const withProximity = points.filter((p) => p.avgProximity !== null) as (ProximityScorePoint & { avgProximity: number })[];
-  const noAdvice = points.filter((p) => p.avgProximity === null);
+  const withProximity = points.filter((p) => p.avgProximity !== null) as (OptimalProximityScorePoint & { avgProximity: number })[];
   const selectedUuid = selectedSession?.user_uuid ?? null;
 
   return (
     <>
-      <ChartCard title="Proximity to Advice → Score">
+      <ChartCard title="Proximity to Optimal Aim → Score">
         <PointClickModeToggle mode={mode} onChange={handleModeChange} />
         <ResponsiveContainer width="100%" height={300}>
           <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }}>
@@ -151,7 +148,7 @@ export function ProximityVsScore({ points, boards, onSessionClick }: Props) {
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 11, fill: "#374151" }}
-              label={{ value: "Avg Distance from Suggested Aim (px)", position: "insideBottom", offset: -12, fontSize: 11, fill: "#374151" }}
+              label={{ value: "Avg Distance from Optimal Aim (px)", position: "insideBottom", offset: -12, fontSize: 11, fill: "#374151" }}
             />
             <YAxis
               dataKey="score"
@@ -181,7 +178,7 @@ export function ProximityVsScore({ points, boards, onSessionClick }: Props) {
                   name={AI_TYPE_LABELS[type]}
                   data={group}
                   isAnimationActive={false}
-                  onClick={(data) => handleClick(data as unknown as ProximityScorePoint)}
+                  onClick={(data) => handleClick(data as unknown as OptimalProximityScorePoint)}
                   style={{ cursor: "pointer" }}
                 >
                   {group.map((p, i) => {
@@ -206,37 +203,10 @@ export function ProximityVsScore({ points, boards, onSessionClick }: Props) {
           {mode === "navigate"
             ? "Each point is one session. Click to open its session in Session View."
             : "Each point is one session. Click to highlight all sessions from that participant and see per-game breakdown."}
-          {noAdvice.length > 0 && ` ${noAdvice.length} NONE-condition session(s) shown separately below.`}
         </p>
-
-        {noAdvice.length > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 6 }}>No AI Advice sessions (scores without proximity):</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {noAdvice.map((p, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleClick(p)}
-                  style={{
-                    fontSize: 11,
-                    padding: "3px 8px",
-                    background: selectedSession === p.session ? "#f3f4f6" : "#ffffff",
-                    border: "1px solid #e5e7eb",
-                    color: "#374151",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  {p.session.user_nickname ?? p.session.user_uuid.slice(0, 8)} — score: {p.score.toFixed(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </ChartCard>
       {mode === "highlight" && selectedSession && (
-        <GameProximityScoreBreakdown session={selectedSession} boards={boards} onClose={() => setSelectedSession(null)} />
+        <GameOptimalProximityBreakdown session={selectedSession} boards={boards} onClose={() => setSelectedSession(null)} />
       )}
     </>
   );

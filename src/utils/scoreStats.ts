@@ -2,6 +2,7 @@ import { AI_Type } from "../types/dart";
 import type { DartGameDTO, RewardSurface } from "../types/dart";
 import type { ParsedGameSession } from "../loaders/loadData";
 import { AI_TYPE_COLORS, AI_TYPE_LABELS } from "./stats";
+import { getOptimalAimingCoord } from "./aimingLookup";
 
 export function gameScore(game: DartGameDTO, surface: RewardSurface): number {
   return game.hits.reduce((sum, hit) => {
@@ -177,13 +178,59 @@ export interface ProximityScorePoint {
   label: string;
   color: string;
   session: ParsedGameSession;
+  sessionIndex: number;
+}
+
+export function computeGameOptimalProximity(
+  game: DartGameDTO,
+  executionSkill: number,
+): number | null {
+  const optimal = getOptimalAimingCoord(game.board_id, executionSkill);
+  if (!optimal) return null;
+  const dx = game.actual_aiming_coord.x - optimal.x;
+  const dy = game.actual_aiming_coord.y - optimal.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+export interface OptimalProximityScorePoint {
+  avgProximity: number | null;
+  score: number;
+  aiType: AI_Type;
+  label: string;
+  color: string;
+  session: ParsedGameSession;
+  sessionIndex: number;
+}
+
+export function computeOptimalProximityVsScorePoints(
+  sessions: ParsedGameSession[],
+  boards: Map<number, RewardSurface>,
+): OptimalProximityScorePoint[] {
+  return sessions.map((session, i) => {
+    const proximities = session.games
+      .map((g) => computeGameOptimalProximity(g, session.execution_skill))
+      .filter((p): p is number => p !== null);
+    const avgProximity =
+      proximities.length > 0
+        ? proximities.reduce((s, v) => s + v, 0) / proximities.length
+        : null;
+    return {
+      avgProximity,
+      score: computeSessionScore(session, boards).avg,
+      aiType: session.ai_advice,
+      label: AI_TYPE_LABELS[session.ai_advice],
+      color: AI_TYPE_COLORS[session.ai_advice],
+      session,
+      sessionIndex: i,
+    };
+  });
 }
 
 export function computeProximityVsScorePoints(
   sessions: ParsedGameSession[],
   boards: Map<number, RewardSurface>,
 ): ProximityScorePoint[] {
-  return sessions.map((session) => {
+  return sessions.map((session, i) => {
     const proximities = session.games
       .map(computeGameProximity)
       .filter((p): p is number => p !== null);
@@ -198,6 +245,7 @@ export function computeProximityVsScorePoints(
       label: AI_TYPE_LABELS[session.ai_advice],
       color: AI_TYPE_COLORS[session.ai_advice],
       session,
+      sessionIndex: i,
     };
   });
 }

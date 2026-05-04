@@ -1,4 +1,5 @@
 // All colors in this file must follow PALETTE.md at the project root.
+import { useState } from "react";
 import {
   ScatterChart,
   Scatter,
@@ -13,6 +14,7 @@ import type { ScoreSkillPoint } from "../../utils/scoreStats";
 import { AI_TYPE_LABELS } from "../../utils/stats";
 import { AI_Type } from "../../types/dart";
 import { ChartCard } from "../ChartCard";
+import { PointClickModeToggle, type PointClickMode } from "../PointClickModeToggle";
 
 interface Props {
   points: ScoreSkillPoint[];
@@ -29,6 +31,22 @@ const TOOLTIP_STYLE = {
 };
 
 export function ScoreVsSkillScatter({ points, onSessionClick }: Props) {
+  const [mode, setMode] = useState<PointClickMode>("navigate");
+  const [selectedUuid, setSelectedUuid] = useState<string | null>(null);
+
+  function handleModeChange(next: PointClickMode) {
+    setMode(next);
+    setSelectedUuid(null);
+  }
+
+  function handleClick(p: ScoreSkillPoint) {
+    if (mode === "navigate") {
+      onSessionClick?.(p.user_uuid, p.sessionIndex);
+    } else {
+      setSelectedUuid((prev) => (prev === p.user_uuid ? null : p.user_uuid));
+    }
+  }
+
   if (points.length === 0) {
     return (
       <ChartCard title="Score vs Execution Skill">
@@ -39,6 +57,7 @@ export function ScoreVsSkillScatter({ points, onSessionClick }: Props) {
 
   return (
     <ChartCard title="Score vs Execution Skill">
+      <PointClickModeToggle mode={mode} onChange={handleModeChange} />
       <ResponsiveContainer width="100%" height={300}>
         <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
           <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
@@ -79,22 +98,32 @@ export function ScoreVsSkillScatter({ points, onSessionClick }: Props) {
                 name={AI_TYPE_LABELS[type]}
                 data={group}
                 isAnimationActive={false}
-                onClick={onSessionClick ? (data) => {
-                  const p = data as unknown as ScoreSkillPoint;
-                  onSessionClick(p.user_uuid, p.sessionIndex);
-                } : undefined}
-                style={onSessionClick ? { cursor: "pointer" } : undefined}
+                onClick={(data) => handleClick(data as unknown as ScoreSkillPoint)}
+                style={{ cursor: "pointer" }}
               >
-                {group.map((_, i) => (
-                  <Cell key={i} fill={group[0].color} fillOpacity={0.85} stroke="#ffffff" strokeWidth={1} />
-                ))}
+                {group.map((p, i) => {
+                  const isHighlighted = selectedUuid !== null && p.user_uuid === selectedUuid;
+                  const isDimmed = selectedUuid !== null && p.user_uuid !== selectedUuid;
+                  return (
+                    <Cell
+                      key={i}
+                      fill={p.color}
+                      fillOpacity={isDimmed ? 0.25 : 0.85}
+                      stroke={isHighlighted ? "#111827" : "#ffffff"}
+                      strokeWidth={isHighlighted ? 2 : 1}
+                    />
+                  );
+                })}
               </Scatter>
             );
           })}
         </ScatterChart>
       </ResponsiveContainer>
       <p style={{ fontSize: 11, color: "#6b7280", marginTop: -4 }}>
-        Each point is one session. Execution skill is admin-preset; score is derived from game data.
+        {mode === "navigate"
+          ? "Each point is one session. Click to open its session in Session View."
+          : "Each point is one session. Click to highlight all sessions from that participant."}
+        {" "}Execution skill is admin-preset; score is derived from game data.
       </p>
     </ChartCard>
   );

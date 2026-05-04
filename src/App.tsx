@@ -10,6 +10,7 @@ import type { RewardSurface } from "./types/dart";
 import {
   computeScoreVsSkillPoints,
   computeProximityVsScorePoints,
+  computeOptimalProximityVsScorePoints,
   computeScoreByCondition,
 } from "./utils/scoreStats";
 import { getCompleteUserIds } from "./utils/stats";
@@ -38,6 +39,7 @@ import { TrustVsScore } from "./components/trust/TrustVsScore";
 import { TrustVsTime } from "./components/trust/TrustVsTime";
 import { TrustVsProximity } from "./components/trust/TrustVsProximity";
 import { ProximityVsScore } from "./components/performance/ProximityVsScore";
+import { OptimalProximityVsScore } from "./components/performance/OptimalProximityVsScore";
 import { SessionsTable } from "./components/raw/SessionsTable";
 import { SurveyTable } from "./components/raw/SurveyTable";
 import { IndividualView } from "./components/individual/IndividualView";
@@ -307,6 +309,10 @@ function App() {
     () => computeProximityVsScorePoints(filteredSessions, boards),
     [filteredSessions, boards],
   );
+  const optimalProximityVsScorePoints = useMemo(
+    () => computeOptimalProximityVsScorePoints(filteredSessions, boards),
+    [filteredSessions, boards],
+  );
 
   const matchedSurveyCount = useMemo(
     () => joinedData.filter((j) => j.survey !== null).length,
@@ -527,9 +533,35 @@ function App() {
               }}
             />
             {trustQuestionId && (
-              <TrustVsScore points={trustVsScorePoints} boards={boards} likertScale={selectedLikertScale} />
+              <TrustVsScore
+                points={trustVsScorePoints}
+                boards={boards}
+                likertScale={selectedLikertScale}
+                onSessionClick={(user_uuid, sessionIndex) => {
+                  setSessionViewParticipant(user_uuid);
+                  setSessionViewIndex(sessionIndex);
+                  setActiveSection("session");
+                }}
+              />
             )}
-            <ProximityVsScore points={proximityVsScorePoints} boards={boards} />
+            <ProximityVsScore
+              points={proximityVsScorePoints}
+              boards={boards}
+              onSessionClick={(user_uuid, sessionIndex) => {
+                setSessionViewParticipant(user_uuid);
+                setSessionViewIndex(sessionIndex);
+                setActiveSection("session");
+              }}
+            />
+            <OptimalProximityVsScore
+              points={optimalProximityVsScorePoints}
+              boards={boards}
+              onSessionClick={(user_uuid, sessionIndex) => {
+                setSessionViewParticipant(user_uuid);
+                setSessionViewIndex(sessionIndex);
+                setActiveSection("session");
+              }}
+            />
           </section>
         )}
 

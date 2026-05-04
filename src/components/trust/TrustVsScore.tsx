@@ -20,11 +20,13 @@ import { AI_Type } from "../../types/dart";
 import { gameScore, computeGameProximity } from "../../utils/scoreStats";
 import { LIKERT_TICKS, formatLikertValue, type LikertScale } from "../../utils/surveyScales";
 import { ChartCard } from "../ChartCard";
+import { PointClickModeToggle, type PointClickMode } from "../PointClickModeToggle";
 
 interface Props {
   points: TrustScorePoint[];
   boards: Map<number, RewardSurface>;
   likertScale: LikertScale;
+  onSessionClick?: (user_uuid: string, sessionIndex: number) => void;
 }
 
 const TOOLTIP_STYLE = {
@@ -75,10 +77,25 @@ function GameScoreBreakdown({
   );
 }
 
-export function TrustVsScore({ points, boards, likertScale }: Props) {
-  const [selected, setSelected] = useState<ParsedGameSession | null>(null);
+export function TrustVsScore({ points, boards, likertScale, onSessionClick }: Props) {
+  const [mode, setMode] = useState<PointClickMode>("navigate");
+  const [selectedSession, setSelectedSession] = useState<ParsedGameSession | null>(null);
+
   const metricTitle = likertScale === "performance" ? "Performance Perception" : "Trust";
   const metricAxisLabel = likertScale === "performance" ? "Performance Perception Rating" : "Trust Rating";
+
+  function handleModeChange(next: PointClickMode) {
+    setMode(next);
+    setSelectedSession(null);
+  }
+
+  function handleClick(p: TrustScorePoint) {
+    if (mode === "navigate") {
+      onSessionClick?.(p.session.user_uuid, p.sessionIndex);
+    } else {
+      setSelectedSession((prev) => (prev === p.session ? null : p.session));
+    }
+  }
 
   if (points.length === 0) {
     return (
@@ -88,9 +105,12 @@ export function TrustVsScore({ points, boards, likertScale }: Props) {
     );
   }
 
+  const selectedUuid = selectedSession?.user_uuid ?? null;
+
   return (
     <>
       <ChartCard title={`${metricTitle} vs Score`}>
+        <PointClickModeToggle mode={mode} onChange={handleModeChange} />
         <ResponsiveContainer width="100%" height={300}>
           <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }} aria-label={`${likertScale} Likert rating versus score`}>
             <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
@@ -134,29 +154,35 @@ export function TrustVsScore({ points, boards, likertScale }: Props) {
                   name={AI_TYPE_LABELS[type]}
                   data={group}
                   isAnimationActive={false}
-                  onClick={(data) => setSelected((data as unknown as TrustScorePoint).session)}
+                  onClick={(data) => handleClick(data as unknown as TrustScorePoint)}
                   style={{ cursor: "pointer" }}
                 >
-                  {group.map((p, i) => (
-                    <Cell
-                      key={i}
-                      fill={p.color}
-                      fillOpacity={selected?.user_uuid === p.session.user_uuid ? 1 : 0.75}
-                      stroke={selected?.user_uuid === p.session.user_uuid ? "#ffffff" : "none"}
-                      strokeWidth={2}
-                    />
-                  ))}
+                  {group.map((p, i) => {
+                    const isHighlighted = selectedUuid !== null && p.session.user_uuid === selectedUuid;
+                    const isDimmed = selectedUuid !== null && p.session.user_uuid !== selectedUuid;
+                    return (
+                      <Cell
+                        key={i}
+                        fill={p.color}
+                        fillOpacity={isDimmed ? 0.25 : 0.85}
+                        stroke={isHighlighted ? "#111827" : "#ffffff"}
+                        strokeWidth={isHighlighted ? 2 : 1}
+                      />
+                    );
+                  })}
                 </Scatter>
               );
             })}
           </ScatterChart>
         </ResponsiveContainer>
         <p style={{ fontSize: 11, color: "#6b7280", marginTop: -4 }}>
-          Each point is one session. Click a point to see per-game scores.
+          {mode === "navigate"
+            ? "Each point is one session. Click to open its session in Session View."
+            : "Each point is one session. Click to highlight all sessions from that participant and see per-game scores."}
         </p>
       </ChartCard>
-      {selected && (
-        <GameScoreBreakdown session={selected} boards={boards} onClose={() => setSelected(null)} />
+      {mode === "highlight" && selectedSession && (
+        <GameScoreBreakdown session={selectedSession} boards={boards} onClose={() => setSelectedSession(null)} />
       )}
     </>
   );

@@ -503,6 +503,35 @@ describe("computeTrustVsScorePoints", () => {
     expect(point.session).toBe(session);
   });
 
+  it("sessionIndex matches the entry's position in the joined array", () => {
+    const sessionA = makeSession({ user_uuid: "uuid-a" });
+    const sessionB = makeSession({ user_uuid: "uuid-b" });
+    const surveyA = makeSurvey({ user_uuid: "uuid-a", responses: [{ questionId: "trust", value: 3 }] });
+    const surveyB = makeSurvey({ user_uuid: "uuid-b", responses: [{ questionId: "trust", value: 5 }] });
+    // sessionA is at index 0 in joined, sessionB at index 1
+    const joined = [
+      { session: sessionA, survey: surveyA },
+      { session: sessionB, survey: surveyB },
+    ];
+    const points = computeTrustVsScorePoints(joined, "trust", new Map());
+    expect(points).toHaveLength(2);
+    expect(points[0].sessionIndex).toBe(0);
+    expect(points[1].sessionIndex).toBe(1);
+  });
+
+  it("sessionIndex reflects joined array position even when earlier entries are skipped", () => {
+    // index 0 has no survey → skipped; index 1 has survey → sessionIndex should be 1
+    const sessionA = makeSession({ user_uuid: "uuid-a" });
+    const sessionB = makeSession({ user_uuid: "uuid-b" });
+    const joined = [
+      { session: sessionA, survey: null },
+      { session: sessionB, survey: makeSurvey({ user_uuid: "uuid-b", responses: [{ questionId: "trust", value: 4 }] }) },
+    ];
+    const points = computeTrustVsScorePoints(joined, "trust", new Map());
+    expect(points).toHaveLength(1);
+    expect(points[0].sessionIndex).toBe(1);
+  });
+
   it("handles numeric string trust values", () => {
     const joined = [
       {
