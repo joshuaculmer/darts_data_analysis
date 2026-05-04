@@ -9,6 +9,7 @@ import {
   computeIndividualTimeline,
   computeIndividualKpis,
   computeGameBreakdown,
+  chronologicalParticipantSessionEntries,
 } from "./individualStats";
 
 function makeGame(start: number, end: number): DartGameDTO {
@@ -85,6 +86,35 @@ describe("getParticipantList", () => {
     const list = getParticipantList(sessions);
     expect(list[0].nickname).toBe("Alice");
     expect(list[1].nickname).toBe("Zara");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// chronologicalParticipantSessionEntries
+// ---------------------------------------------------------------------------
+describe("chronologicalParticipantSessionEntries", () => {
+  it("returns sessions for one user sorted by created_at, preserving global indices", () => {
+    const sessions = [
+      makeSession({ id: "later", user_uuid: "uuid-a", created_at: "2024-01-20T00:00:00Z" }),
+      makeSession({ id: "earlier", user_uuid: "uuid-a", created_at: "2024-01-10T00:00:00Z" }),
+      makeSession({ id: "other", user_uuid: "uuid-b", created_at: "2024-01-05T00:00:00Z" }),
+    ];
+    const result = chronologicalParticipantSessionEntries(sessions, "uuid-a");
+    expect(result).toHaveLength(2);
+    expect(result[0].session.id).toBe("earlier");
+    expect(result[0].globalIndex).toBe(1);
+    expect(result[1].session.id).toBe("later");
+    expect(result[1].globalIndex).toBe(0);
+  });
+
+  it("breaks ties on created_at by globalIndex ascending", () => {
+    const sessions = [
+      makeSession({ id: "earlier-in-array", user_uuid: "uuid-a", created_at: "2024-01-10T00:00:00Z" }),
+      makeSession({ id: "later-in-array", user_uuid: "uuid-a", created_at: "2024-01-10T00:00:00Z" }),
+    ];
+    const result = chronologicalParticipantSessionEntries(sessions, "uuid-a");
+    expect(result[0].session.id).toBe("earlier-in-array");
+    expect(result[1].session.id).toBe("later-in-array");
   });
 });
 

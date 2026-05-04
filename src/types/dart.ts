@@ -7,6 +7,9 @@ export interface Coord {
 
 export interface DartGameDTO {
   board_id: number;
+  seed?: number | null;
+  board_seed?: number | null;
+  boardSeed?: number | null;
   start: number;
   end: number;
   suggested_aiming_coord: Coord | null;

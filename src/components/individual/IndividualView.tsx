@@ -7,6 +7,7 @@ import {
   getParticipantList,
   computeIndividualTimeline,
   computeIndividualKpis,
+  chronologicalParticipantSessionEntries,
 } from "../../utils/individualStats";
 import { ParticipantKpiCards } from "./ParticipantKpiCards";
 import { IndividualTimeline } from "./IndividualTimeline";
@@ -60,10 +61,8 @@ export function IndividualView({ sessions, surveys, joined, trustQuestionId, sur
 
   const handleTimelinePointClick = useCallback((sessionIndex: number) => {
     if (!onNavigateToSession || !activeUuid) return;
-    const participantSessions = sessions
-      .map((s, i) => ({ session: s, globalIndex: i }))
-      .filter(({ session }) => session.user_uuid === activeUuid);
-    const entry = participantSessions[sessionIndex - 1];
+    const ordered = chronologicalParticipantSessionEntries(sessions, activeUuid);
+    const entry = ordered[sessionIndex - 1];
     if (entry != null) onNavigateToSession(activeUuid, entry.globalIndex);
   }, [onNavigateToSession, activeUuid, sessions]);
 

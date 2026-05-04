@@ -86,7 +86,7 @@ Top navbar with six sections. See `PLANNING.md` for the full chart roadmap per s
 | Game Performance | ScoreByCondition (mean ± CI95 per condition), ScoreVsSkillScatter (click → Session View), TrustVsScore (click → game scores), ProximityVsScore (click → game proximity/score) |
 | Trust & Influence | TrustQuestionSelector (nav-tab style toggle between Trust and Performance Perception; no question-ID dropdown), TrustByCondition, TrustBySession, TrustOverTime, TrustVsScore, TrustVsTime, TrustVsProximity (titles auto-switch between Trust and Performance Perception based on selected question scale) |
 | Individual View | IndividualView (participant dropdown + wholistic score/trust/performance graph + breakdown) |
-| Session View | SessionView — participant + session dropdowns; session metadata table + per-game table with expandable hit rows |
+| Session View | SessionView — participant + session pills in **chronological** order (`created_at`); session metadata table + per-game table with expandable hit rows, board ID, and board seed (if present in game JSON). Scatter navigation uses global row index into `filteredSessions`; pills remap to the same session after sort. |
 | Raw Data | Coming soon (filterable/sortable tables) |
 
 All sections except Raw Data respect the **Complete Participants** toggle (passed via `filteredSessions` / `filteredSurveyResponses`).
@@ -135,7 +135,8 @@ src/
 │   ├── surveyStats.test.ts
 │   ├── individualStats.ts           # getParticipantList, computeIndividualTimeline
 │   │                                #   (score + trust + performance per session),
-│   │                                #   computeIndividualKpis, computeGameBreakdown
+│   │                                #   computeIndividualKpis, computeGameBreakdown,
+│   │                                #   chronologicalParticipantSessionEntries (Session View order + navigate)
 │   └── individualStats.test.ts
 │
 └── components/

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import type { ParsedGameSession } from "../../loaders/loadData";
 import type { RewardSurface } from "../../types/dart";
+import { chronologicalParticipantSessionEntries } from "../../utils/individualStats";
 import { computeSessionScore } from "../../utils/scoreStats";
 import { AI_TYPE_LABELS, AI_TYPE_COLORS } from "../../utils/stats";
 import { GameBoardView } from "./GameBoardView";
@@ -11,6 +12,18 @@ interface Props {
   boards: Map<number, RewardSurface>;
   initialParticipant?: string | null;
   initialSessionIndex?: number | null;
+}
+
+function getBoardSeed(game: {
+  board_id: number;
+  seed?: number | null;
+  board_seed?: number | null;
+  boardSeed?: number | null;
+}): number | null {
+  if (typeof game.seed === "number") return game.seed;
+  if (typeof game.board_seed === "number") return game.board_seed;
+  if (typeof game.boardSeed === "number") return game.boardSeed;
+  return typeof game.board_id === "number" ? game.board_id : null;
 }
 
 function KpiChip({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
@@ -35,18 +48,14 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
   const [selectedSessionIndex, setSelectedSessionIndex] = useState<number>(0);
   const [selectedGame, setSelectedGame] = useState<number>(0);
 
-  const participantSessions = sessions
-    .map((s, i) => ({ session: s, globalIndex: i }))
-    .filter(({ session }) => session.user_uuid === selectedParticipant);
+  const participantSessions = chronologicalParticipantSessionEntries(sessions, selectedParticipant);
 
   // Handle click-to-navigate from scatter plot.
   // Compute local index using initialParticipant directly so both states
   // are set atomically — avoids a race where participant-change resets session index.
   useEffect(() => {
     if (initialParticipant == null || initialSessionIndex == null) return;
-    const navSessions = sessions
-      .map((s, i) => ({ session: s, globalIndex: i }))
-      .filter(({ session }) => session.user_uuid === initialParticipant);
+    const navSessions = chronologicalParticipantSessionEntries(sessions, initialParticipant);
     const localIdx = navSessions.findIndex(({ globalIndex }) => globalIndex === initialSessionIndex);
     setSelectedParticipant(initialParticipant);
     setSelectedSessionIndex(localIdx >= 0 ? localIdx : 0);
@@ -198,6 +207,7 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
               const gScore = sessionScore.gameScores[gi];
               const isSelected = gi === selectedGame;
               const barPct = Math.round((gScore / maxGameScore) * 100);
+              const boardSeed = getBoardSeed(g);
               return (
                 <button
                   key={gi}
@@ -233,7 +243,7 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
                     }} />
                   </div>
                   <span style={{ fontSize: 10, color: "#9ca3af" }}>
-                    {g.hits.length} hits · board {g.board_id}
+                    {g.hits.length} hits · board {g.board_id} · seed {boardSeed ?? "—"}
                   </span>
                 </button>
               );
@@ -246,6 +256,17 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
               <>
                 {/* Board canvas */}
                 <div style={{ padding: 20, flexShrink: 0, borderRight: "1px solid #e5e7eb" }}>
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "#6b7280",
+                      marginBottom: 8,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    Board {game.board_id} — Seed {getBoardSeed(game) ?? "—"}
+                  </p>
                   {surface ? (
                     <GameBoardView game={game} surface={surface} />
                   ) : (

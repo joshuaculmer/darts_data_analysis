@@ -11,6 +11,30 @@ export interface ParticipantEntry {
   nickname: string;
 }
 
+/** One participant's sessions with original indices into the full `sessions` array, ordered by `created_at`. */
+export interface ParticipantSessionEntry {
+  session: ParsedGameSession;
+  globalIndex: number;
+}
+
+/**
+ * Sessions for a single user in chronological order (ISO `created_at` string compare).
+ * Ties break by `globalIndex` so ordering is stable when timestamps match.
+ */
+export function chronologicalParticipantSessionEntries(
+  sessions: ParsedGameSession[],
+  user_uuid: string,
+): ParticipantSessionEntry[] {
+  return sessions
+    .map((s, i) => ({ session: s, globalIndex: i }))
+    .filter(({ session }) => session.user_uuid === user_uuid)
+    .sort((a, b) => {
+      const t = a.session.created_at.localeCompare(b.session.created_at);
+      if (t !== 0) return t;
+      return a.globalIndex - b.globalIndex;
+    });
+}
+
 export function getParticipantList(sessions: ParsedGameSession[]): ParticipantEntry[] {
   const map = new Map<string, { nickname: string | null; latestDate: string }>();
   for (const s of sessions) {
