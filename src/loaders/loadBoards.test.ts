@@ -29,8 +29,17 @@ function makeSession(boardIds: number[]): ParsedGameSession {
 
 function mockFetch(surfaces: Record<number, number[][]>, failIds: number[] = []) {
   const fetchMock = vi.fn((url: string) => {
-    const match = url.match(/PerlinNoiseBoard(\d+)\.json$/);
-    const id = match ? Number(match[1]) : -1;
+    // Resolve URL back to the unified board_id used as the key in surfaces
+    const perlinMatch = url.match(/PerlinNoiseBoard(\d+)\.json$/);
+    const gaussianMatch = url.match(/GaussianSumBoard(\d+)\.json$/);
+    let id: number;
+    if (perlinMatch) {
+      id = Number(perlinMatch[1]);
+    } else if (gaussianMatch) {
+      id = Number(gaussianMatch[1]) + 100;
+    } else {
+      id = -1;
+    }
     if (failIds.includes(id)) {
       return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
     }
@@ -69,6 +78,35 @@ describe("loadBoards — URL construction", () => {
     const calls = fetchMock.mock.calls.map((c) => c[0] as string);
     const board1Calls = calls.filter((u) => u.includes("PerlinNoiseBoard1.json"));
     expect(board1Calls).toHaveLength(1);
+  });
+
+  it("fetches Gaussian URL for board ID 100 (maps to GaussianSumBoard0)", async () => {
+    const surface = [[1]];
+    const fetchMock = mockFetch({ 100: surface });
+    await loadBoards([makeSession([100])]);
+    expect(fetchMock).toHaveBeenCalledWith("/Gaussian_Sum/GaussianSumBoard0.json");
+  });
+
+  it("fetches Gaussian URL for board ID 142 (maps to GaussianSumBoard42)", async () => {
+    const surface = [[1]];
+    const fetchMock = mockFetch({ 142: surface });
+    await loadBoards([makeSession([142])]);
+    expect(fetchMock).toHaveBeenCalledWith("/Gaussian_Sum/GaussianSumBoard42.json");
+  });
+
+  it("fetches Gaussian URL for board ID 199 (maps to GaussianSumBoard99)", async () => {
+    const surface = [[1]];
+    const fetchMock = mockFetch({ 199: surface });
+    await loadBoards([makeSession([199])]);
+    expect(fetchMock).toHaveBeenCalledWith("/Gaussian_Sum/GaussianSumBoard99.json");
+  });
+
+  it("fetches Perlin and Gaussian URLs correctly in a mixed session", async () => {
+    const fetchMock = mockFetch({ 3: [[1]], 100: [[2]] });
+    await loadBoards([makeSession([3, 100])]);
+    const urls = fetchMock.mock.calls.map((c) => c[0] as string);
+    expect(urls).toContain("/Perlin_Noise_Surfaces.ts/PerlinNoiseBoard3.json");
+    expect(urls).toContain("/Gaussian_Sum/GaussianSumBoard0.json");
   });
 });
 

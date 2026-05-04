@@ -3,6 +3,9 @@ import type { ParsedGameSession } from "./loadData";
 
 function boardUrl(boardId: number): string {
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  if (boardId >= 100) {
+    return `${base}/Gaussian_Sum/GaussianSumBoard${boardId - 100}.json`;
+  }
   return `${base}/Perlin_Noise_Surfaces.ts/PerlinNoiseBoard${boardId}.json`;
 }
 
