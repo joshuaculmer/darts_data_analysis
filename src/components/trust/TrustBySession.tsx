@@ -13,19 +13,16 @@ import {
   Scatter,
 } from "recharts";
 import type { TrustSessionStats, TrustSessionLikertBreakdown } from "../../utils/surveyStats";
-import {
-  LIKERT_TICKS,
-  formatLikertValue,
-  type LikertScale,
-  TRUST_LIKERT_LABELS,
-  PERFORMANCE_LIKERT_LABELS,
-} from "../../utils/surveyScales";
+import { LIKERT_TICKS, formatScaleValue } from "../../utils/surveyScales";
 import { ChartCard } from "../ChartCard";
 
 interface Props {
   stats: TrustSessionStats[];
   likertStats: TrustSessionLikertBreakdown[];
-  likertScale: LikertScale;
+  /** Display label for this dimension (e.g. "Trust", "Satisfaction"). */
+  metricLabel: string;
+  /** Numeric score → label map for the dimension's scale. */
+  scaleLabels: Record<number, string>;
   graphType?: GraphType;
   onGraphTypeChange?: (next: GraphType) => void;
 }
@@ -52,13 +49,14 @@ const LIKERT_STACK_COLORS = {
 export function TrustBySession({
   stats,
   likertStats,
-  likertScale,
+  metricLabel,
+  scaleLabels,
   graphType: graphTypeProp,
   onGraphTypeChange,
 }: Props) {
   const [graphTypeState, setGraphTypeState] = useState<GraphType>("dot_ci");
   const graphType = graphTypeProp ?? graphTypeState;
-  const metricTitle = likertScale === "performance" ? "Performance Perception" : "Trust";
+  const metricTitle = metricLabel;
   const meanData = stats.map((s) => ({
     session: s.label,
     mean: s.count > 0 ? s.mean : null,
@@ -94,7 +92,7 @@ export function TrustBySession({
     count4: s.count4,
     count5: s.count5,
   }));
-  const likertLabels = likertScale === "performance" ? PERFORMANCE_LIKERT_LABELS : TRUST_LIKERT_LABELS;
+  const likertLabels = scaleLabels;
   const stackedLegend = useMemo(
     () => (LIKERT_TICKS as unknown as number[]).map((v) => `${likertLabels[v]} (${v})`).join(", "),
     [likertLabels],
@@ -122,7 +120,7 @@ export function TrustBySession({
       </div>
       <ResponsiveContainer width="100%" height={300}>
         {graphType === "dot_ci" ? (
-          <ComposedChart data={meanData} margin={{ top: 16, right: 24, left: 0, bottom: 8 }} aria-label={`Mean ${likertScale} Likert rating by session`}>
+          <ComposedChart data={meanData} margin={{ top: 16, right: 24, left: 0, bottom: 8 }} aria-label={`Mean ${metricLabel} Likert rating by session`}>
             <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
             <XAxis dataKey="session" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#374151" }} />
             <YAxis
@@ -130,7 +128,7 @@ export function TrustBySession({
               tickLine={false}
               domain={[1, 5]}
               ticks={LIKERT_TICKS as unknown as number[]}
-              tickFormatter={(v) => formatLikertValue(Number(v), likertScale)}
+              tickFormatter={(v) => formatScaleValue(Number(v), scaleLabels)}
               tick={{ fontSize: 11, fill: "#374151" }}
             />
             <Tooltip
@@ -143,7 +141,7 @@ export function TrustBySession({
                 const count = payload?.count ?? 0;
                 const ci95 = payload?.ci95 ?? 0;
                 return [
-                  `${formatLikertValue(value, likertScale)} (${value.toFixed(2)}, n=${count}, CI95 ±${ci95.toFixed(2)})`,
+                  `${formatScaleValue(value, scaleLabels)} (${value.toFixed(2)}, n=${count}, CI95 ±${ci95.toFixed(2)})`,
                   `Mean ${metricTitle}`,
                 ];
               }}
@@ -153,7 +151,7 @@ export function TrustBySession({
             </Scatter>
           </ComposedChart>
         ) : graphType === "median_iqr" ? (
-          <ComposedChart data={medianData} margin={{ top: 16, right: 24, left: 0, bottom: 8 }} aria-label={`Median ${likertScale} Likert rating by session`}>
+          <ComposedChart data={medianData} margin={{ top: 16, right: 24, left: 0, bottom: 8 }} aria-label={`Median ${metricLabel} Likert rating by session`}>
             <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
             <XAxis dataKey="session" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#374151" }} />
             <YAxis
@@ -161,7 +159,7 @@ export function TrustBySession({
               tickLine={false}
               domain={[1, 5]}
               ticks={LIKERT_TICKS as unknown as number[]}
-              tickFormatter={(v) => formatLikertValue(Number(v), likertScale)}
+              tickFormatter={(v) => formatScaleValue(Number(v), scaleLabels)}
               tick={{ fontSize: 11, fill: "#374151" }}
             />
             <Tooltip
@@ -175,7 +173,7 @@ export function TrustBySession({
                 const q1 = payload?.q1 ?? 0;
                 const q3 = payload?.q3 ?? 0;
                 return [
-                  `${formatLikertValue(value, likertScale)} (${value.toFixed(2)}, Q1=${q1.toFixed(2)}, Q3=${q3.toFixed(2)}, n=${count})`,
+                  `${formatScaleValue(value, scaleLabels)} (${value.toFixed(2)}, Q1=${q1.toFixed(2)}, Q3=${q3.toFixed(2)}, n=${count})`,
                   `Median ${metricTitle}`,
                 ];
               }}
@@ -185,7 +183,7 @@ export function TrustBySession({
             </Scatter>
           </ComposedChart>
         ) : (
-          <BarChart data={distributionData} margin={{ top: 16, right: 24, left: 0, bottom: 8 }} aria-label={`${likertScale} response distribution by session`}>
+          <BarChart data={distributionData} margin={{ top: 16, right: 24, left: 0, bottom: 8 }} aria-label={`${metricLabel} response distribution by session`}>
             <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
             <XAxis dataKey="session" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#374151" }} />
             <YAxis axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: "#374151" }} />

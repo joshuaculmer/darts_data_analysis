@@ -18,14 +18,15 @@ import type { ParsedGameSession } from "../../loaders/loadData";
 import { AI_TYPE_LABELS } from "../../utils/stats";
 import { AI_Type } from "../../types/dart";
 import { gameScore, computeGameProximity } from "../../utils/scoreStats";
-import { LIKERT_TICKS, formatLikertValue, type LikertScale } from "../../utils/surveyScales";
+import { LIKERT_TICKS, formatScaleValue } from "../../utils/surveyScales";
 import { ChartCard } from "../ChartCard";
 import { PointClickModeToggle, type PointClickMode } from "../PointClickModeToggle";
 
 interface Props {
   points: TrustScorePoint[];
   boards: Map<number, RewardSurface>;
-  likertScale: LikertScale;
+  metricLabel: string;
+  scaleLabels: Record<number, string>;
   onSessionClick?: (user_uuid: string, sessionIndex: number) => void;
 }
 
@@ -77,12 +78,12 @@ function GameScoreBreakdown({
   );
 }
 
-export function TrustVsScore({ points, boards, likertScale, onSessionClick }: Props) {
+export function TrustVsScore({ points, boards, metricLabel, scaleLabels, onSessionClick }: Props) {
   const [mode, setMode] = useState<PointClickMode>("navigate");
   const [selectedSession, setSelectedSession] = useState<ParsedGameSession | null>(null);
 
-  const metricTitle = likertScale === "performance" ? "Performance Perception" : "Trust";
-  const metricAxisLabel = likertScale === "performance" ? "Performance Perception Rating" : "Trust Rating";
+  const metricTitle = metricLabel;
+  const metricAxisLabel = `${metricLabel} Rating`;
 
   function handleModeChange(next: PointClickMode) {
     setMode(next);
@@ -112,7 +113,7 @@ export function TrustVsScore({ points, boards, likertScale, onSessionClick }: Pr
       <ChartCard title={`${metricTitle} vs Score`}>
         <PointClickModeToggle mode={mode} onChange={handleModeChange} />
         <ResponsiveContainer width="100%" height={300}>
-          <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }} aria-label={`${likertScale} Likert rating versus score`}>
+          <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }} aria-label={`${metricLabel} Likert rating versus score`}>
             <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
             <XAxis
               dataKey="trust"
@@ -120,7 +121,7 @@ export function TrustVsScore({ points, boards, likertScale, onSessionClick }: Pr
               type="number"
               domain={[1, 5]}
               ticks={LIKERT_TICKS as unknown as number[]}
-              tickFormatter={(v) => formatLikertValue(Number(v), likertScale)}
+              tickFormatter={(v) => formatScaleValue(Number(v), scaleLabels)}
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 11, fill: "#374151" }}
@@ -141,7 +142,7 @@ export function TrustVsScore({ points, boards, likertScale, onSessionClick }: Pr
               labelStyle={{ color: "#111827", fontWeight: 600 }}
               itemStyle={{ color: "#374151" }}
               formatter={(value, name) => {
-                if (name === "trust" && typeof value === "number") return [formatLikertValue(value, likertScale), metricAxisLabel];
+                if (name === "trust" && typeof value === "number") return [formatScaleValue(value, scaleLabels), metricAxisLabel];
                 return [typeof value === "number" ? value.toFixed(1) : value, name];
               }}
             />

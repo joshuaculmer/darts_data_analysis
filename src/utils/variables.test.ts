@@ -3,7 +3,13 @@ import { AI_Type } from "../types/dart";
 import type { DartGameDTO, RewardSurface } from "../types/dart";
 import type { ParsedGameSession, ParsedSurveyResponse } from "../loaders/loadData";
 import type { JoinedSessionSurvey } from "./surveyStats";
-import { buildSessionVariableRows, VARIABLES, VARIABLE_KEYS } from "./variables";
+import {
+  buildSessionVariableRows,
+  computeVariableByCondition,
+  VARIABLES,
+  VARIABLE_KEYS,
+} from "./variables";
+import type { SessionVariableRow } from "./variables";
 import { getOptimalAimingCoord } from "./aimingLookup";
 
 function makeGame(overrides: Partial<DartGameDTO> = {}): DartGameDTO {
@@ -179,5 +185,64 @@ describe("buildSessionVariableRows", () => {
       new Map(),
     );
     expect(rows[0].proxOptimal).toBeCloseTo(5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeVariableByCondition
+// ---------------------------------------------------------------------------
+function row(ai_advice: number, value: number | null): SessionVariableRow {
+  return {
+    user_uuid: "u",
+    sessionIndex: 0,
+    ai_advice: ai_advice as SessionVariableRow["ai_advice"],
+    trust: null,
+    influence: null,
+    proxAI: null,
+    satisfied: null,
+    scorePerHit: value,
+    proxOptimal: null,
+    luck: null,
+    dispersion: null,
+    evGap: null,
+  };
+}
+
+describe("computeVariableByCondition", () => {
+  it("returns an entry for all 7 conditions, with label and color", () => {
+    const result = computeVariableByCondition([], "scorePerHit");
+    expect(result).toHaveLength(7);
+    expect(result[0].aiType).toBe(AI_Type.NONE);
+    expect(result.find((r) => r.aiType === AI_Type.CORRECT)!.color).toBe("#0072B2");
+  });
+
+  it("computes mean and count per condition, skipping null values", () => {
+    const rows = [
+      row(AI_Type.CORRECT, 2),
+      row(AI_Type.CORRECT, 4),
+      row(AI_Type.CORRECT, null), // dropped
+      row(AI_Type.WRONG, 10),
+    ];
+    const result = computeVariableByCondition(rows, "scorePerHit");
+    const correct = result.find((r) => r.aiType === AI_Type.CORRECT)!;
+    expect(correct.count).toBe(2);
+    expect(correct.mean).toBeCloseTo(3);
+    expect(result.find((r) => r.aiType === AI_Type.WRONG)!.mean).toBeCloseTo(10);
+  });
+
+  it("reports zero count and a CI of 0 for conditions with no data", () => {
+    const result = computeVariableByCondition([row(AI_Type.NONE, 5)], "scorePerHit");
+    const wrong = result.find((r) => r.aiType === AI_Type.WRONG)!;
+    expect(wrong.count).toBe(0);
+    expect(wrong.mean).toBe(0);
+    expect(wrong.ci95).toBe(0);
+  });
+
+  it("computes a positive 95% CI when a condition has multiple values", () => {
+    const rows = [row(AI_Type.BAD, 1), row(AI_Type.BAD, 3), row(AI_Type.BAD, 5)];
+    const bad = computeVariableByCondition(rows, "scorePerHit").find((r) => r.aiType === AI_Type.BAD)!;
+    expect(bad.count).toBe(3);
+    expect(bad.mean).toBeCloseTo(3);
+    expect(bad.ci95).toBeGreaterThan(0);
   });
 });

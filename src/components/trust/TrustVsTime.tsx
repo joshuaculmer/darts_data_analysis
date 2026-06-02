@@ -17,12 +17,13 @@ import type { ParsedGameSession } from "../../loaders/loadData";
 import { AI_TYPE_LABELS } from "../../utils/stats";
 import { AI_Type } from "../../types/dart";
 import { computeGameDurationSecs } from "../../utils/scoreStats";
-import { LIKERT_TICKS, formatLikertValue, type LikertScale } from "../../utils/surveyScales";
+import { LIKERT_TICKS, formatScaleValue } from "../../utils/surveyScales";
 import { ChartCard } from "../ChartCard";
 
 interface Props {
   points: TrustVsTimePoint[];
-  likertScale: LikertScale;
+  metricLabel: string;
+  scaleLabels: Record<number, string>;
 }
 
 const TOOLTIP_STYLE = {
@@ -69,9 +70,9 @@ function GameDurationBreakdown({
   );
 }
 
-export function TrustVsTime({ points, likertScale }: Props) {
+export function TrustVsTime({ points, metricLabel, scaleLabels }: Props) {
   const [selected, setSelected] = useState<ParsedGameSession | null>(null);
-  const metricTitle = likertScale === "performance" ? "Performance Perception" : "Trust";
+  const metricTitle = metricLabel;
 
   if (points.length === 0) {
     return (
@@ -85,7 +86,7 @@ export function TrustVsTime({ points, likertScale }: Props) {
     <>
       <ChartCard title={`${metricTitle} vs Time per Game`}>
         <ResponsiveContainer width="100%" height={300}>
-          <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }} aria-label={`${likertScale} Likert rating versus time per game`}>
+          <ScatterChart margin={{ top: 16, right: 24, left: 0, bottom: 24 }} aria-label={`${metricLabel} Likert rating versus time per game`}>
             <CartesianGrid horizontal vertical={false} stroke="#e5e7eb" />
             <XAxis
               dataKey="avgTimeSecs"
@@ -98,15 +99,15 @@ export function TrustVsTime({ points, likertScale }: Props) {
             />
             <YAxis
               dataKey="trust"
-              name="Trust Rating"
+              name={`${metricLabel} Rating`}
               type="number"
               domain={[1, 5]}
               ticks={LIKERT_TICKS as unknown as number[]}
-              tickFormatter={(v) => formatLikertValue(Number(v), likertScale)}
+              tickFormatter={(v) => formatScaleValue(Number(v), scaleLabels)}
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 11, fill: "#374151" }}
-              label={{ value: "Trust Rating", angle: -90, position: "insideLeft", fontSize: 11, fill: "#374151" }}
+              label={{ value: `${metricLabel} Rating`, angle: -90, position: "insideLeft", fontSize: 11, fill: "#374151" }}
             />
             <Tooltip
               cursor={{ strokeDasharray: "3 3" }}
@@ -115,9 +116,9 @@ export function TrustVsTime({ points, likertScale }: Props) {
               itemStyle={{ color: "#374151" }}
               formatter={(value, name) => [
                 typeof value === "number"
-                  ? (name === "trust" ? formatLikertValue(value, likertScale) : value.toFixed(1))
+                  ? (name === "trust" ? formatScaleValue(value, scaleLabels) : value.toFixed(1))
                   : value,
-                name === "avgTimeSecs" ? "Avg Time (s)" : name === "trust" ? "Trust Rating" : name,
+                name === "avgTimeSecs" ? "Avg Time (s)" : name === "trust" ? `${metricLabel} Rating` : name,
               ]}
             />
             {(Object.values(AI_Type).filter((v) => typeof v === "number") as AI_Type[]).map((type) => {

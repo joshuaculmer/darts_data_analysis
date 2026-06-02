@@ -14,13 +14,14 @@ import {
 import type { TrustTimePoint } from "../../utils/surveyStats";
 import { AI_TYPE_LABELS } from "../../utils/stats";
 import { AI_Type } from "../../types/dart";
-import { LIKERT_TICKS, formatLikertValue, type LikertScale } from "../../utils/surveyScales";
+import { LIKERT_TICKS, formatScaleValue } from "../../utils/surveyScales";
 import { ChartCard } from "../ChartCard";
 
 interface Props {
   points: TrustTimePoint[];
   title?: string;
-  likertScale: LikertScale;
+  metricLabel: string;
+  scaleLabels: Record<number, string>;
 }
 
 // Okabe-Ito palette colors (PALETTE.md) cycled per user line
@@ -46,11 +47,13 @@ const TOOLTIP_STYLE = {
 function CustomTooltip({
   active,
   payload,
-  likertScale,
+  metricLabel,
+  scaleLabels,
 }: {
   active?: boolean;
   payload?: any[];
-  likertScale: LikertScale;
+  metricLabel: string;
+  scaleLabels: Record<number, string>;
 }) {
   if (!active || !payload?.length) return null;
 
@@ -67,7 +70,6 @@ function CustomTooltip({
   }
 
   if (points.length === 0) return null;
-  const metricTitle = likertScale === "performance" ? "Performance Perception" : "Trust";
 
   return (
     <div style={TOOLTIP_STYLE}>
@@ -75,17 +77,15 @@ function CustomTooltip({
         <div key={i} style={{ marginBottom: i < points.length - 1 ? 6 : 0 }}>
           <div style={{ fontWeight: 600, color: "#111827" }}>Session {d.sessionIndex}</div>
           <div style={{ color: d.color, marginTop: 2 }}>{d.label}</div>
-          <div style={{ color: "#374151", marginTop: 1 }}>{metricTitle}: {formatLikertValue(d.trust, likertScale)}</div>
+          <div style={{ color: "#374151", marginTop: 1 }}>{metricLabel}: {formatScaleValue(d.trust, scaleLabels)}</div>
         </div>
       ))}
     </div>
   );
 }
 
-export function TrustOverTime({ points, title = "Trust Over Time", likertScale }: Props) {
-  const resolvedTitle = title === "Trust Over Time" && likertScale === "performance"
-    ? "Performance Perception Over Time"
-    : title;
+export function TrustOverTime({ points, title, metricLabel, scaleLabels }: Props) {
+  const resolvedTitle = title ?? `${metricLabel} Over Time`;
   const [selectedUuid, setSelectedUuid] = useState<string | null>(null);
   // Prevents the chart background click from immediately deselecting after a line click
   const lineClickedRef = useRef(false);
@@ -121,7 +121,7 @@ export function TrustOverTime({ points, title = "Trust Over Time", likertScale }
       <ResponsiveContainer width="100%" height={300}>
         <ComposedChart
           margin={{ top: 16, right: 24, left: 0, bottom: 24 }}
-          aria-label={`${likertScale} Likert rating over sessions`}
+          aria-label={`${metricLabel} Likert rating over sessions`}
           onClick={() => {
             if (lineClickedRef.current) {
               lineClickedRef.current = false;
@@ -143,16 +143,16 @@ export function TrustOverTime({ points, title = "Trust Over Time", likertScale }
           />
           <YAxis
             dataKey="trust"
-            name="Trust Rating"
+            name={`${metricLabel} Rating`}
             type="number"
             domain={[1, 5]}
             ticks={LIKERT_TICKS as unknown as number[]}
-            tickFormatter={(v) => formatLikertValue(Number(v), likertScale)}
+            tickFormatter={(v) => formatScaleValue(Number(v), scaleLabels)}
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 11, fill: "#374151" }}
           />
-          <Tooltip content={<CustomTooltip likertScale={likertScale} />} cursor={{ strokeDasharray: "4 3", stroke: "#d1d5db" }} />
+          <Tooltip content={<CustomTooltip metricLabel={metricLabel} scaleLabels={scaleLabels} />} cursor={{ strokeDasharray: "4 3", stroke: "#d1d5db" }} />
 
           {/* Per-user connecting lines */}
           {userLines.map(({ uuid, pts }, i) => (

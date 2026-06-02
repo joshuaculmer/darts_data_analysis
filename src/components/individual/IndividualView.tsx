@@ -3,6 +3,7 @@ import type { ParsedGameSession, ParsedSurveyResponse } from "../../loaders/load
 import type { RewardSurface } from "../../types/dart";
 import type { JoinedSessionSurvey, TrustTimePoint } from "../../utils/surveyStats";
 import type { LikertScale } from "../../utils/surveyScales";
+import { getDimension, getScaleLabels } from "../../utils/surveyScales";
 import {
   getParticipantList,
   computeIndividualTimeline,
@@ -122,7 +123,12 @@ export function IndividualView({ sessions, surveys, joined, trustQuestionId, sur
       <IndividualTimeline points={timeline} showTrust={hasTrust} likertScale={likertScale} onPointClick={handleTimelinePointClick} />
 
       {hasTrust && (
-        <TrustOverTime points={individualTrustPoints} title="Trust Over Sessions" likertScale={likertScale} />
+        <TrustOverTime
+          points={individualTrustPoints}
+          title="Trust Over Sessions"
+          metricLabel={getDimension(trustQuestionId)?.label ?? "Trust"}
+          scaleLabels={getScaleLabels(trustQuestionId)}
+        />
       )}
 
       {/* <ConditionExposure points={timeline} /> */}

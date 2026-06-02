@@ -123,6 +123,26 @@ These colors are used for response level segments, while AI condition identity r
 
 ---
 
+## Correlation Heatmap (diverging scale)
+
+The cross-correlation heatmap maps a Spearman coefficient `r ∈ [−1, 1]` to a diverging
+color, reusing the existing low→high semantics (vermillion = low/negative, teal = high/positive):
+
+| Endpoint | Meaning | Hex |
+|---|---|---|
+| `r = −1` | Strong negative | `#D55E00` (vermillion) |
+| `r = 0` | No monotonic relation | `#9ca3af` (neutral grey) |
+| `r = +1` | Strong positive | `#009E73` (teal) |
+
+Interpolate linearly in sRGB between the neutral midpoint and each endpoint
+(`#9ca3af`→`#D55E00` for negative `r`, `#9ca3af`→`#009E73` for positive `r`).
+Cells with no coefficient (null `r`, e.g. < 2 pairwise-complete observations) render as
+`--bg-muted` (`#f9fafb`) with no fill. Cell text is white (`#ffffff`) when |r| is high
+enough for contrast, otherwise `--text-1` (`#111827`). Tooltips follow the standard tooltip
+style and show both `r` and `n`.
+
+---
+
 ## What NOT to do
 
 - No dark backgrounds anywhere (`#0f172a`, `#1e293b`, `#334155`, etc.)

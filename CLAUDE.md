@@ -17,8 +17,12 @@ The app has three sequential gates before showing the dashboard:
 
 Both CSVs are persisted in `localStorage` (`darts:sessions_csv`, `darts:survey_csv`) so the dashboard reloads automatically on page refresh without re-uploading. A red **Clear Data** button in the top-right of the header removes both keys and resets all app state to the upload screen.
 
-The trust question selector auto-selects the first available question on survey load.
-The Trust & Influence graph-type selector (Dot+CI vs Median+IQR vs Stacked Likert) is shared across TrustByCondition and TrustBySession and persisted in `localStorage` under `darts:trust_summary_graph_type`.
+The research dashboard is reorganized into three variable-centric **group pages** — Trust,
+Performance, and Luck — each rendering its dimensions' by-condition/by-session/over-time charts,
+within-group pairwise scatters, and the global cross-correlation heatmap (with that group's
+rows/columns highlighted). The old single Trust page + its question-selector/graph-type toggle are
+retired; each group renders its fixed dimensions directly. `trustQuestionId` still auto-selects the
+first trust question on survey load — now only the Individual View consumes it.
 
 ## Data Sources
 
@@ -101,17 +105,23 @@ the SPA shell on GitHub Pages. The deploy workflow uploads all of `dist/`, so no
 is needed.
 
 ## Navigation Structure
-Top navbar sections (each a route). The `/luck` page is a placeholder until Phase 5.
-See `PLANNING.md` for the full chart roadmap per section.
+Top navbar sections (each a route). The three research groups (Trust/Performance/Luck) are
+variable-centric and share the same building blocks. See `PLANNING.md` for the chart roadmap.
 
 | Section | Key Components |
 |---|---|
 | Sanity Checks | KpiCards, SessionCalendar, ConditionDistribution |
-| Game Performance | ScoreByCondition (mean ± CI95 per condition), ScoreVsSkillScatter (click → Session View), TrustVsScore (click → game scores), ProximityVsScore (click → game proximity/score) |
-| Trust & Influence | TrustQuestionSelector (nav-tab style toggle between Trust and Performance Perception; no question-ID dropdown), TrustByCondition, TrustBySession, TrustOverTime, TrustVsScore, TrustVsTime, TrustVsProximity (titles auto-switch between Trust and Performance Perception based on selected question scale) |
+| Game Performance (`/performance`) | `PerformanceGroup`: scorePerHit by condition + proxOptimal by condition (VariableByCondition), satisfied dimension (SurveyDimensionCharts), within-group pairwise scatters, global heatmap (Performance highlighted) |
+| Trust & Influence (`/trust`) | `TrustGroup`: trust + influence dimensions (SurveyDimensionCharts), proxAI by condition, within-group pairwise scatters, global heatmap (Trust highlighted) |
+| Luck (`/luck`) | `LuckGroup`: luck dimension, dispersion + evGap by condition, within-group pairwise scatters, global heatmap (Luck highlighted). EV gap labeled as placeholder. |
 | Individual View | IndividualView (participant dropdown + wholistic score/trust/performance graph + breakdown) |
 | Session View | SessionView — participant + session pills in **chronological** order (`created_at`); session metadata table + per-game table with expandable hit rows, board ID, and board seed (if present in game JSON). Scatter navigation uses global row index into `filteredSessions`; pills remap to the same session after sort. |
 | Raw Data | Coming soon (filterable/sortable tables) |
+
+The six trust charts (`TrustByCondition`, `TrustBySession`, `TrustOverTime`, `TrustVsScore`,
+`TrustVsTime`, `TrustVsProximity`) are now **dimension-agnostic**: they take `metricLabel` +
+`scaleLabels` (from `SURVEY_DIMENSIONS`) instead of the old `likertScale` union, so the same
+component renders trust, influence, satisfaction, or luck.
 
 All sections except Raw Data respect the **Complete Participants** toggle (passed via `filteredSessions` / `filteredSurveyResponses`).
 
@@ -183,7 +193,8 @@ src/
 │   ├── aimingEV.test.ts
 │   ├── variables.ts                 # Unified 9-variable session-level set (Trust/Performance/Luck):
 │   │                                #   SessionVariableRow, buildSessionVariableRows(joined, boards),
-│   │                                #   VARIABLES registry {key,label,group,accessor,format} + VARIABLE_KEYS
+│   │                                #   VARIABLES registry {key,label,group,accessor,format} + VARIABLE_KEYS,
+│   │                                #   computeVariableByCondition(rows, key) → mean±CI95 per AI condition
 │   ├── variables.test.ts
 │   ├── correlation.ts               # spearman(xs, ys) pairwise-complete → {r, n};
 │   │                                #   computeCorrelationMatrix(rows, keys) → CorrelationCell[][]
@@ -196,19 +207,32 @@ src/
     │   ├── SessionCalendar.tsx      # GitHub-style heatmap of participants per day
     │   └── ConditionDistribution.tsx
     │
+    ├── correlation/                  # Shared building blocks for the group pages
+    │   ├── CorrelationHeatmap.tsx    # Generic Spearman heatmap; diverging palette; highlightGroup; onCellClick
+    │   ├── PairwiseScatter.tsx       # Generic x-var vs y-var scatter (VARIABLES accessors); dot → /session nav
+    │   ├── VariableByCondition.tsx   # Generic mean±CI95 dot chart for continuous vars by AI condition
+    │   ├── SurveyDimensionCharts.tsx # Renders by-condition/by-session/over-time for one survey dimension
+    │   └── GlobalHeatmapSection.tsx  # CorrelationHeatmap + click-to-scatter drilldown
+    │
     ├── performance/
-    │   ├── ScoreByCondition.tsx      # Mean score ± CI95 per AI condition (bar chart) — primary research finding
-    │   ├── ScoreVsSkillScatter.tsx
-    │   └── ProximityVsScore.tsx      # Proximity vs score scatter; click → per-game scatter breakdown
+    │   ├── PerformanceGroup.tsx      # /performance page (scorePerHit, satisfied, proxOptimal + heatmap)
+    │   ├── ScoreByCondition.tsx      # (legacy) Mean session-avg score ± CI95 per condition — superseded by per-hit VariableByCondition
+    │   ├── ScoreVsSkillScatter.tsx   # (legacy) not currently routed
+    │   ├── ProximityVsScore.tsx      # (legacy) not currently routed
+    │   └── OptimalProximityVsScore.tsx # (legacy) not currently routed
+    │
+    ├── luck/
+    │   └── LuckGroup.tsx             # /luck page (luck, dispersion, evGap + heatmap; EV gap is placeholder)
     │
     ├── trust/
-│   ├── TrustQuestionSelector.tsx # Nav-tab style toggle (Trust vs Performance Perception) that auto-selects first matching question per scale
-│   ├── TrustByCondition.tsx      # Mean trust/performance-perception rating by condition with graph-type selector (Dot+CI or Stacked Likert); condition colors retained; CI whiskers clipped to Likert bounds (1..5)
-│   ├── TrustBySession.tsx        # Mean trust/performance-perception rating by participant session number (Session 1, Session 2, ...) with graph-type selector (Dot+CI or Stacked Likert); shared persisted selector
-│   ├── TrustOverTime.tsx         # Trust/performance-perception over session index (title adapts to selected question scale)
-│   ├── TrustVsScore.tsx          # Trust/performance-perception vs avg score; click → per-game score bars; needs boards prop
-│   ├── TrustVsTime.tsx           # Trust/performance-perception vs avg game duration; click → per-game duration bars
-│   └── TrustVsProximity.tsx      # Trust/performance-perception vs avg proximity to AI suggestion; null sessions listed separately; click → per-game proximity bars
+    │   ├── TrustGroup.tsx            # /trust page (trust + influence dims, proxAI, pairwise, heatmap)
+    │   ├── TrustQuestionSelector.tsx # (legacy) no longer routed; kept for reference
+    │   ├── TrustByCondition.tsx      # Mean rating by condition for ANY dimension (metricLabel+scaleLabels); Dot+CI/Median+IQR/Stacked Likert
+    │   ├── TrustBySession.tsx        # Mean rating by participant session number for ANY dimension
+    │   ├── TrustOverTime.tsx         # Rating over session index for ANY dimension
+    │   ├── TrustVsScore.tsx          # Rating vs avg score; click → per-game score bars; needs boards prop
+    │   ├── TrustVsTime.tsx           # Rating vs avg game duration; click → per-game duration bars
+    │   └── TrustVsProximity.tsx      # Rating vs avg proximity to AI suggestion; click → per-game proximity bars
     │
     ├── individual/
     │   ├── IndividualView.tsx       # Parent: participant selector, wires all sub-components

@@ -16,41 +16,19 @@ import type {
 import { fetchData, isSupabaseConfigured } from "./loaders/fetchSupabase";
 import { loadBoards } from "./loaders/loadBoards";
 import type { RewardSurface } from "./types/dart";
-import {
-  computeScoreVsSkillPoints,
-  computeProximityVsScorePoints,
-  computeOptimalProximityVsScorePoints,
-  computeScoreByCondition,
-} from "./utils/scoreStats";
 import { getCompleteUserIds } from "./utils/stats";
-import {
-  joinSessionsWithSurvey,
-  computeTrustByCondition,
-  computeTrustLikertByCondition,
-  computeTrustBySession,
-  computeTrustLikertBySession,
-  computeTrustOverTime,
-  computeTrustVsScorePoints,
-  computeTrustVsTimePoints,
-  computeTrustVsProximityPoints,
-} from "./utils/surveyStats";
+import { joinSessionsWithSurvey } from "./utils/surveyStats";
 import { inferLikertScaleFromQuestionId } from "./utils/surveyScales";
 import type { LikertScale } from "./utils/surveyScales";
 import type { JoinedSessionSurvey } from "./utils/surveyStats";
+import { buildSessionVariableRows, VARIABLE_KEYS } from "./utils/variables";
+import { computeCorrelationMatrix } from "./utils/correlation";
 import { KpiCards } from "./components/sanity/KpiCards";
 import { SessionCalendar } from "./components/sanity/SessionCalendar";
 import { ConditionDistribution } from "./components/sanity/ConditionDistribution";
-import { ScoreVsSkillScatter } from "./components/performance/ScoreVsSkillScatter";
-import { ScoreByCondition } from "./components/performance/ScoreByCondition";
-import { TrustQuestionSelector } from "./components/trust/TrustQuestionSelector";
-import { TrustByCondition } from "./components/trust/TrustByCondition";
-import { TrustBySession } from "./components/trust/TrustBySession";
-import { TrustOverTime } from "./components/trust/TrustOverTime";
-import { TrustVsScore } from "./components/trust/TrustVsScore";
-import { TrustVsTime } from "./components/trust/TrustVsTime";
-import { TrustVsProximity } from "./components/trust/TrustVsProximity";
-import { ProximityVsScore } from "./components/performance/ProximityVsScore";
-import { OptimalProximityVsScore } from "./components/performance/OptimalProximityVsScore";
+import { TrustGroup } from "./components/trust/TrustGroup";
+import { PerformanceGroup } from "./components/performance/PerformanceGroup";
+import { LuckGroup } from "./components/luck/LuckGroup";
 import { SessionsTable } from "./components/raw/SessionsTable";
 import { SurveyTable } from "./components/raw/SurveyTable";
 import { IndividualView } from "./components/individual/IndividualView";
@@ -66,8 +44,6 @@ const NAV_ITEMS: { path: string; label: string }[] = [
   { path: "/session", label: "Session View" },
   { path: "/raw", label: "Raw Data" },
 ];
-
-type TrustSummaryGraphType = "dot_ci" | "median_iqr" | "stacked_likert";
 
 // Route wrapper that reads :uuid / :sessionIndex from the URL. Defined at module
 // scope (not inline) so SessionView keeps its internal state across renders.
@@ -158,11 +134,6 @@ function App() {
   const [passwordInput, setPasswordInput] = useState("");
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [trustSummaryGraphType, setTrustSummaryGraphType] = useState<TrustSummaryGraphType>(() => {
-    const saved = localStorage.getItem("darts:trust_summary_graph_type");
-    if (saved === "median_iqr") return "median_iqr";
-    return saved === "stacked_likert" ? "stacked_likert" : "dot_ci";
-  });
 
   // Restore persisted data on mount — JSON (fetched) takes priority over CSV (uploaded)
   useEffect(() => {
@@ -313,105 +284,27 @@ function App() {
     [surveyResponses, completeOnly, completeUserIds],
   );
 
-  const scoreVsSkillPoints = useMemo(
-    () => computeScoreVsSkillPoints(filteredSessions, boards),
-    [filteredSessions, boards],
-  );
-  const scoreByConditionStats = useMemo(
-    () => computeScoreByCondition(filteredSessions, boards),
-    [filteredSessions, boards],
-  );
   const joinedData = useMemo(
     () => joinSessionsWithSurvey(filteredSessions, filteredSurveyResponses),
     [filteredSessions, filteredSurveyResponses],
   );
-  const trustByCondition = useMemo(
-    () =>
-      trustQuestionId
-        ? computeTrustByCondition(joinedData, trustQuestionId)
-        : [],
-    [joinedData, trustQuestionId],
+  // Unified session-level variable rows + the global Spearman correlation matrix,
+  // computed once and shared across all three group pages (Trust/Performance/Luck).
+  const variableRows = useMemo(
+    () => buildSessionVariableRows(joinedData, boards),
+    [joinedData, boards],
   );
-  const trustLikertByCondition = useMemo(
-    () =>
-      trustQuestionId
-        ? computeTrustLikertByCondition(joinedData, trustQuestionId)
-        : [],
-    [joinedData, trustQuestionId],
+  const correlationMatrix = useMemo(
+    () => computeCorrelationMatrix(variableRows, VARIABLE_KEYS),
+    [variableRows],
   );
-  const trustOverTime = useMemo(
-    () =>
-      trustQuestionId ? computeTrustOverTime(joinedData, trustQuestionId) : [],
-    [joinedData, trustQuestionId],
-  );
-  const trustBySession = useMemo(
-    () =>
-      trustQuestionId ? computeTrustBySession(joinedData, trustQuestionId) : [],
-    [joinedData, trustQuestionId],
-  );
-  const trustLikertBySession = useMemo(
-    () =>
-      trustQuestionId ? computeTrustLikertBySession(joinedData, trustQuestionId) : [],
-    [joinedData, trustQuestionId],
-  );
-  const trustVsScorePoints = useMemo(
-    () =>
-      trustQuestionId
-        ? computeTrustVsScorePoints(joinedData, trustQuestionId, boards)
-        : [],
-    [joinedData, trustQuestionId, boards],
-  );
-  const trustVsTimePoints = useMemo(
-    () =>
-      trustQuestionId
-        ? computeTrustVsTimePoints(joinedData, trustQuestionId)
-        : [],
-    [joinedData, trustQuestionId],
-  );
-  const trustVsProximityPoints = useMemo(
-    () =>
-      trustQuestionId
-        ? computeTrustVsProximityPoints(joinedData, trustQuestionId)
-        : [],
-    [joinedData, trustQuestionId],
-  );
-  const proximityVsScorePoints = useMemo(
-    () => computeProximityVsScorePoints(filteredSessions, boards),
-    [filteredSessions, boards],
-  );
-  const optimalProximityVsScorePoints = useMemo(
-    () => computeOptimalProximityVsScorePoints(filteredSessions, boards),
-    [filteredSessions, boards],
-  );
-
-  const matchedSurveyCount = useMemo(
-    () => joinedData.filter((j) => j.survey !== null).length,
-    [joinedData],
-  );
-  const hasAnyTrustData = trustByCondition.some((s) => s.count > 0);
   const selectedLikertScale = useMemo(
     () => inferLikertScaleFromQuestionId(trustQuestionId),
     [trustQuestionId],
   );
 
-  // Finds the first raw answer value for the selected question across matched surveys.
-  // Used to surface what the data actually looks like when trust charts are empty.
-  const trustQuestionSampleValue = useMemo(() => {
-    if (!trustQuestionId) return undefined;
-    for (const { survey } of joinedData) {
-      if (!survey) continue;
-      const answer = survey.responses.find((r) => r.questionId === trustQuestionId);
-      if (answer !== undefined) return answer.value;
-    }
-    return undefined;
-  }, [joinedData, trustQuestionId]);
-
   const surveyLoaded = surveyResponses.length > 0;
   const anyDataLoaded = sessionsLoaded || surveyLoaded;
-
-  useEffect(() => {
-    localStorage.setItem("darts:trust_summary_graph_type", trustSummaryGraphType);
-  }, [trustSummaryGraphType]);
 
   const passwordModal = showPasswordModal && (
     <div className="modal-overlay">
@@ -539,9 +432,6 @@ function App() {
     );
   }
 
-  const goToSession = (user_uuid: string, sessionIndex: number) =>
-    navigate(`/session/${user_uuid}/${sessionIndex}`);
-
   return (
     <div className="app">
       {passwordModal}
@@ -598,104 +488,21 @@ function App() {
           <Route
             path="/performance"
             element={
-              <section className="dash-section">
-                <p className="section-note">
-                  How game scores vary by AI condition and player trust.
-                </p>
-                <ScoreByCondition stats={scoreByConditionStats} />
-                <ScoreVsSkillScatter
-                  points={scoreVsSkillPoints}
-                  onSessionClick={goToSession}
-                />
-                {trustQuestionId && (
-                  <TrustVsScore
-                    points={trustVsScorePoints}
-                    boards={boards}
-                    likertScale={selectedLikertScale}
-                    onSessionClick={goToSession}
-                  />
-                )}
-                <ProximityVsScore
-                  points={proximityVsScorePoints}
-                  boards={boards}
-                  onSessionClick={goToSession}
-                />
-                <OptimalProximityVsScore
-                  points={optimalProximityVsScorePoints}
-                  boards={boards}
-                  onSessionClick={goToSession}
-                />
-              </section>
+              <PerformanceGroup joined={joinedData} variableRows={variableRows} matrix={correlationMatrix} />
             }
           />
 
           <Route
             path="/trust"
             element={
-              <section className="dash-section">
-                <p className="section-note">
-                  How much participants trusted the AI, how condition shaped that
-                  trust, and whether trust translated into better scores.
-                </p>
-                <TrustQuestionSelector
-                  surveys={surveyResponses}
-                  trustQuestionId={trustQuestionId}
-                  onChange={setTrustQuestionId}
-                />
-                {trustQuestionId && matchedSurveyCount === 0 && joinedData.length > 0 && (
-                  <p className="section-note" style={{ color: "#b45309" }}>
-                    Sessions loaded but none matched to survey responses. Charts will be empty. Check that both datasets share the same participant IDs.
-                  </p>
-                )}
-                {trustQuestionId && matchedSurveyCount > 0 && !hasAnyTrustData && (
-                  <p className="section-note" style={{ color: "#b45309" }}>
-                    {matchedSurveyCount} session{matchedSurveyCount !== 1 ? "s" : ""} matched to surveys, but &ldquo;{trustQuestionId}&rdquo; returned no numeric values.
-                    {trustQuestionSampleValue === undefined
-                      ? " Question ID not found in any matched survey response — the ID in the selector may come from a different survey than the matched ones."
-                      : ` First stored value: ${JSON.stringify(trustQuestionSampleValue)} (type: ${typeof trustQuestionSampleValue}). Only numbers, numeric strings, and standard Likert labels are supported.`}
-                  </p>
-                )}
-                {trustQuestionId ? (
-                  <>
-                    <TrustByCondition
-                      stats={trustByCondition}
-                      likertStats={trustLikertByCondition}
-                      likertScale={selectedLikertScale}
-                      graphType={trustSummaryGraphType}
-                      onGraphTypeChange={setTrustSummaryGraphType}
-                    />
-                    <TrustBySession
-                      stats={trustBySession}
-                      likertStats={trustLikertBySession}
-                      likertScale={selectedLikertScale}
-                      graphType={trustSummaryGraphType}
-                      onGraphTypeChange={setTrustSummaryGraphType}
-                    />
-                    <div className="chart-row">
-                      <TrustOverTime points={trustOverTime} likertScale={selectedLikertScale} />
-                      <TrustVsScore points={trustVsScorePoints} boards={boards} likertScale={selectedLikertScale} />
-                    </div>
-                    <TrustVsTime points={trustVsTimePoints} likertScale={selectedLikertScale} />
-                    <TrustVsProximity points={trustVsProximityPoints} likertScale={selectedLikertScale} />
-                  </>
-                ) : (
-                  <p className="section-note">
-                    Select Trust or Performance Perception above to load the charts.
-                  </p>
-                )}
-              </section>
+              <TrustGroup joined={joinedData} variableRows={variableRows} matrix={correlationMatrix} />
             }
           />
 
           <Route
             path="/luck"
             element={
-              <section className="dash-section">
-                <p className="section-note">
-                  Luck attribution, hit dispersion, and EV gap — charts arrive in
-                  the next phase of the survey restructure.
-                </p>
-              </section>
+              <LuckGroup joined={joinedData} variableRows={variableRows} matrix={correlationMatrix} />
             }
           />
 

@@ -1,7 +1,8 @@
-import type { AI_Type } from "../types/dart";
+import { AI_Type } from "../types/dart";
 import type { RewardSurface } from "../types/dart";
 import type { JoinedSessionSurvey } from "./surveyStats";
 import { getAnswerValue } from "./surveyStats";
+import { AI_TYPE_COLORS, AI_TYPE_LABELS } from "./stats";
 import {
   computeGameProximity,
   computeGameOptimalProximity,
@@ -112,6 +113,50 @@ export const VARIABLES: Record<VariableKey, VariableDef> = {
   dispersion: { key: "dispersion", label: "Hit Dispersion", group: "luck", accessor: (r) => r.dispersion, format: px },
   evGap: { key: "evGap", label: "EV Gap", group: "luck", accessor: (r) => r.evGap, format: pts },
 };
+
+export interface VariableConditionStats {
+  aiType: AI_Type;
+  label: string;
+  color: string;
+  count: number;
+  mean: number;
+  stdDev: number;
+  ci95: number;
+}
+
+/**
+ * Mean (± 95% CI) of one variable grouped by AI condition, across session
+ * variable rows. Null values are dropped per condition. Returns an entry for
+ * all 7 conditions in AI_Type order so charts keep a stable x-axis. Powers the
+ * "X by condition" charts on the group pages for continuous game-derived
+ * variables (scorePerHit, dispersion, evGap, proximities).
+ */
+export function computeVariableByCondition(
+  rows: SessionVariableRow[],
+  key: VariableKey,
+): VariableConditionStats[] {
+  const accessor = VARIABLES[key].accessor;
+  const grouped = rows.reduce<Partial<Record<AI_Type, number[]>>>((acc, r) => {
+    const v = accessor(r);
+    if (v === null) return acc;
+    (acc[r.ai_advice] ??= []).push(v);
+    return acc;
+  }, {});
+
+  return (Object.values(AI_Type).filter((v) => typeof v === "number") as AI_Type[]).map((type) => {
+    const values = grouped[type] ?? [];
+    const base = { aiType: type, label: AI_TYPE_LABELS[type], color: AI_TYPE_COLORS[type] };
+    if (values.length === 0) return { ...base, count: 0, mean: 0, stdDev: 0, ci95: 0 };
+    const mean = values.reduce((s, v) => s + v, 0) / values.length;
+    const variance =
+      values.length > 1
+        ? values.reduce((s, v) => s + (v - mean) ** 2, 0) / (values.length - 1)
+        : 0;
+    const sd = Math.sqrt(variance);
+    const ci95 = values.length > 1 ? (1.96 * sd) / Math.sqrt(values.length) : 0;
+    return { ...base, count: values.length, mean, stdDev: sd, ci95 };
+  });
+}
 
 /** Variable keys in canonical display order (Trust → Performance → Luck). */
 export const VARIABLE_KEYS: VariableKey[] = [
