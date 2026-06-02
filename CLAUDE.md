@@ -78,8 +78,8 @@ participantTotalScore = sum of session sums across all sessions for a user
 
 ## Key Experimental Design Facts
 - `execution_skill` and `ai_advice` (AI condition) are **preset by admins** before each session — they are not outcomes. Do not frame charts of these as findings.
-- The 7 AI conditions (`AI_Type` values 0–6): NONE, CORRECT, RANDOM, WRONG, BAD, GOOD_BAD, BAD_GOOD.
-- GOOD_BAD and BAD_GOOD are ordering conditions — same advice quality, different trajectory. Comparing them is a key research question.
+- The 7 AI conditions (`AI_Type` values 0–6): NONE, CORRECT, RANDOM, WRONG, BAD, GOOD_PLAUSIBLE, PLAUSIBLE_GOOD.
+- GOOD_PLAUSIBLE and PLAUSIBLE_GOOD are ordering conditions — same advice quality, different trajectory. Comparing them is a key research question.
 - Core research questions: Does AI condition affect game score? Does trust mediate performance? Does trust improve score?
 - `MIN_SESSIONS_REQUIRED = 20` in `stats.ts` — change this single constant to update the completeness threshold everywhere. A participant is "complete" when `sessionCount === MIN_SESSIONS_REQUIRED && surveyCount === MIN_SESSIONS_REQUIRED`.
 
@@ -131,16 +131,23 @@ src/
 │   │                                #   computeParticipantTotalScores, computeScoreByCondition,
 │   │                                #   computeScoreVsSkillPoints, computeProximityVsScorePoints,
 │   │                                #   computeGameProximity, computeGameDurationSecs,
-│   │                                #   SessionScore, ParticipantScore, ProximityScorePoint
+│   │                                #   gameScorePerHit, computeSessionScorePerHit (per-hit canonical
+│   │                                #     score — raw total is confounded by dynamic hit count 1/3/5/10),
+│   │                                #   computeGameHitDispersion/computeSessionHitDispersion (Dispersion
+│   │                                #     {mean,std} of hits around actual aim),
+│   │                                #   computeGameEvGap/computeSessionEvGap (per-hit scorePerHit − EV),
+│   │                                #   SessionScore, ParticipantScore, ProximityScorePoint, Dispersion
 │   │                                #   ScoreSkillPoint includes user_uuid + sessionIndex for click-to-navigate
 │   ├── scoreStats.test.ts
 │   ├── surveyScales.ts              # ORDINAL_SCALES — single source for all ordinal label→score
-│   │                                #   mappings (Likert, performance scale, etc.). Update here
-│   │                                #   when the survey instrument changes.
-│   │                                #   Current performance scale: Very Poor, Poor,
-│   │                                #   Average, Good, Very Good (1..5).
-│   │                                #   Also includes display helpers so charts
-│   │                                #   show Likert labels (not raw numbers).
+│   │                                #   mappings. Update here when the instrument changes.
+│   │                                #   Current instrument: trust/influence/satisfied use the
+│   │                                #   5-point agreement Likert; luck uses Very Unlucky..Very Lucky.
+│   │                                #   (Performance Very Poor..Very Good scale is RETIRED.)
+│   │                                #   SURVEY_DIMENSIONS registry maps questionId → {label, group
+│   │                                #   (trust|performance|luck), scaleLabels}; getDimension/
+│   │                                #   getScaleLabels/formatScaleValue are the display helpers.
+│   │                                #   Deprecated trust|performance shims remain until Phase 5/6.
 │   ├── surveyStats.ts               # joinSessionsWithSurvey, computeTrustByCondition,
 │   │                                #   computeTrustOverTime, computeTrustVsScorePoints,
 │   │                                #   computeTrustVsTimePoints, computeTrustVsProximityPoints
@@ -150,9 +157,19 @@ src/
 │   │                                #   computeIndividualKpis, computeGameBreakdown,
 │   │                                #   chronologicalParticipantSessionEntries (Session View order + navigate)
 │   ├── individualStats.test.ts
-│   └── aimingLookup.ts              # getOptimalAimingCoord(boardId, executionSkill) → canvas {x,y} | null
-│                                    #   routes to Perlin (0–99) or Gaussian (100–199) JSON;
-│                                    #   JSON [a,b] → canvas x=b, y=a (matches AI_Correct toCoord convention)
+│   ├── aimingLookup.ts              # getOptimalAimingCoord(boardId, executionSkill) → canvas {x,y} | null
+│   │                                #   routes to Perlin (0–99) or Gaussian (100–199) JSON;
+│   │                                #   JSON [a,b] → canvas x=b, y=a (matches AI_Correct toCoord convention)
+│   ├── aimingEV.ts                  # getAimEV(boardId, aimCoord, executionSkill) → EV per hit;
+│   │                                #   STUB returns flat EV_PER_HIT_PLACEHOLDER (8) until EV JSON lands
+│   ├── aimingEV.test.ts
+│   ├── variables.ts                 # Unified 9-variable session-level set (Trust/Performance/Luck):
+│   │                                #   SessionVariableRow, buildSessionVariableRows(joined, boards),
+│   │                                #   VARIABLES registry {key,label,group,accessor,format} + VARIABLE_KEYS
+│   ├── variables.test.ts
+│   ├── correlation.ts               # spearman(xs, ys) pairwise-complete → {r, n};
+│   │                                #   computeCorrelationMatrix(rows, keys) → CorrelationCell[][]
+│   └── correlation.test.ts
 │
 └── components/
     ├── sanity/

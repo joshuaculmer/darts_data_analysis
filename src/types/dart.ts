@@ -23,8 +23,8 @@ export const AI_Type = {
   RANDOM: 2,
   WRONG: 3,
   BAD: 4,
-  GOOD_BAD: 5,
-  BAD_GOOD: 6,
+  GOOD_PLAUSIBLE: 5,
+  PLAUSIBLE_GOOD: 6,
 } as const;
 export type AI_Type = typeof AI_Type[keyof typeof AI_Type];
 

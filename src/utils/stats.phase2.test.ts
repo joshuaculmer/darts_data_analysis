@@ -115,7 +115,7 @@ describe("computeConditionStats", () => {
   it("returns entries in AI_Type enum order", () => {
     const result = computeConditionStats([]);
     expect(result[0].aiType).toBe(AI_Type.NONE);
-    expect(result[result.length - 1].aiType).toBe(AI_Type.BAD_GOOD);
+    expect(result[result.length - 1].aiType).toBe(AI_Type.PLAUSIBLE_GOOD);
   });
 });
 
@@ -141,10 +141,10 @@ describe("computeScatterPoints", () => {
 
   it("carries the correct aiType, label, and color for each point", () => {
     const [point] = computeScatterPoints([
-      makeSession({ ai_advice: AI_Type.GOOD_BAD }),
+      makeSession({ ai_advice: AI_Type.GOOD_PLAUSIBLE }),
     ]);
-    expect(point.aiType).toBe(AI_Type.GOOD_BAD);
-    expect(point.label).toBe("Good→Bad");
+    expect(point.aiType).toBe(AI_Type.GOOD_PLAUSIBLE);
+    expect(point.label).toBe("Good→Plausible");
     expect(point.color).toBe("#009E73");
   });
 

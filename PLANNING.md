@@ -27,8 +27,8 @@ enum AI_Type {
   RANDOM    = 2,  // random advice
   WRONG     = 3,  // incorrect advice
   BAD       = 4,  // bad advice
-  GOOD_BAD  = 5,  // starts good → turns bad
-  BAD_GOOD  = 6,  // starts bad → turns good
+  GOOD_PLAUSIBLE = 5,  // starts good → turns plausible
+  PLAUSIBLE_GOOD = 6,  // starts plausible → turns good
 }
 ```
 This is a **7-condition between/within-subjects design** studying how advice quality and trajectory affect darts performance.
@@ -73,7 +73,7 @@ The app will have a top navbar with five sections:
 - [ ] **Score by trust level**: group participants by survey-reported trust quartile, compare scores — requires survey CSV
 - [x] **Score vs trust scatter**: per-session score vs trust rating — shown in both this section and Trust & Influence; click-to-expand per-game scores; requires trust question to be selected
 - [x] **Proximity vs score scatter**: per-session avg distance from suggested aiming coord vs avg score; click-to-expand per-game scatter; NONE-condition sessions shown separately
-- [ ] **Ordering effect**: GOOD_BAD vs BAD_GOOD score delta (does trajectory matter?)
+- [ ] **Ordering effect**: GOOD_PLAUSIBLE vs PLAUSIBLE_GOOD score delta (does trajectory matter?)
 
 ### Section 3 — Trust & Influence
 *Goal: understand how much participants trusted the AI, how that trust was shaped by condition, and whether trust translated into better scores.*
@@ -81,7 +81,7 @@ The app will have a top navbar with five sections:
 - [x] **Trust question selector**: analyst picks which survey question ID represents trust — drives all charts below
 - [x] **Trust by AI condition**: mean trust rating per AI_Type (bar chart with 95% CI error bars)
 - [x] **Trust over time**: scatter of trust rating by session date, colored by AI condition
-- [ ] **Trust trajectory**: GOOD_BAD vs BAD_GOOD trust arc — did trust recover when advice improved?
+- [ ] **Trust trajectory**: GOOD_PLAUSIBLE vs PLAUSIBLE_GOOD trust arc — did trust recover when advice improved?
 - [x] **Trust → score**: scatter of trust rating vs avg game score; click-to-expand per-game scores
 - [x] **Trust → time per game**: scatter of trust rating vs avg game duration (s); click-to-expand per-game durations
 - [x] **Trust → proximity**: scatter of trust rating vs avg distance from suggested aiming coord; NONE-condition sessions shown separately; click-to-expand per-game proximity bars

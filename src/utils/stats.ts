@@ -110,8 +110,8 @@ export const AI_TYPE_LABELS: Record<AI_Type, string> = {
   [AI_Type.RANDOM]: "Random",
   [AI_Type.WRONG]: "Wrong",
   [AI_Type.BAD]: "Bad",
-  [AI_Type.GOOD_BAD]: "Good→Bad",
-  [AI_Type.BAD_GOOD]: "Bad→Good",
+  [AI_Type.GOOD_PLAUSIBLE]: "Good→Plausible",
+  [AI_Type.PLAUSIBLE_GOOD]: "Plausible→Good",
 };
 
 export const AI_TYPE_COLORS: Record<AI_Type, string> = {
@@ -120,8 +120,8 @@ export const AI_TYPE_COLORS: Record<AI_Type, string> = {
   [AI_Type.RANDOM]: "#E69F00",
   [AI_Type.WRONG]: "#D55E00",
   [AI_Type.BAD]: "#CC79A7",
-  [AI_Type.GOOD_BAD]: "#009E73",
-  [AI_Type.BAD_GOOD]: "#56B4E9",
+  [AI_Type.GOOD_PLAUSIBLE]: "#009E73",
+  [AI_Type.PLAUSIBLE_GOOD]: "#56B4E9",
 };
 
 export interface ConditionCount {

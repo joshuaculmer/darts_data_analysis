@@ -165,26 +165,26 @@ describe("countByCondition", () => {
       makeSession({ ai_advice: AI_Type.NONE }),
       makeSession({ ai_advice: AI_Type.NONE }),
       makeSession({ ai_advice: AI_Type.CORRECT }),
-      makeSession({ ai_advice: AI_Type.BAD_GOOD }),
+      makeSession({ ai_advice: AI_Type.PLAUSIBLE_GOOD }),
     ];
     const result = countByCondition(sessions);
     expect(result.find((e) => e.aiType === AI_Type.NONE)?.sessions).toBe(2);
     expect(result.find((e) => e.aiType === AI_Type.CORRECT)?.sessions).toBe(1);
-    expect(result.find((e) => e.aiType === AI_Type.BAD_GOOD)?.sessions).toBe(1);
+    expect(result.find((e) => e.aiType === AI_Type.PLAUSIBLE_GOOD)?.sessions).toBe(1);
     expect(result.find((e) => e.aiType === AI_Type.WRONG)?.sessions).toBe(0);
   });
 
-  it("returns entries in AI_Type enum order (NONE first, BAD_GOOD last)", () => {
+  it("returns entries in AI_Type enum order (NONE first, PLAUSIBLE_GOOD last)", () => {
     const result = countByCondition([]);
     expect(result[0].aiType).toBe(AI_Type.NONE);
-    expect(result[result.length - 1].aiType).toBe(AI_Type.BAD_GOOD);
+    expect(result[result.length - 1].aiType).toBe(AI_Type.PLAUSIBLE_GOOD);
   });
 
   it("each entry carries a human-readable label", () => {
     const result = countByCondition([]);
     const labels = result.map((e) => e.label);
     expect(labels).toContain("None");
-    expect(labels).toContain("Good→Bad");
-    expect(labels).toContain("Bad→Good");
+    expect(labels).toContain("Good→Plausible");
+    expect(labels).toContain("Plausible→Good");
   });
 });

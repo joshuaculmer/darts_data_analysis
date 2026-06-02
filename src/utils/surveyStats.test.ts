@@ -96,17 +96,17 @@ describe("getAnswerValue", () => {
     }
   });
 
-  it("maps the 5-point performance scale (very poor → very good)", () => {
+  it("maps the 5-point luck scale (very unlucky → very lucky)", () => {
     const labels: [string, number][] = [
-      ["very poor", 1],
-      ["poor", 2],
-      ["average", 3],
-      ["good", 4],
-      ["very good", 5],
+      ["Very Unlucky", 1],
+      ["Unlucky", 2],
+      ["Little or no impact", 3],
+      ["Lucky", 4],
+      ["Very Lucky", 5],
     ];
     for (const [label, expected] of labels) {
-      const responses = [{ questionId: "perf", value: label }];
-      expect(getAnswerValue(responses, "perf"), `expected "${label}" → ${expected}`).toBe(expected);
+      const responses = [{ questionId: "luck", value: label }];
+      expect(getAnswerValue(responses, "luck"), `expected "${label}" → ${expected}`).toBe(expected);
     }
   });
 
@@ -461,12 +461,12 @@ describe("computeTrustOverTime", () => {
   it("carries aiType, color, and sessionIndex through each point", () => {
     const joined = [
       {
-        session: makeSession({ ai_advice: AI_Type.BAD_GOOD }),
+        session: makeSession({ ai_advice: AI_Type.PLAUSIBLE_GOOD }),
         survey: makeSurvey({ responses: [{ questionId: "trust", value: 4 }] }),
       },
     ];
     const [point] = computeTrustOverTime(joined, "trust");
-    expect(point.aiType).toBe(AI_Type.BAD_GOOD);
+    expect(point.aiType).toBe(AI_Type.PLAUSIBLE_GOOD);
     expect(point.color).toBe("#56B4E9");
     expect(point.sessionIndex).toBe(1);
   });

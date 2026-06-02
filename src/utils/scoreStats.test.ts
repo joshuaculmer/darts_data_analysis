@@ -10,6 +10,12 @@ import {
   computeGameOptimalProximity,
   computeOptimalProximityVsScorePoints,
   computeProximityVsScorePoints,
+  gameScorePerHit,
+  computeSessionScorePerHit,
+  computeGameHitDispersion,
+  computeSessionHitDispersion,
+  computeGameEvGap,
+  computeSessionEvGap,
 } from "./scoreStats";
 import { getOptimalAimingCoord } from "./aimingLookup";
 
@@ -154,10 +160,10 @@ describe("computeScoreByCondition", () => {
     expect(result.find((s) => s.aiType === AI_Type.WRONG)!.mean).toBeCloseTo(2);
   });
 
-  it("returns entries in AI_Type order (NONE first, BAD_GOOD last)", () => {
+  it("returns entries in AI_Type order (NONE first, PLAUSIBLE_GOOD last)", () => {
     const result = computeScoreByCondition([], new Map());
     expect(result[0].aiType).toBe(AI_Type.NONE);
-    expect(result[result.length - 1].aiType).toBe(AI_Type.BAD_GOOD);
+    expect(result[result.length - 1].aiType).toBe(AI_Type.PLAUSIBLE_GOOD);
   });
 });
 
@@ -184,11 +190,11 @@ describe("computeScoreVsSkillPoints", () => {
 
   it("carries aiType, label, and color for each point", () => {
     const [point] = computeScoreVsSkillPoints(
-      [makeSession({ ai_advice: AI_Type.GOOD_BAD })],
+      [makeSession({ ai_advice: AI_Type.GOOD_PLAUSIBLE })],
       new Map(),
     );
-    expect(point.aiType).toBe(AI_Type.GOOD_BAD);
-    expect(point.label).toBe("Good→Bad");
+    expect(point.aiType).toBe(AI_Type.GOOD_PLAUSIBLE);
+    expect(point.label).toBe("Good→Plausible");
     expect(point.color).toBe("#009E73");
   });
 });
@@ -285,6 +291,148 @@ describe("computeOptimalProximityVsScorePoints", () => {
     expect(point.aiType).toBe(AI_Type.CORRECT);
     expect(point.color).toBe("#0072B2");
     expect(point.session).toBe(session);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// gameScorePerHit — normalizes raw game score by hit count (dynamic 1/3/5/10)
+// ---------------------------------------------------------------------------
+describe("gameScorePerHit", () => {
+  it("returns 0 for a game with no hits (divides by max(1, 0))", () => {
+    const surface = makeFlatSurface(5);
+    expect(gameScorePerHit(makeGame(0), surface)).toBe(0);
+  });
+
+  it("equals gameScore for a single-hit game", () => {
+    const surface = makeFlatSurface(7);
+    const game = makeGame(0, [{ x: 0, y: 0 }]);
+    expect(gameScorePerHit(game, surface)).toBe(gameScore(game, surface));
+  });
+
+  it("divides total score by hit count so hit count does not confound", () => {
+    const surface = makeFlatSurface(2);
+    // 2 hits → total 4 → per-hit 2; 5 hits → total 10 → per-hit 2
+    expect(gameScorePerHit(makeGame(0, Array(2).fill({ x: 0, y: 0 })), surface)).toBe(2);
+    expect(gameScorePerHit(makeGame(0, Array(5).fill({ x: 0, y: 0 })), surface)).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeSessionScorePerHit — mean per-hit score across a session's games
+// ---------------------------------------------------------------------------
+describe("computeSessionScorePerHit", () => {
+  it("returns 0 for a session with no games", () => {
+    expect(computeSessionScorePerHit(makeSession({ games: [] }), new Map())).toBe(0);
+  });
+
+  it("averages per-hit scores across games, not raw totals", () => {
+    const boards = new Map([
+      [0, makeFlatSurface(2)],
+      [1, makeFlatSurface(6)],
+    ]);
+    const games = [
+      makeGame(0, Array(2).fill({ x: 0, y: 0 })), // per-hit 2
+      makeGame(1, Array(3).fill({ x: 0, y: 0 })), // per-hit 6
+    ];
+    // mean(2, 6) = 4
+    expect(computeSessionScorePerHit(makeSession({ games }), boards)).toBeCloseTo(4);
+  });
+
+  it("scores games with a missing board as 0 per hit", () => {
+    const result = computeSessionScorePerHit(
+      makeSession({ games: [makeGame(99, [{ x: 0, y: 0 }])] }),
+      new Map(),
+    );
+    expect(result).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeGameHitDispersion — spread of hits around the actual aim point
+// ---------------------------------------------------------------------------
+describe("computeGameHitDispersion", () => {
+  it("returns zero mean and std for a game with no hits", () => {
+    expect(computeGameHitDispersion(makeGame(0, []))).toEqual({ mean: 0, std: 0 });
+  });
+
+  it("returns zero std for a single hit", () => {
+    const game = makeGame(0, [{ x: 3, y: 4 }]);
+    game.actual_aiming_coord = { x: 0, y: 0 };
+    const d = computeGameHitDispersion(game);
+    expect(d.mean).toBeCloseTo(5);
+    expect(d.std).toBe(0);
+  });
+
+  it("computes mean and sample std of distances from each hit to the actual aim", () => {
+    const game = makeGame(0, [{ x: 3, y: 4 }, { x: 0, y: 0 }]); // dists 5 and 0
+    game.actual_aiming_coord = { x: 0, y: 0 };
+    const d = computeGameHitDispersion(game);
+    expect(d.mean).toBeCloseTo(2.5);
+    // sample std of [5, 0]: sqrt(((5-2.5)^2 + (0-2.5)^2) / (2-1)) = sqrt(12.5)
+    expect(d.std).toBeCloseTo(Math.sqrt(12.5));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeSessionHitDispersion — mean over games of per-game dispersion
+// ---------------------------------------------------------------------------
+describe("computeSessionHitDispersion", () => {
+  it("returns zero for a session with no games", () => {
+    expect(computeSessionHitDispersion(makeSession({ games: [] }))).toEqual({ mean: 0, std: 0 });
+  });
+
+  it("averages per-game mean and std across games", () => {
+    const g1 = makeGame(0, [{ x: 4, y: 0 }, { x: 0, y: 0 }]); // dists 4, 0 → mean 2, std sqrt(8)
+    g1.actual_aiming_coord = { x: 0, y: 0 };
+    const g2 = makeGame(0, [{ x: 6, y: 0 }, { x: 0, y: 0 }]); // dists 6, 0 → mean 3, std sqrt(18)
+    g2.actual_aiming_coord = { x: 0, y: 0 };
+    const d = computeSessionHitDispersion(makeSession({ games: [g1, g2] }));
+    expect(d.mean).toBeCloseTo(2.5); // mean(2, 3)
+    expect(d.std).toBeCloseTo((Math.sqrt(8) + Math.sqrt(18)) / 2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeGameEvGap / computeSessionEvGap — per-hit gap vs placeholder EV
+// ---------------------------------------------------------------------------
+describe("computeGameEvGap", () => {
+  it("is per-hit score minus the placeholder EV (8)", () => {
+    const surface = makeFlatSurface(10); // 2 hits → total 20 → per-hit 10
+    const game = makeGame(0, Array(2).fill({ x: 0, y: 0 }));
+    expect(computeGameEvGap(game, surface, 50)).toBeCloseTo(2); // 10 - 8
+  });
+
+  it("is negative when per-hit score is below the placeholder EV", () => {
+    const surface = makeFlatSurface(3);
+    const game = makeGame(0, [{ x: 0, y: 0 }]);
+    expect(computeGameEvGap(game, surface, 50)).toBeCloseTo(-5); // 3 - 8
+  });
+});
+
+describe("computeSessionEvGap", () => {
+  it("returns 0 for a session with no games", () => {
+    expect(computeSessionEvGap(makeSession({ games: [] }), new Map())).toBe(0);
+  });
+
+  it("averages per-game ev gaps across the session", () => {
+    const boards = new Map([
+      [0, makeFlatSurface(10)], // per-hit 10 → gap +2
+      [1, makeFlatSurface(4)], // per-hit 4 → gap -4
+    ]);
+    const games = [
+      makeGame(0, Array(2).fill({ x: 0, y: 0 })),
+      makeGame(1, [{ x: 0, y: 0 }]),
+    ];
+    // mean(2, -4) = -1
+    expect(computeSessionEvGap(makeSession({ games }), boards)).toBeCloseTo(-1);
+  });
+
+  it("treats a missing board as 0 per-hit (gap = -8)", () => {
+    const result = computeSessionEvGap(
+      makeSession({ games: [makeGame(99, [{ x: 0, y: 0 }])] }),
+      new Map(),
+    );
+    expect(result).toBeCloseTo(-8);
   });
 });
 

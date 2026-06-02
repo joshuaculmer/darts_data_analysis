@@ -178,7 +178,7 @@ describe("computeIndividualTimeline", () => {
     const survey = makeSurvey({
       responses: [
         { questionId: "trust", value: 4 },
-        { questionId: "post_session_performance_rating", value: "very good" },
+        { questionId: "post_session_performance_rating", value: 5 },
       ],
     });
     const joined = [makeJoined(makeSession({ user_uuid: "uuid-a" }), survey)];
@@ -187,10 +187,10 @@ describe("computeIndividualTimeline", () => {
   });
 
   it("carries aiType, label, and color", () => {
-    const joined = [makeJoined(makeSession({ user_uuid: "uuid-a", ai_advice: AI_Type.BAD_GOOD }))];
+    const joined = [makeJoined(makeSession({ user_uuid: "uuid-a", ai_advice: AI_Type.PLAUSIBLE_GOOD }))];
     const [point] = computeIndividualTimeline(joined, "uuid-a", "trust", new Map());
-    expect(point.aiType).toBe(AI_Type.BAD_GOOD);
-    expect(point.label).toBe("Bad→Good");
+    expect(point.aiType).toBe(AI_Type.PLAUSIBLE_GOOD);
+    expect(point.label).toBe("Plausible→Good");
     expect(point.color).toBe("#56B4E9");
   });
 });

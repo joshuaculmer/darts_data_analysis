@@ -100,8 +100,8 @@ Colorblind-safe, print-safe. Used for all per-condition coloring in charts.
 | RANDOM | Amber | `#E69F00` |
 | WRONG | Vermillion | `#D55E00` |
 | BAD | Mauve | `#CC79A7` |
-| GOOD_BAD | Teal | `#009E73` |
-| BAD_GOOD | Sky blue | `#56B4E9` |
+| GOOD_PLAUSIBLE | Teal | `#009E73` |
+| PLAUSIBLE_GOOD | Sky blue | `#56B4E9` |
 
 These replace any previously assigned `color` values on `AI_Type` conditions. The mapping should live in a single constants file (e.g. `src/utils/colors.ts`) and be imported everywhere conditions are colored — never duplicated inline.
 

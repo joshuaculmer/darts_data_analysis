@@ -3,6 +3,7 @@ import type { DartGameDTO, RewardSurface } from "../types/dart";
 import type { ParsedGameSession } from "../loaders/loadData";
 import { AI_TYPE_COLORS, AI_TYPE_LABELS } from "./stats";
 import { getOptimalAimingCoord } from "./aimingLookup";
+import { getAimEV } from "./aimingEV";
 
 export function gameScore(game: DartGameDTO, surface: RewardSurface): number {
   return game.hits.reduce((sum, hit) => {
@@ -10,6 +11,89 @@ export function gameScore(game: DartGameDTO, surface: RewardSurface): number {
     const y = Math.floor(hit.y);
     return sum + (surface[x]?.[y] ?? 0);
   }, 0);
+}
+
+/**
+ * Game score normalized by hit count. Hit count is now dynamic per game
+ * (typically 1/3/5/10 throws at one aim), so raw summed score is confounded by
+ * how many throws a game allowed. This per-hit value is the canonical score for
+ * charting/correlation; raw {@link gameScore} is kept for Raw Data / back-compat.
+ */
+export function gameScorePerHit(game: DartGameDTO, surface: RewardSurface): number {
+  return gameScore(game, surface) / Math.max(1, game.hits.length);
+}
+
+/** Mean per-hit score across all games in a session. */
+export function computeSessionScorePerHit(
+  session: ParsedGameSession,
+  boards: Map<number, RewardSurface>,
+): number {
+  if (session.games.length === 0) return 0;
+  const perHit = session.games.map((game) => {
+    const surface = boards.get(game.board_id);
+    return surface ? gameScorePerHit(game, surface) : 0;
+  });
+  return perHit.reduce((s, v) => s + v, 0) / perHit.length;
+}
+
+export interface Dispersion {
+  mean: number;
+  std: number;
+}
+
+/**
+ * Spread of a game's hits around its actual aim point: mean and sample std of
+ * the Euclidean distance from each hit to `actual_aiming_coord`. With dynamic
+ * hit counts this captures how tightly repeated throws cluster around the aim.
+ */
+export function computeGameHitDispersion(game: DartGameDTO): Dispersion {
+  const dists = game.hits.map((hit) => {
+    const dx = hit.x - game.actual_aiming_coord.x;
+    const dy = hit.y - game.actual_aiming_coord.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  });
+  if (dists.length === 0) return { mean: 0, std: 0 };
+  const mean = dists.reduce((s, v) => s + v, 0) / dists.length;
+  return { mean, std: stdDev(dists, mean) };
+}
+
+/** Mean over a session's games of per-game hit-dispersion mean and std. */
+export function computeSessionHitDispersion(session: ParsedGameSession): Dispersion {
+  if (session.games.length === 0) return { mean: 0, std: 0 };
+  const per = session.games.map(computeGameHitDispersion);
+  const mean = per.reduce((s, d) => s + d.mean, 0) / per.length;
+  const std = per.reduce((s, d) => s + d.std, 0) / per.length;
+  return { mean, std };
+}
+
+/**
+ * Per-hit gap between realized score and expected value:
+ * `gameScorePerHit − getAimEV(...)`. EV is a placeholder until the EV JSON
+ * lands (see aimingEV.ts), so every gap is currently `scorePerHit − 8`.
+ */
+export function computeGameEvGap(
+  game: DartGameDTO,
+  surface: RewardSurface,
+  executionSkill: number,
+): number {
+  return (
+    gameScorePerHit(game, surface) -
+    getAimEV(game.board_id, game.actual_aiming_coord, executionSkill)
+  );
+}
+
+/** Mean per-hit EV gap across all games in a session. */
+export function computeSessionEvGap(
+  session: ParsedGameSession,
+  boards: Map<number, RewardSurface>,
+): number {
+  if (session.games.length === 0) return 0;
+  const gaps = session.games.map((game) => {
+    const surface = boards.get(game.board_id);
+    const perHit = surface ? gameScorePerHit(game, surface) : 0;
+    return perHit - getAimEV(game.board_id, game.actual_aiming_coord, session.execution_skill);
+  });
+  return gaps.reduce((s, v) => s + v, 0) / gaps.length;
 }
 
 export interface SessionScore {
