@@ -114,8 +114,8 @@ variable-centric and share the same building blocks. See `PLANNING.md` for the c
 | Game Performance (`/performance`) | `PerformanceGroup`: scorePerHit by condition + proxOptimal by condition (VariableByCondition), satisfied dimension (SurveyDimensionCharts), within-group pairwise scatters, global heatmap (Performance highlighted) |
 | Trust & Influence (`/trust`) | `TrustGroup`: trust + influence dimensions (SurveyDimensionCharts), proxAI by condition, within-group pairwise scatters, global heatmap (Trust highlighted) |
 | Luck (`/luck`) | `LuckGroup`: luck dimension, dispersion + evGap by condition, within-group pairwise scatters, global heatmap (Luck highlighted). EV gap labeled as placeholder. |
-| Individual View | IndividualView (participant dropdown + wholistic score/trust/performance graph + breakdown) |
-| Session View | SessionView — participant + session pills in **chronological** order (`created_at`); session metadata table + per-game table with expandable hit rows, board ID, and board seed (if present in game JSON). Scatter navigation uses global row index into `filteredSessions`; pills remap to the same session after sort. |
+| Individual View | IndividualView (participant dropdown + wholistic score graph with toggleable per-dimension survey overlays [trust/influence/satisfied/luck] + game breakdown) |
+| Session View | SessionView — participant + session pills in **chronological** order (`created_at`); session metadata table + per-game table with expandable hit rows, board ID, board seed (if present in game JSON), and per-game scorePerHit / dispersion / EV-gap (placeholder EV). Scatter navigation uses global row index into `filteredSessions`; pills remap to the same session after sort. |
 | Raw Data | Coming soon (filterable/sortable tables) |
 
 The six trust charts (`TrustByCondition`, `TrustBySession`, `TrustOverTime`, `TrustVsScore`,
@@ -175,13 +175,16 @@ src/
 │   │                                #   SURVEY_DIMENSIONS registry maps questionId → {label, group
 │   │                                #   (trust|performance|luck), scaleLabels}; getDimension/
 │   │                                #   getScaleLabels/formatScaleValue are the display helpers.
-│   │                                #   Deprecated trust|performance shims remain until Phase 5/6.
+│   │                                #   DIMENSION_COLORS/getDimensionColor give each dimension an
+│   │                                #   Okabe-Ito line color (Individual timeline overlay).
+│   │                                #   (Deprecated trust|performance LikertScale shims are REMOVED.)
 │   ├── surveyStats.ts               # joinSessionsWithSurvey, computeTrustByCondition,
 │   │                                #   computeTrustOverTime, computeTrustVsScorePoints,
 │   │                                #   computeTrustVsTimePoints, computeTrustVsProximityPoints
 │   ├── surveyStats.test.ts
 │   ├── individualStats.ts           # getParticipantList, computeIndividualTimeline
-│   │                                #   (score + trust + performance per session),
+│   │                                #   (score + per-session surveyValues keyed by SURVEY_DIMENSIONS
+│   │                                #    — trust/influence/satisfied/luck; retired "performance" dropped),
 │   │                                #   computeIndividualKpis, computeGameBreakdown,
 │   │                                #   chronologicalParticipantSessionEntries (Session View order + navigate)
 │   ├── individualStats.test.ts
@@ -226,7 +229,6 @@ src/
     │
     ├── trust/
     │   ├── TrustGroup.tsx            # /trust page (trust + influence dims, proxAI, pairwise, heatmap)
-    │   ├── TrustQuestionSelector.tsx # (legacy) no longer routed; kept for reference
     │   ├── TrustByCondition.tsx      # Mean rating by condition for ANY dimension (metricLabel+scaleLabels); Dot+CI/Median+IQR/Stacked Likert
     │   ├── TrustBySession.tsx        # Mean rating by participant session number for ANY dimension
     │   ├── TrustOverTime.tsx         # Rating over session index for ANY dimension
@@ -236,9 +238,10 @@ src/
     │
     ├── individual/
     │   ├── IndividualView.tsx       # Parent: participant selector, wires all sub-components
-    │   ├── IndividualTimeline.tsx   # Wholistic Individual Graph (score, trust, performance)
-    │   │                            #   with on-the-fly switch controls + dynamic axes
-    │   │                            #   and shared right-axis trust/performance Likert mapping
+    │   ├── IndividualTimeline.tsx   # Wholistic Individual Graph (score + any survey dimensions)
+    │   │                            #   per-dimension toggles (trust/influence/satisfied/luck, only
+    │   │                            #   those with data), each a DIMENSION_COLORS line; shared right
+    │   │                            #   axis shows labels when enabled dims share one scale, else 1–5
     │   ├── GameBreakdown.tsx        # Stub — renders session avg; game-level bars need raw session passed in
     │   ├── ConditionExposure.tsx
     │   ├── ParticipantKpiCards.tsx
@@ -246,7 +249,9 @@ src/
     │
     ├── session/
     │   └── SessionView.tsx          # Participant + session dropdowns; metadata table + games table
-    │                                #   (click row → expands per-hit coordinates + individual hit scores)
+    │                                #   (click row → expands per-hit coordinates + individual hit scores;
+    │                                #    game detail shows per-game scorePerHit, dispersion mean±std,
+    │                                #    and EV gap [placeholder EV until the EV JSON lands])
     │                                #   Navigated to automatically when a scatter point is clicked
     │
     └── raw/

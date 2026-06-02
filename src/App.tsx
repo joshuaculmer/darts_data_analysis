@@ -18,8 +18,7 @@ import { loadBoards } from "./loaders/loadBoards";
 import type { RewardSurface } from "./types/dart";
 import { getCompleteUserIds } from "./utils/stats";
 import { joinSessionsWithSurvey } from "./utils/surveyStats";
-import { inferLikertScaleFromQuestionId } from "./utils/surveyScales";
-import type { LikertScale } from "./utils/surveyScales";
+import { getDimension } from "./utils/surveyScales";
 import type { JoinedSessionSurvey } from "./utils/surveyStats";
 import { buildSessionVariableRows, VARIABLE_KEYS } from "./utils/variables";
 import { computeCorrelationMatrix } from "./utils/correlation";
@@ -79,7 +78,6 @@ function IndividualRoute({
   trustQuestionId,
   surveyLoaded,
   boards,
-  likertScale,
 }: {
   sessions: ParsedGameSession[];
   surveys: ParsedSurveyResponse[];
@@ -87,7 +85,6 @@ function IndividualRoute({
   trustQuestionId: string | null;
   surveyLoaded: boolean;
   boards: Map<number, RewardSurface>;
-  likertScale: LikertScale;
 }) {
   const { uuid } = useParams();
   const [searchParams] = useSearchParams();
@@ -113,7 +110,6 @@ function IndividualRoute({
         boards={boards}
         filterUuids={filterUuids}
         onNavigateToSession={(u, idx) => navigate(`/session/${u}/${idx}`)}
-        likertScale={likertScale}
       />
     </section>
   );
@@ -247,7 +243,7 @@ function App() {
       new Set(surveyResponses.flatMap((s) => s.responses.map((r) => r.questionId))),
     );
     const firstTrustId = questionIds.find(
-      (id) => inferLikertScaleFromQuestionId(id) === "trust",
+      (id) => getDimension(id)?.group === "trust",
     );
     const fallbackId = questionIds[0] ?? null;
     setTrustQuestionId(firstTrustId ?? fallbackId);
@@ -298,11 +294,6 @@ function App() {
     () => computeCorrelationMatrix(variableRows, VARIABLE_KEYS),
     [variableRows],
   );
-  const selectedLikertScale = useMemo(
-    () => inferLikertScaleFromQuestionId(trustQuestionId),
-    [trustQuestionId],
-  );
-
   const surveyLoaded = surveyResponses.length > 0;
   const anyDataLoaded = sessionsLoaded || surveyLoaded;
 
@@ -516,7 +507,6 @@ function App() {
                 trustQuestionId={trustQuestionId}
                 surveyLoaded={surveyLoaded}
                 boards={boards}
-                likertScale={selectedLikertScale}
               />
             }
           />

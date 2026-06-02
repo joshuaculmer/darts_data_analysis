@@ -3,7 +3,12 @@ import { useState, useEffect } from "react";
 import type { ParsedGameSession } from "../../loaders/loadData";
 import type { RewardSurface } from "../../types/dart";
 import { chronologicalParticipantSessionEntries } from "../../utils/individualStats";
-import { computeSessionScore } from "../../utils/scoreStats";
+import {
+  computeSessionScore,
+  computeGameHitDispersion,
+  computeGameEvGap,
+  gameScorePerHit,
+} from "../../utils/scoreStats";
 import { AI_TYPE_LABELS, AI_TYPE_COLORS } from "../../utils/stats";
 import { GameBoardView } from "./GameBoardView";
 import { getOptimalAimingCoord } from "../../utils/aimingLookup";
@@ -79,6 +84,13 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
   const maxGameScore = sessionScore ? Math.max(...sessionScore.gameScores, 1) : 1;
   const optimalAiming = game && activeSession
     ? getOptimalAimingCoord(game.board_id, activeSession.execution_skill)
+    : null;
+
+  // Extrapolated per-game metrics (Phase 6). EV gap uses the EV stub (placeholder 8/hit).
+  const dispersion = game && game.hits.length > 0 ? computeGameHitDispersion(game) : null;
+  const scorePerHit = game && surface ? gameScorePerHit(game, surface) : null;
+  const evGap = game && surface && activeSession
+    ? computeGameEvGap(game, surface, activeSession.execution_skill)
     : null;
 
   return (
@@ -280,6 +292,24 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
 
                 {/* Hit table */}
                 <div style={{ padding: "14px 20px", overflowY: "auto" }}>
+                  {/* Extrapolated per-game metrics */}
+                  <div style={{ display: "flex", gap: 22, flexWrap: "wrap", marginBottom: 12 }}>
+                    <KpiChip
+                      label="Score / Hit"
+                      value={scorePerHit != null ? scorePerHit.toFixed(2) : "—"}
+                    />
+                    <KpiChip
+                      label="Dispersion"
+                      value={dispersion ? `${dispersion.mean.toFixed(2)} ± ${dispersion.std.toFixed(2)}` : "—"}
+                    />
+                    <KpiChip
+                      label="EV Gap *"
+                      value={evGap != null ? evGap.toFixed(2) : "—"}
+                    />
+                  </div>
+                  <p style={{ fontSize: 10, color: "#9ca3af", marginBottom: 10 }}>
+                    * EV gap uses a placeholder expected value (8/hit) until the EV surface lands.
+                  </p>
                   <p style={{ fontSize: 11, color: "#6b7280", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                     Hit coordinates — {game.hits.length} hits
                   </p>

@@ -174,16 +174,38 @@ describe("computeIndividualTimeline", () => {
     expect(point.trust).toBe(4);
   });
 
-  it("extracts performance from matched survey responses with performance question ids", () => {
+  it("populates surveyValues for every registered survey dimension", () => {
     const survey = makeSurvey({
       responses: [
         { questionId: "trust", value: 4 },
-        { questionId: "post_session_performance_rating", value: 5 },
+        { questionId: "influence", value: 2 },
+        { questionId: "satisfied", value: 5 },
+        { questionId: "luck", value: "Lucky" },
       ],
     });
     const joined = [makeJoined(makeSession({ user_uuid: "uuid-a" }), survey)];
     const [point] = computeIndividualTimeline(joined, "uuid-a", "trust", new Map());
-    expect(point.performance).toBe(5);
+    expect(point.surveyValues.trust).toBe(4);
+    expect(point.surveyValues.influence).toBe(2);
+    expect(point.surveyValues.satisfied).toBe(5);
+    expect(point.surveyValues.luck).toBe(4); // "Lucky" → 4
+  });
+
+  it("sets surveyValues entries to null for dimensions without a response", () => {
+    const survey = makeSurvey({ responses: [{ questionId: "trust", value: 3 }] });
+    const joined = [makeJoined(makeSession({ user_uuid: "uuid-a" }), survey)];
+    const [point] = computeIndividualTimeline(joined, "uuid-a", "trust", new Map());
+    expect(point.surveyValues.trust).toBe(3);
+    expect(point.surveyValues.influence).toBeNull();
+    expect(point.surveyValues.satisfied).toBeNull();
+    expect(point.surveyValues.luck).toBeNull();
+  });
+
+  it("nulls all surveyValues when no survey is present", () => {
+    const joined = [makeJoined(makeSession({ user_uuid: "uuid-a" }), null)];
+    const [point] = computeIndividualTimeline(joined, "uuid-a", "trust", new Map());
+    expect(point.surveyValues.trust).toBeNull();
+    expect(point.surveyValues.luck).toBeNull();
   });
 
   it("carries aiType, label, and color", () => {

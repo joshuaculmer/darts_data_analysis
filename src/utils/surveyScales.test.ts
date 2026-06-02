@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
-  formatLikertValue,
-  inferLikertScaleFromQuestionId,
   formatScaleValue,
   getDimension,
   getScaleLabels,
+  getDimensionColor,
   ORDINAL_SCALES,
   SURVEY_DIMENSIONS,
+  DIMENSION_COLORS,
   AGREEMENT_LABELS,
   LUCK_LABELS,
 } from "./surveyScales";
@@ -74,17 +74,15 @@ describe("formatScaleValue", () => {
   });
 });
 
-// --- deprecated shims (removed in Phase 5/6); kept green until consumers migrate ---
-describe("deprecated trust/performance shims", () => {
-  it("formatLikertValue still maps trust + performance labels", () => {
-    expect(formatLikertValue(1, "trust")).toBe("Strongly Disagree");
-    expect(formatLikertValue(1, "performance")).toBe("Very Poor");
-    expect(formatLikertValue(3.6, "performance")).toBe("Average to Good");
+describe("DIMENSION_COLORS", () => {
+  it("assigns a distinct color to each registered dimension", () => {
+    const colors = Object.keys(SURVEY_DIMENSIONS).map((id) => DIMENSION_COLORS[id]);
+    expect(colors.every(Boolean)).toBe(true);
+    expect(new Set(colors).size).toBe(colors.length);
   });
 
-  it("inferLikertScaleFromQuestionId still distinguishes performance ids", () => {
-    expect(inferLikertScaleFromQuestionId("post_session_performance_rating")).toBe("performance");
-    expect(inferLikertScaleFromQuestionId("trust")).toBe("trust");
-    expect(inferLikertScaleFromQuestionId(null)).toBe("trust");
+  it("getDimensionColor falls back to a neutral color for unknown ids", () => {
+    expect(getDimensionColor("trust")).toBe(DIMENSION_COLORS.trust);
+    expect(getDimensionColor("unknown")).toBe("#6b7280");
   });
 });

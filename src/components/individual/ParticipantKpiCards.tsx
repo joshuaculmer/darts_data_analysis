@@ -1,19 +1,19 @@
 import type { IndividualKpis } from "../../utils/individualStats";
-import { formatLikertValue, type LikertScale } from "../../utils/surveyScales";
+import { formatScaleValue } from "../../utils/surveyScales";
 
 interface Props {
   kpis: IndividualKpis;
-  likertScale: LikertScale;
+  scaleLabels: Record<number, string>;
 }
 
-export function ParticipantKpiCards({ kpis, likertScale }: Props) {
+export function ParticipantKpiCards({ kpis, scaleLabels }: Props) {
   const cards = [
     { label: "Sessions Played", value: kpis.sessionsPlayed.toString() },
     { label: "Avg Score / Game", value: kpis.avgScore > 0 ? kpis.avgScore.toFixed(1) : "—" },
     {
       label: "Avg Trust Rating",
       value: kpis.avgTrust !== null
-        ? `${formatLikertValue(kpis.avgTrust, likertScale)} (${kpis.avgTrust.toFixed(2)})`
+        ? `${formatScaleValue(kpis.avgTrust, scaleLabels)} (${kpis.avgTrust.toFixed(2)})`
         : "—",
     },
     { label: "Conditions Seen", value: kpis.conditionsSeen.length > 0 ? kpis.conditionsSeen.join(", ") : "—" },

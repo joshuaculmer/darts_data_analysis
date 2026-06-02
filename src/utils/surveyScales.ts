@@ -80,6 +80,23 @@ export function getDimension(id: string | null | undefined): SurveyDimension | n
   return SURVEY_DIMENSIONS[id] ?? null;
 }
 
+/**
+ * Line/series color for each survey dimension (Okabe-Ito, per PALETTE.md).
+ * Used by the Individual timeline to overlay multiple dimensions distinctly.
+ */
+export const DIMENSION_COLORS: Record<string, string> = {
+  trust: "#009E73", // teal
+  influence: "#0072B2", // blue
+  satisfied: "#E69F00", // amber
+  luck: "#CC79A7", // mauve
+};
+
+/** Color for a dimension's series; neutral grey fallback for unknown ids. */
+export function getDimensionColor(id: string | null | undefined): string {
+  if (!id) return "#6b7280";
+  return DIMENSION_COLORS[id] ?? "#6b7280";
+}
+
 /** Scale labels for a questionId; falls back to the agreement scale. */
 export function getScaleLabels(id: string | null | undefined): Record<number, string> {
   return getDimension(id)?.scaleLabels ?? AGREEMENT_LABELS;
@@ -98,37 +115,4 @@ export function formatScaleValue(value: number, scaleLabels: Record<number, stri
   const high = Math.max(1, Math.min(5, Math.ceil(value)));
   if (low === high) return scaleLabels[low] ?? value.toFixed(2);
   return `${scaleLabels[low] ?? low} to ${scaleLabels[high] ?? high}`;
-}
-
-// ---------------------------------------------------------------------------
-// DEPRECATED — the binary trust/performance scale concept.
-// Retained as thin shims so existing chart components keep compiling; they are
-// migrated to SURVEY_DIMENSIONS / getScaleLabels in Phase 5/6, after which this
-// whole block is removed. Do not use in new code.
-// ---------------------------------------------------------------------------
-
-/** @deprecated Use {@link SurveyDimension} / {@link getScaleLabels}. */
-export type LikertScale = "trust" | "performance";
-
-/** @deprecated Use {@link AGREEMENT_LABELS}. */
-export const TRUST_LIKERT_LABELS: Record<number, string> = AGREEMENT_LABELS;
-
-/** @deprecated Retired scale; retained only for legacy component props. */
-export const PERFORMANCE_LIKERT_LABELS: Record<number, string> = {
-  1: "Very Poor",
-  2: "Poor",
-  3: "Average",
-  4: "Good",
-  5: "Very Good",
-};
-
-/** @deprecated Use {@link getDimension}. */
-export function inferLikertScaleFromQuestionId(questionId: string | null): LikertScale {
-  if (!questionId) return "trust";
-  return questionId.toLowerCase().includes("perform") ? "performance" : "trust";
-}
-
-/** @deprecated Use {@link formatScaleValue} with explicit labels. */
-export function formatLikertValue(value: number, scale: LikertScale): string {
-  return formatScaleValue(value, scale === "performance" ? PERFORMANCE_LIKERT_LABELS : AGREEMENT_LABELS);
 }

@@ -3,6 +3,7 @@ import type { JoinedSessionSurvey } from "./surveyStats";
 import { getAnswerValue } from "./surveyStats";
 import { computeSessionScore, gameScore } from "./scoreStats";
 import { AI_TYPE_COLORS, AI_TYPE_LABELS } from "./stats";
+import { SURVEY_DIMENSIONS } from "./surveyScales";
 import { AI_Type } from "../types/dart";
 import type { RewardSurface } from "../types/dart";
 
@@ -52,8 +53,10 @@ export interface IndividualSessionPoint {
   sessionIndex: number;
   date: string;
   score: number;
+  /** Value for the active trustQuestionId — back-compat for KPIs / the trust overlay. */
   trust: number | null;
-  performance: number | null;
+  /** Per-dimension survey value, keyed by questionId from SURVEY_DIMENSIONS (nullable). */
+  surveyValues: Record<string, number | null>;
   aiType: AI_Type;
   label: string;
   color: string;
@@ -66,27 +69,28 @@ export function computeIndividualTimeline(
   trustQuestionId: string,
   boards: Map<number, RewardSurface>,
 ): IndividualSessionPoint[] {
-  const getPerformanceValue = (survey: JoinedSessionSurvey["survey"]): number | null => {
-    if (!survey) return null;
-    const response = survey.responses.find((r) => r.questionId.toLowerCase().includes("perform"));
-    if (!response) return null;
-    return getAnswerValue(survey.responses, response.questionId);
-  };
+  const dimensionIds = Object.keys(SURVEY_DIMENSIONS);
 
   return joined
     .filter((j) => j.session.user_uuid === userId)
     .sort((a, b) => a.session.created_at.localeCompare(b.session.created_at))
-    .map(({ session, survey }, idx) => ({
-      sessionIndex: idx + 1,
-      date: session.created_at.slice(0, 10),
-      score: computeSessionScore(session, boards).avg,
-      trust: survey ? getAnswerValue(survey.responses, trustQuestionId) : null,
-      performance: getPerformanceValue(survey),
-      aiType: session.ai_advice,
-      label: AI_TYPE_LABELS[session.ai_advice],
-      color: AI_TYPE_COLORS[session.ai_advice],
-      gamesPlayed: session.games_played,
-    }));
+    .map(({ session, survey }, idx) => {
+      const surveyValues: Record<string, number | null> = {};
+      for (const id of dimensionIds) {
+        surveyValues[id] = survey ? getAnswerValue(survey.responses, id) : null;
+      }
+      return {
+        sessionIndex: idx + 1,
+        date: session.created_at.slice(0, 10),
+        score: computeSessionScore(session, boards).avg,
+        trust: survey ? getAnswerValue(survey.responses, trustQuestionId) : null,
+        surveyValues,
+        aiType: session.ai_advice,
+        label: AI_TYPE_LABELS[session.ai_advice],
+        color: AI_TYPE_COLORS[session.ai_advice],
+        gamesPlayed: session.games_played,
+      };
+    });
 }
 
 export interface IndividualKpis {
