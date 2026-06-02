@@ -1,4 +1,13 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
+import {
+  Routes,
+  Route,
+  Navigate,
+  NavLink,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { loadGameSessions, loadSurveyResponses } from "./loaders/loadData";
 import type {
   ParsedGameSession,
@@ -26,6 +35,8 @@ import {
   computeTrustVsProximityPoints,
 } from "./utils/surveyStats";
 import { inferLikertScaleFromQuestionId } from "./utils/surveyScales";
+import type { LikertScale } from "./utils/surveyScales";
+import type { JoinedSessionSurvey } from "./utils/surveyStats";
 import { KpiCards } from "./components/sanity/KpiCards";
 import { SessionCalendar } from "./components/sanity/SessionCalendar";
 import { ConditionDistribution } from "./components/sanity/ConditionDistribution";
@@ -46,24 +57,91 @@ import { IndividualView } from "./components/individual/IndividualView";
 import { SessionView } from "./components/session/SessionView";
 import "./App.css";
 
-type NavSection =
-  | "sanity"
-  | "performance"
-  | "trust"
-  | "individual"
-  | "session"
-  | "raw";
-
-const NAV_ITEMS: { id: NavSection; label: string }[] = [
-  { id: "sanity", label: "Sanity Checks" },
-  { id: "performance", label: "Game Performance" },
-  { id: "trust", label: "Trust & Influence" },
-  { id: "individual", label: "Individual View" },
-  { id: "session", label: "Session View" },
-  { id: "raw", label: "Raw Data" },
+const NAV_ITEMS: { path: string; label: string }[] = [
+  { path: "/sanity", label: "Sanity Checks" },
+  { path: "/performance", label: "Game Performance" },
+  { path: "/trust", label: "Trust & Influence" },
+  { path: "/luck", label: "Luck" },
+  { path: "/individual", label: "Individual View" },
+  { path: "/session", label: "Session View" },
+  { path: "/raw", label: "Raw Data" },
 ];
 
 type TrustSummaryGraphType = "dot_ci" | "median_iqr" | "stacked_likert";
+
+// Route wrapper that reads :uuid / :sessionIndex from the URL. Defined at module
+// scope (not inline) so SessionView keeps its internal state across renders.
+function SessionRoute({
+  sessions,
+  boards,
+}: {
+  sessions: ParsedGameSession[];
+  boards: Map<number, RewardSurface>;
+}) {
+  const { uuid, sessionIndex } = useParams();
+  return (
+    <section className="dash-section">
+      <p className="section-note">
+        Full details of each game session for the selected participant
+      </p>
+      <SessionView
+        sessions={sessions}
+        boards={boards}
+        initialParticipant={uuid ?? null}
+        initialSessionIndex={sessionIndex != null ? Number(sessionIndex) : null}
+      />
+    </section>
+  );
+}
+
+// Individual View route: a single :uuid path param deep-links one participant;
+// a ?users=a,b,c query (from the calendar day click) filters to several.
+function IndividualRoute({
+  sessions,
+  surveys,
+  joined,
+  trustQuestionId,
+  surveyLoaded,
+  boards,
+  likertScale,
+}: {
+  sessions: ParsedGameSession[];
+  surveys: ParsedSurveyResponse[];
+  joined: JoinedSessionSurvey[];
+  trustQuestionId: string | null;
+  surveyLoaded: boolean;
+  boards: Map<number, RewardSurface>;
+  likertScale: LikertScale;
+}) {
+  const { uuid } = useParams();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const usersQuery = searchParams.get("users");
+  const filterUuids = uuid
+    ? [uuid]
+    : usersQuery
+      ? usersQuery.split(",").filter(Boolean)
+      : undefined;
+  return (
+    <section className="dash-section">
+      <p className="section-note">
+        Select a participant to see the full story of their sessions, trust arc,
+        and condition exposure.
+      </p>
+      <IndividualView
+        sessions={sessions}
+        surveys={surveys}
+        joined={joined}
+        trustQuestionId={trustQuestionId}
+        surveyLoaded={surveyLoaded}
+        boards={boards}
+        filterUuids={filterUuids}
+        onNavigateToSession={(u, idx) => navigate(`/session/${u}/${idx}`)}
+        likertScale={likertScale}
+      />
+    </section>
+  );
+}
 
 function App() {
   const [sessions, setSessions] = useState<ParsedGameSession[]>([]);
@@ -73,15 +151,10 @@ function App() {
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
   const [boards, setBoards] = useState<Map<number, RewardSurface>>(new Map());
   const [boardsLoaded, setBoardsLoaded] = useState(false);
-  const [activeSection, setActiveSection] = useState<NavSection>("sanity");
   const [trustQuestionId, setTrustQuestionId] = useState<string | null>(null);
   const [completeOnly, setCompleteOnly] = useState(true);
-  const [sessionViewParticipant, setSessionViewParticipant] = useState<
-    string | null
-  >(null);
-  const [sessionViewIndex, setSessionViewIndex] = useState<number | null>(null);
-  const [individualFilterUuids, setIndividualFilterUuids] = useState<string[] | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const navigate = useNavigate();
   const [passwordInput, setPasswordInput] = useState("");
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -154,13 +227,10 @@ function App() {
     setSessionsLoaded(false);
     setBoardsLoaded(false);
     setBoards(new Map());
-    setActiveSection("sanity");
     setTrustQuestionId(null);
-    setSessionViewParticipant(null);
-    setSessionViewIndex(null);
-    setIndividualFilterUuids(null);
     setFetchError(null);
-  }, []);
+    navigate("/sanity");
+  }, [navigate]);
 
   const doFetch = useCallback(async (password: string) => {
     setIsFetching(true);
@@ -469,22 +539,24 @@ function App() {
     );
   }
 
+  const goToSession = (user_uuid: string, sessionIndex: number) =>
+    navigate(`/session/${user_uuid}/${sessionIndex}`);
+
   return (
     <div className="app">
       {passwordModal}
       <header className="app-header">
         <h1>Darts Analysis</h1>
-        {NAV_ITEMS.map(({ id, label }) => (
-          <button
-            key={id}
-            className={`nav-tab${activeSection === id ? " nav-tab--active" : ""}`}
-            onClick={() => {
-              if (id === "individual") setIndividualFilterUuids(null);
-              setActiveSection(id);
-            }}
+        {NAV_ITEMS.map(({ path, label }) => (
+          <NavLink
+            key={path}
+            to={path}
+            className={({ isActive }) =>
+              `nav-tab${isActive ? " nav-tab--active" : ""}`
+            }
           >
             {label}
-          </button>
+          </NavLink>
         ))}
         <div style={{ flex: 1 }} />
         <button
@@ -497,177 +569,176 @@ function App() {
       </header>
 
       <main className="dashboard">
-        {activeSection === "sanity" && (
-          <section className="dash-section">
-            <KpiCards
-              sessions={filteredSessions}
-              surveyResponses={filteredSurveyResponses}
-              completeOnly={completeOnly}
-              onToggleCompleteOnly={() => setCompleteOnly((v) => !v)}
-            />
-            <div className="chart-row">
-              <SessionCalendar
-                sessions={filteredSessions}
-                onDayClick={(uuids) => {
-                  setIndividualFilterUuids(uuids);
-                  setActiveSection("individual");
-                }}
-              />
-              <ConditionDistribution sessions={filteredSessions} />
-            </div>
-          </section>
-        )}
+        <Routes>
+          <Route path="/" element={<Navigate to="/sanity" replace />} />
 
-        {activeSection === "performance" && (
-          <section className="dash-section">
-            <p className="section-note">
-              How game scores vary by AI condition and player trust.
-            </p>
-            <ScoreByCondition stats={scoreByConditionStats} />
-            <ScoreVsSkillScatter
-              points={scoreVsSkillPoints}
-              onSessionClick={(user_uuid, sessionIndex) => {
-                setSessionViewParticipant(user_uuid);
-                setSessionViewIndex(sessionIndex);
-                setActiveSection("session");
-              }}
-            />
-            {trustQuestionId && (
-              <TrustVsScore
-                points={trustVsScorePoints}
-                boards={boards}
-                likertScale={selectedLikertScale}
-                onSessionClick={(user_uuid, sessionIndex) => {
-                  setSessionViewParticipant(user_uuid);
-                  setSessionViewIndex(sessionIndex);
-                  setActiveSection("session");
-                }}
-              />
-            )}
-            <ProximityVsScore
-              points={proximityVsScorePoints}
-              boards={boards}
-              onSessionClick={(user_uuid, sessionIndex) => {
-                setSessionViewParticipant(user_uuid);
-                setSessionViewIndex(sessionIndex);
-                setActiveSection("session");
-              }}
-            />
-            <OptimalProximityVsScore
-              points={optimalProximityVsScorePoints}
-              boards={boards}
-              onSessionClick={(user_uuid, sessionIndex) => {
-                setSessionViewParticipant(user_uuid);
-                setSessionViewIndex(sessionIndex);
-                setActiveSection("session");
-              }}
-            />
-          </section>
-        )}
-
-        {activeSection === "trust" && (
-          <section className="dash-section">
-            <p className="section-note">
-              How much participants trusted the AI, how condition shaped that
-              trust, and whether trust translated into better scores.
-            </p>
-            <TrustQuestionSelector
-              surveys={surveyResponses}
-              trustQuestionId={trustQuestionId}
-              onChange={setTrustQuestionId}
-            />
-            {trustQuestionId && matchedSurveyCount === 0 && joinedData.length > 0 && (
-              <p className="section-note" style={{ color: "#b45309" }}>
-                Sessions loaded but none matched to survey responses. Charts will be empty. Check that both datasets share the same participant IDs.
-              </p>
-            )}
-            {trustQuestionId && matchedSurveyCount > 0 && !hasAnyTrustData && (
-              <p className="section-note" style={{ color: "#b45309" }}>
-                {matchedSurveyCount} session{matchedSurveyCount !== 1 ? "s" : ""} matched to surveys, but &ldquo;{trustQuestionId}&rdquo; returned no numeric values.
-                {trustQuestionSampleValue === undefined
-                  ? " Question ID not found in any matched survey response — the ID in the selector may come from a different survey than the matched ones."
-                  : ` First stored value: ${JSON.stringify(trustQuestionSampleValue)} (type: ${typeof trustQuestionSampleValue}). Only numbers, numeric strings, and standard Likert labels are supported.`}
-              </p>
-            )}
-            {trustQuestionId ? (
-              <>
-                <TrustByCondition
-                  stats={trustByCondition}
-                  likertStats={trustLikertByCondition}
-                  likertScale={selectedLikertScale}
-                  graphType={trustSummaryGraphType}
-                  onGraphTypeChange={setTrustSummaryGraphType}
-                />
-                <TrustBySession
-                  stats={trustBySession}
-                  likertStats={trustLikertBySession}
-                  likertScale={selectedLikertScale}
-                  graphType={trustSummaryGraphType}
-                  onGraphTypeChange={setTrustSummaryGraphType}
+          <Route
+            path="/sanity"
+            element={
+              <section className="dash-section">
+                <KpiCards
+                  sessions={filteredSessions}
+                  surveyResponses={filteredSurveyResponses}
+                  completeOnly={completeOnly}
+                  onToggleCompleteOnly={() => setCompleteOnly((v) => !v)}
                 />
                 <div className="chart-row">
-                  <TrustOverTime points={trustOverTime} likertScale={selectedLikertScale} />
-                  <TrustVsScore points={trustVsScorePoints} boards={boards} likertScale={selectedLikertScale} />
+                  <SessionCalendar
+                    sessions={filteredSessions}
+                    onDayClick={(uuids) =>
+                      navigate(`/individual?users=${uuids.join(",")}`)
+                    }
+                  />
+                  <ConditionDistribution sessions={filteredSessions} />
                 </div>
-                <TrustVsTime points={trustVsTimePoints} likertScale={selectedLikertScale} />
-                <TrustVsProximity points={trustVsProximityPoints} likertScale={selectedLikertScale} />
-              </>
-            ) : (
-              <p className="section-note">
-                Select Trust or Performance Perception above to load the charts.
-              </p>
-            )}
-          </section>
-        )}
+              </section>
+            }
+          />
 
-        {activeSection === "individual" && (
-          <section className="dash-section">
-            <p className="section-note">
-              Select a participant to see the full story of their sessions,
-              trust arc, and condition exposure.
-            </p>
-            <IndividualView
-              sessions={filteredSessions}
-              surveys={filteredSurveyResponses}
-              joined={joinedData}
-              trustQuestionId={trustQuestionId}
-              surveyLoaded={surveyLoaded}
-              boards={boards}
-              filterUuids={individualFilterUuids ?? undefined}
-              onNavigateToSession={(uuid, idx) => {
-                setSessionViewParticipant(uuid);
-                setSessionViewIndex(idx);
-                setActiveSection("session");
-              }}
-              likertScale={selectedLikertScale}
-            />
-          </section>
-        )}
+          <Route
+            path="/performance"
+            element={
+              <section className="dash-section">
+                <p className="section-note">
+                  How game scores vary by AI condition and player trust.
+                </p>
+                <ScoreByCondition stats={scoreByConditionStats} />
+                <ScoreVsSkillScatter
+                  points={scoreVsSkillPoints}
+                  onSessionClick={goToSession}
+                />
+                {trustQuestionId && (
+                  <TrustVsScore
+                    points={trustVsScorePoints}
+                    boards={boards}
+                    likertScale={selectedLikertScale}
+                    onSessionClick={goToSession}
+                  />
+                )}
+                <ProximityVsScore
+                  points={proximityVsScorePoints}
+                  boards={boards}
+                  onSessionClick={goToSession}
+                />
+                <OptimalProximityVsScore
+                  points={optimalProximityVsScorePoints}
+                  boards={boards}
+                  onSessionClick={goToSession}
+                />
+              </section>
+            }
+          />
 
-        {activeSection === "session" && (
-          <section className="dash-section">
-            <p className="section-note">
-              Full details of each game session for the selected participant
-            </p>
-            <SessionView
-              sessions={filteredSessions}
-              boards={boards}
-              initialParticipant={sessionViewParticipant}
-              initialSessionIndex={sessionViewIndex}
-            />
-          </section>
-        )}
+          <Route
+            path="/trust"
+            element={
+              <section className="dash-section">
+                <p className="section-note">
+                  How much participants trusted the AI, how condition shaped that
+                  trust, and whether trust translated into better scores.
+                </p>
+                <TrustQuestionSelector
+                  surveys={surveyResponses}
+                  trustQuestionId={trustQuestionId}
+                  onChange={setTrustQuestionId}
+                />
+                {trustQuestionId && matchedSurveyCount === 0 && joinedData.length > 0 && (
+                  <p className="section-note" style={{ color: "#b45309" }}>
+                    Sessions loaded but none matched to survey responses. Charts will be empty. Check that both datasets share the same participant IDs.
+                  </p>
+                )}
+                {trustQuestionId && matchedSurveyCount > 0 && !hasAnyTrustData && (
+                  <p className="section-note" style={{ color: "#b45309" }}>
+                    {matchedSurveyCount} session{matchedSurveyCount !== 1 ? "s" : ""} matched to surveys, but &ldquo;{trustQuestionId}&rdquo; returned no numeric values.
+                    {trustQuestionSampleValue === undefined
+                      ? " Question ID not found in any matched survey response — the ID in the selector may come from a different survey than the matched ones."
+                      : ` First stored value: ${JSON.stringify(trustQuestionSampleValue)} (type: ${typeof trustQuestionSampleValue}). Only numbers, numeric strings, and standard Likert labels are supported.`}
+                  </p>
+                )}
+                {trustQuestionId ? (
+                  <>
+                    <TrustByCondition
+                      stats={trustByCondition}
+                      likertStats={trustLikertByCondition}
+                      likertScale={selectedLikertScale}
+                      graphType={trustSummaryGraphType}
+                      onGraphTypeChange={setTrustSummaryGraphType}
+                    />
+                    <TrustBySession
+                      stats={trustBySession}
+                      likertStats={trustLikertBySession}
+                      likertScale={selectedLikertScale}
+                      graphType={trustSummaryGraphType}
+                      onGraphTypeChange={setTrustSummaryGraphType}
+                    />
+                    <div className="chart-row">
+                      <TrustOverTime points={trustOverTime} likertScale={selectedLikertScale} />
+                      <TrustVsScore points={trustVsScorePoints} boards={boards} likertScale={selectedLikertScale} />
+                    </div>
+                    <TrustVsTime points={trustVsTimePoints} likertScale={selectedLikertScale} />
+                    <TrustVsProximity points={trustVsProximityPoints} likertScale={selectedLikertScale} />
+                  </>
+                ) : (
+                  <p className="section-note">
+                    Select Trust or Performance Perception above to load the charts.
+                  </p>
+                )}
+              </section>
+            }
+          />
 
-        {activeSection === "raw" && (
-          <section className="dash-section">
-            <p className="section-note">
-              All sessions and survey responses — unfiltered regardless of the
-              Complete Participants toggle. Click any column header to sort.
-            </p>
-            <SessionsTable sessions={sessions} boards={boards} />
-            <SurveyTable surveys={surveyResponses} />
-          </section>
-        )}
+          <Route
+            path="/luck"
+            element={
+              <section className="dash-section">
+                <p className="section-note">
+                  Luck attribution, hit dispersion, and EV gap — charts arrive in
+                  the next phase of the survey restructure.
+                </p>
+              </section>
+            }
+          />
+
+          <Route
+            path="/individual/:uuid?"
+            element={
+              <IndividualRoute
+                sessions={filteredSessions}
+                surveys={filteredSurveyResponses}
+                joined={joinedData}
+                trustQuestionId={trustQuestionId}
+                surveyLoaded={surveyLoaded}
+                boards={boards}
+                likertScale={selectedLikertScale}
+              />
+            }
+          />
+
+          <Route
+            path="/session/:uuid/:sessionIndex"
+            element={<SessionRoute sessions={filteredSessions} boards={boards} />}
+          />
+          <Route
+            path="/session"
+            element={<SessionRoute sessions={filteredSessions} boards={boards} />}
+          />
+
+          <Route
+            path="/raw"
+            element={
+              <section className="dash-section">
+                <p className="section-note">
+                  All sessions and survey responses — unfiltered regardless of the
+                  Complete Participants toggle. Click any column header to sort.
+                </p>
+                <SessionsTable sessions={sessions} boards={boards} />
+                <SurveyTable surveys={surveyResponses} />
+              </section>
+            }
+          />
+
+          <Route path="*" element={<Navigate to="/sanity" replace />} />
+        </Routes>
       </main>
     </div>
   );

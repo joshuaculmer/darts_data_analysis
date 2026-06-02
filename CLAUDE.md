@@ -83,8 +83,26 @@ participantTotalScore = sum of session sums across all sessions for a user
 - Core research questions: Does AI condition affect game score? Does trust mediate performance? Does trust improve score?
 - `MIN_SESSIONS_REQUIRED = 20` in `stats.ts` — change this single constant to update the completeness threshold everywhere. A participant is "complete" when `sessionCount === MIN_SESSIONS_REQUIRED && surveyCount === MIN_SESSIONS_REQUIRED`.
 
+## Routing
+The app uses **`react-router-dom` (`BrowserRouter`)**, wrapped in `main.tsx` with
+`basename={import.meta.env.BASE_URL}` so deep links work under the GitHub Pages subpath.
+Routes are declared in `App.tsx`: `/` → `/sanity`; `/sanity`, `/performance`, `/trust`,
+`/luck`, `/raw`; `/individual/:uuid?` (single `:uuid` deep-links one participant, `?users=a,b`
+filters several — set by the calendar day click); `/session` (browse) and
+`/session/:uuid/:sessionIndex` (deep-link). Unknown paths redirect to `/sanity`.
+Navbar items are `<NavLink>`s; scatter/calendar click-throughs use `useNavigate()`.
+`SessionRoute`/`IndividualRoute` are module-scope wrappers that read route params so the
+underlying stateful views don't remount. The data-loading gates (upload, board fetch) still
+run inside `App` before the `<Routes>` render.
+
+**Deployment (SPA fallback):** a `spa-404-fallback` Vite plugin in `vite.config.ts` copies
+`dist/index.html` → `dist/404.html` on build, so a hard refresh of a client route resolves to
+the SPA shell on GitHub Pages. The deploy workflow uploads all of `dist/`, so no workflow change
+is needed.
+
 ## Navigation Structure
-Top navbar with six sections. See `PLANNING.md` for the full chart roadmap per section.
+Top navbar sections (each a route). The `/luck` page is a placeholder until Phase 5.
+See `PLANNING.md` for the full chart roadmap per section.
 
 | Section | Key Components |
 |---|---|
