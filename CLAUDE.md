@@ -257,7 +257,10 @@ src/
     │                                #   Navigated to automatically when a scatter point is clicked
     │
     └── raw/
-        ├── SessionsTable.tsx        # Sortable/filterable sessions table; shows games_played vs actual array length (red if mismatch); CSV export; uses unfiltered sessions
+        ├── SessionsTable.tsx        # Sortable/filterable sessions table; shows games_played vs actual array length (red if mismatch); CSV export; uses unfiltered sessions.
+        │                            #   Includes extrapolated session-level columns via buildSessionTableRows (pure, exported, tested):
+        │                            #   avg hits/game, total score, avg score/game, scorePerHit, proxAI, proxOptimal, dispersion μ/σ,
+        │                            #   EV gap (placeholder EV 8/hit), and joined survey trust/influence/satisfied/luck. CSV export includes all.
         └── SurveyTable.tsx          # Sortable/filterable survey table; dynamic question columns; CSV export
 
 public/

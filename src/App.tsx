@@ -528,7 +528,7 @@ function App() {
                   All sessions and survey responses — unfiltered regardless of the
                   Complete Participants toggle. Click any column header to sort.
                 </p>
-                <SessionsTable sessions={sessions} boards={boards} />
+                <SessionsTable sessions={sessions} surveys={surveyResponses} boards={boards} />
                 <SurveyTable surveys={surveyResponses} />
               </section>
             }

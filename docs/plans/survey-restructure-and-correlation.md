@@ -176,13 +176,13 @@ dimension. These become the per-dimension "by condition / by session / over time
 - `SessionView`: no functional change required; verify it still builds with route params and that the
   per-game table can optionally show dispersion / evGap per game (nice-to-have).
 
-## Phase 7 — Raw Data export with extrapolated variables
+## Phase 7 — Raw Data export with extrapolated variables ✓
 - `SessionsTable`: add computed columns from `buildSessionVariableRows` — `scorePerHit`, raw total
   `score`, avg hit count, `proxAI`, `proxOptimal`, `dispersionMean`, `dispersionStd`, `evGap`, and
   survey `trust/influence/satisfied/luck`. CSV export includes them (user explicitly wants extrapolated
   vars downloadable). Note EV-gap is a placeholder until the EV JSON lands.
 
-## Phase 8 — Palette + docs
+## Phase 8 — Palette + docs ✓
 - `PALETTE.md`: add the diverging correlation heatmap scale section.
 - `CLAUDE.md`: update navigation table (Trust/Performance/Luck), file tree (new utils/components/
   routing), survey-scale notes (luck added, performance retired), and the score/metric section

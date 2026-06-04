@@ -19,6 +19,19 @@
 | `user_uuid` | UUID | |
 | `user_nickname` | `string \| null` | |
 
+**Current survey instrument** (four required questions; the old "performance perception"
+Very Poor…Very Good item is **retired**):
+
+| questionId | Group | Scale |
+|---|---|---|
+| `trust` | Trust | 5-point agreement Likert (Strongly Disagree…Strongly Agree) |
+| `influence` | Trust | 5-point agreement Likert |
+| `satisfied` | Performance | 5-point agreement Likert |
+| `luck` | Luck | Very Unlucky…Very Lucky |
+
+Scale label→score maps live in `src/utils/surveyScales.ts` (`ORDINAL_SCALES`); the
+`SURVEY_DIMENSIONS` registry there maps each `questionId` → `{ label, group, scaleLabels }`.
+
 ### AI_Type Enum
 ```ts
 enum AI_Type {
@@ -40,13 +53,36 @@ This is a **7-condition between/within-subjects design** studying how advice qua
 
 ## Navigation Structure
 
-The app will have a top navbar with five sections:
+The app uses `react-router-dom` (`BrowserRouter`). The dashboard is reorganized around three
+variable-centric **research groups** (Trust / Performance / Luck), each rendering its dimensions'
+by-condition/by-session/over-time charts, within-group pairwise scatters, and the global
+cross-correlation heatmap (with that group's rows/columns highlighted). The old single Trust page
++ question-selector/graph-type toggle is retired.
 
-1. **Sanity Checks** — verify the experiment ran as expected
-2. **Game Performance** — score outcomes by condition and trust
-3. **Trust & Influence** — how trust develops and affects performance
-4. **Individual View** — per-participant story
-5. **Raw Data** — exportable tables
+| Route | Section | Purpose |
+|---|---|---|
+| `/sanity` | Sanity Checks | Verify the experiment ran as expected (KPIs, calendar, condition balance) |
+| `/performance` | Game Performance | scorePerHit + proxOptimal by condition, satisfied dimension, pairwise, heatmap |
+| `/trust` | Trust & Influence | trust + influence dimensions, proxAI by condition, pairwise, heatmap |
+| `/luck` | Luck | luck dimension, dispersion + evGap (placeholder) by condition, pairwise, heatmap |
+| `/individual/:uuid?` | Individual View | Per-participant story (timeline + survey overlays + breakdown) |
+| `/session/:uuid/:sessionIndex` | Session View | Per-session/per-game drill-down (chronological) |
+| `/raw` | Raw Data | Exportable sessions + survey tables (incl. extrapolated variables) |
+
+### The unified variable set (9 session-level variables)
+One `SessionVariableRow` per session drives the group pages, the global Spearman correlation
+heatmap, and the Raw Data columns (`src/utils/variables.ts`):
+
+| Key | Group | Source |
+|---|---|---|
+| `trust`, `influence` | Trust | survey (agreement 1–5) |
+| `proxAI` | Trust | mean dist actual→AI suggestion (null in NONE) |
+| `satisfied` | Performance | survey (agreement 1–5) |
+| `scorePerHit` | Performance | `gameScore / hits.length`, session-avg (per-hit avoids dynamic-hit-count confound) |
+| `proxOptimal` | Performance | mean dist actual→optimal aim |
+| `luck` | Luck | survey (Very Unlucky 1…Very Lucky 5) |
+| `dispersion` | Luck | mean hit→actual_aiming_coord spread |
+| `evGap` | Luck | per-hit `scorePerHit − EV` (EV is placeholder 8 until the EV JSON lands) |
 
 ---
 
@@ -62,45 +98,57 @@ The app will have a top navbar with five sections:
 - [ ] Execution skill by condition: counts/distribution to confirm admins assigned values as expected (not a research finding — just a balance check)
 - [x] CSV file upload loader (papaparse, parses JSON columns automatically)
 
-### Section 2 — Game Performance
-*Goal: understand how game scores relate to AI condition and to trust.*
+The three research groups share the same building blocks: per-dimension by-condition/by-session/
+over-time charts (now dimension-agnostic — driven by `SURVEY_DIMENSIONS` + `scaleLabels` rather
+than a hardcoded scale union), `VariableByCondition` mean±CI95 dot charts for continuous variables,
+within-group `PairwiseScatter`s, and the shared global `CorrelationHeatmap` (Spearman, pairwise-
+complete, click-to-scatter) with the active group's rows/columns highlighted.
 
-- [x] **Box plots**: score distribution per AI_Type condition
-- [x] **Bar chart**: mean score per condition with 95% CI error bars
-- [x] **Scatter**: games_played vs score colored by AI_Type
-- [x] **Before/after paired chart**: slope chart per user across conditions (hidden if <2 conditions)
-- [x] **Score vs execution_skill scatter**: how does preset skill level relate to actual in-game score?
-- [ ] **Score by trust level**: group participants by survey-reported trust quartile, compare scores — requires survey CSV
-- [x] **Score vs trust scatter**: per-session score vs trust rating — shown in both this section and Trust & Influence; click-to-expand per-game scores; requires trust question to be selected
-- [x] **Proximity vs score scatter**: per-session avg distance from suggested aiming coord vs avg score; click-to-expand per-game scatter; NONE-condition sessions shown separately
+### Section 2 — Game Performance (`/performance`)
+*Goal: understand how game scores relate to AI condition.*
+
+- [x] **scorePerHit by condition**: mean per-hit score ± CI95 per AI_Type (per-hit avoids the dynamic-hit-count confound)
+- [x] **proxOptimal by condition**: mean distance from actual aim to the optimal aim, by condition
+- [x] **satisfied dimension**: by-condition / by-session / over-time charts (agreement Likert)
+- [x] **within-group pairwise scatters**: satisfied↔scorePerHit, satisfied↔proxOptimal, scorePerHit↔proxOptimal
+- [x] **global heatmap** with Performance rows/columns highlighted
 - [ ] **Ordering effect**: GOOD_PLAUSIBLE vs PLAUSIBLE_GOOD score delta (does trajectory matter?)
 
-### Section 3 — Trust & Influence
-*Goal: understand how much participants trusted the AI, how that trust was shaped by condition, and whether trust translated into better scores.*
+### Section 3 — Trust & Influence (`/trust`)
+*Goal: how much participants trusted/were influenced by the AI, and whether that translated into behavior.*
 
-- [x] **Trust question selector**: analyst picks which survey question ID represents trust — drives all charts below
-- [x] **Trust by AI condition**: mean trust rating per AI_Type (bar chart with 95% CI error bars)
-- [x] **Trust over time**: scatter of trust rating by session date, colored by AI condition
+- [x] **trust + influence dimensions**: by-condition / by-session / over-time charts (agreement Likert)
+- [x] **proxAI by condition**: mean distance from actual aim to the AI suggestion (null in NONE)
+- [x] **within-group pairwise scatters**: trust↔influence, trust↔proxAI, influence↔proxAI
+- [x] **global heatmap** with Trust rows/columns highlighted
 - [ ] **Trust trajectory**: GOOD_PLAUSIBLE vs PLAUSIBLE_GOOD trust arc — did trust recover when advice improved?
-- [x] **Trust → score**: scatter of trust rating vs avg game score; click-to-expand per-game scores
-- [x] **Trust → time per game**: scatter of trust rating vs avg game duration (s); click-to-expand per-game durations
-- [x] **Trust → proximity**: scatter of trust rating vs avg distance from suggested aiming coord; NONE-condition sessions shown separately; click-to-expand per-game proximity bars
-- [ ] **Survey breakdown**: stacked Likert bars per question (SD → SA) for all trust-related questions
-- [ ] **Per-condition survey heatmap**: participant × question, color = response value, faceted by AI_Type
 
-### Section 4 — Individual View
+### Section 4 — Luck (`/luck`)
+*Goal: how much participants attribute outcomes to luck, and how that relates to spread / EV gap.*
+
+- [x] **luck dimension**: by-condition / by-session / over-time charts (Very Unlucky…Very Lucky)
+- [x] **dispersion by condition**: mean hit spread around the actual aim, by condition
+- [x] **evGap by condition**: per-hit score − EV (EV is a placeholder 8/hit until the EV JSON lands — labeled in UI)
+- [x] **within-group pairwise scatters**: luck↔dispersion, luck↔evGap, dispersion↔evGap
+- [x] **global heatmap** with Luck rows/columns highlighted
+
+### Individual View (`/individual/:uuid?`)
 *Goal: tell the full story of a single participant's experience. Analyst selects a participant from a dropdown.*
 
 - [x] **Participant selector**: dropdown populated from unique user_uuid / user_nickname pairs
-- [x] **Session timeline**: line chart of score over sessions, with condition-colored dots and optional trust overlay
-- [x] **Trust over sessions**: trust rating overlaid on the session timeline (right axis, dashed line)
+- [x] **Wholistic timeline**: per-hit score over sessions with condition-colored dots; toggleable per-dimension survey overlays (trust/influence/satisfied/luck, only those with data), each an Okabe-Ito line on a shared right axis (retired "performance" series dropped)
 - [x] **Condition exposure summary**: chronological dot-track showing which condition each session used
-- [x] **Per-game breakdown**: session tab picker + per-session score bar (avg score; full game-level bars available when raw session object is passed)
+- [x] **Per-game breakdown**: session tab picker + per-session score bar
 - [x] **Survey responses**: per-session table of all survey answers, with condition badge per row
-- [x] **Narrative summary card**: KPI cards — sessions played, avg score, avg trust, conditions seen
+- [x] **Narrative summary card**: KPI cards — sessions played, avg score, conditions seen
+
+### Session View (`/session/:uuid/:sessionIndex`)
+- [x] Participant + session pills in chronological order; session metadata table
+- [x] Per-game table with expandable hit rows (coordinates + per-hit scores), board ID/seed, and per-game scorePerHit / dispersion / EV-gap (placeholder EV)
+- [x] Reached automatically when a scatter point or calendar day is clicked (route-based navigation)
 
 ### Section 5 — Raw Data & Export
-- [x] Filterable/sortable sessions table with CSV export — shows participant, UUID, condition, exec skill, games_played vs games array length (red if mismatch), avg score/game, date
+- [x] Filterable/sortable sessions table with CSV export — shows participant, UUID, condition, exec skill, games_played vs games array length (red if mismatch), avg score/game, date, plus extrapolated session-level variables (avg hits/game, total score, scorePerHit, proxAI, proxOptimal, dispersion μ/σ, EV gap [placeholder], and joined survey trust/influence/satisfied/luck)
 - [x] Survey responses table with CSV export — dynamic question columns, filterable by participant/UUID, sortable by participant/date
 
 ---
@@ -118,11 +166,14 @@ The app will have a top navbar with five sections:
 - `src/types/survey.ts` — `Question`, `QuestionType`, `Answer`, `PostSessionSurveyResponseDTO`
 - `src/types/db.ts` — `GameSessionRow`, `SurveyResponseRow` (raw CSV shapes; JSON columns are strings pre-parse)
 
+## Resolved
+- **Survey CSV wired:** yes — both CSVs (or the Supabase Fetch Data path) load before the dashboard; survey is joined per session via `joinSessionsWithSurvey`.
+- **Trust questionId:** the instrument is fixed to `trust` / `influence` / `satisfied` / `luck` (see survey schema above); still read dynamically through `SURVEY_DIMENSIONS`.
+- **`board_id`:** indexes a reward surface in a unified ID space (0–99 Perlin, 100–199 Gaussian); each is a 512×512 `number[][]`. Score = sum of `surface[floor(hit.x)][floor(hit.y)]`.
+- **`start`/`end` on `DartGameDTO`:** timestamps, **not** scores. Used only for game duration.
+- **`Coord`:** board-pixel space — `Math.floor` before indexing the 512×512 surface.
+
 ## Open Questions
-1. **Survey CSV loaded?** Sections 2 and 3 both have trust-dependent charts — is the post-session survey CSV already wired into the app, or does it need to be added?
-2. What are the survey `questionId` strings that correspond to trust? (Treat dynamically if they change over time, but need at least the trust-relevant IDs to label charts correctly.)
-3. Is this within-subjects, between-subjects, or mixed? (Can the same user appear across multiple AI conditions?)
-4. Is `execution_skill` a computed aggregate or raw score? How is it derived? (Important for the score vs execution_skill scatter in Section 2.)
-5. What does `board_id` represent — a physical board, a target zone, or a game type?
-6. Are `start`/`end` in `DartGameDTO` scores (e.g. 501 → 0) or timestamps?
-7. Is `Coord` in pixel space, normalized [0,1], or some board-relative unit?
+1. Is this within-subjects, between-subjects, or mixed? (Can the same user appear across multiple AI conditions?)
+2. Is `execution_skill` a computed aggregate or raw preset value? How is it derived?
+3. **EV dataset:** the per-board × aim × skill expected-value JSON that replaces the flat placeholder (8/hit) in `aimingEV.ts` — when does it land, and what is its shape?
