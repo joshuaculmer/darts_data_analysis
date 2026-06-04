@@ -225,7 +225,7 @@ export function IndividualTimeline({ points, surveyLoaded, onPointClick }: Props
               tickLine={false}
               tick={{ fontSize: 11, fill: "#374151" }}
               label={{
-                value: "Avg Score",
+                value: "Score / Hit",
                 angle: -90,
                 position: "insideLeft",
                 fontSize: 11,

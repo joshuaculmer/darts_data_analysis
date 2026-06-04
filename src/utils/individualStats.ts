@@ -1,7 +1,7 @@
 import type { ParsedGameSession } from "../loaders/loadData";
 import type { JoinedSessionSurvey } from "./surveyStats";
 import { getAnswerValue } from "./surveyStats";
-import { computeSessionScore, gameScore } from "./scoreStats";
+import { computeSessionScoreTotalPerHit, gameScore } from "./scoreStats";
 import { AI_TYPE_COLORS, AI_TYPE_LABELS } from "./stats";
 import { SURVEY_DIMENSIONS } from "./surveyScales";
 import { AI_Type } from "../types/dart";
@@ -82,7 +82,7 @@ export function computeIndividualTimeline(
       return {
         sessionIndex: idx + 1,
         date: session.created_at.slice(0, 10),
-        score: computeSessionScore(session, boards).avg,
+        score: computeSessionScoreTotalPerHit(session, boards),
         trust: survey ? getAnswerValue(survey.responses, trustQuestionId) : null,
         surveyValues,
         aiType: session.ai_advice,
@@ -114,8 +114,17 @@ export function computeIndividualKpis(
     return { sessionsPlayed: 0, avgScore: 0, avgTrust: null, conditionsSeen: [] };
   }
 
-  const scores = mine.map((j) => computeSessionScore(j.session, boards).avg);
-  const avgScore = scores.reduce((s, v) => s + v, 0) / scores.length;
+  // Avg score per hit: grand total score across all games ÷ total hit count.
+  let totalScore = 0;
+  let totalHits = 0;
+  for (const { session } of mine) {
+    for (const game of session.games) {
+      const surface = boards.get(game.board_id);
+      if (surface) totalScore += gameScore(game, surface);
+      totalHits += game.hits.length;
+    }
+  }
+  const avgScore = totalHits > 0 ? totalScore / totalHits : 0;
 
   const trustValues = mine
     .map((j) => j.survey ? getAnswerValue(j.survey.responses, trustQuestionId) : null)

@@ -161,6 +161,8 @@ src/
 │   │                                #   computeGameProximity, computeGameDurationSecs,
 │   │                                #   gameScorePerHit, computeSessionScorePerHit (per-hit canonical
 │   │                                #     score — raw total is confounded by dynamic hit count 1/3/5/10),
+    │   │                                #   computeSessionScoreTotalPerHit (total score ÷ total hit count —
+    │   │                                #     hit-weighted per-hit; used by Individual View KPI + timeline),
 │   │                                #   computeGameHitDispersion/computeSessionHitDispersion (Dispersion
 │   │                                #     {mean,std} of hits around actual aim),
 │   │                                #   computeGameEvGap/computeSessionEvGap (per-hit scorePerHit − EV),
@@ -183,7 +185,7 @@ src/
 │   │                                #   computeTrustVsTimePoints, computeTrustVsProximityPoints
 │   ├── surveyStats.test.ts
 │   ├── individualStats.ts           # getParticipantList, computeIndividualTimeline
-│   │                                #   (score + per-session surveyValues keyed by SURVEY_DIMENSIONS
+│   │                                #   (score is per-hit [total ÷ hit count] + per-session surveyValues keyed by SURVEY_DIMENSIONS
 │   │                                #    — trust/influence/satisfied/luck; retired "performance" dropped),
 │   │                                #   computeIndividualKpis, computeGameBreakdown,
 │   │                                #   chronologicalParticipantSessionEntries (Session View order + navigate)

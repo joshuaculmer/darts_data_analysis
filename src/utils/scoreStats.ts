@@ -36,6 +36,26 @@ export function computeSessionScorePerHit(
   return perHit.reduce((s, v) => s + v, 0) / perHit.length;
 }
 
+/**
+ * Total session score divided by total hit count across all games — a true
+ * hit-weighted per-hit score (sum of every hit's surface value ÷ number of
+ * hits). This differs from {@link computeSessionScorePerHit}, which averages
+ * each game's per-hit ratio equally regardless of how many hits that game had.
+ */
+export function computeSessionScoreTotalPerHit(
+  session: ParsedGameSession,
+  boards: Map<number, RewardSurface>,
+): number {
+  let totalScore = 0;
+  let totalHits = 0;
+  for (const game of session.games) {
+    const surface = boards.get(game.board_id);
+    if (surface) totalScore += gameScore(game, surface);
+    totalHits += game.hits.length;
+  }
+  return totalHits > 0 ? totalScore / totalHits : 0;
+}
+
 export interface Dispersion {
   mean: number;
   std: number;

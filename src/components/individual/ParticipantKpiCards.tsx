@@ -9,7 +9,7 @@ interface Props {
 export function ParticipantKpiCards({ kpis, scaleLabels }: Props) {
   const cards = [
     { label: "Sessions Played", value: kpis.sessionsPlayed.toString() },
-    { label: "Avg Score / Game", value: kpis.avgScore > 0 ? kpis.avgScore.toFixed(1) : "—" },
+    { label: "Avg Score / Hit", value: kpis.avgScore > 0 ? kpis.avgScore.toFixed(2) : "—" },
     {
       label: "Avg Trust Rating",
       value: kpis.avgTrust !== null

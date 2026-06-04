@@ -12,6 +12,7 @@ import {
   computeProximityVsScorePoints,
   gameScorePerHit,
   computeSessionScorePerHit,
+  computeSessionScoreTotalPerHit,
   computeGameHitDispersion,
   computeSessionHitDispersion,
   computeGameEvGap,
@@ -344,6 +345,38 @@ describe("computeSessionScorePerHit", () => {
       new Map(),
     );
     expect(result).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeSessionScoreTotalPerHit — total score ÷ total hit count
+// ---------------------------------------------------------------------------
+describe("computeSessionScoreTotalPerHit", () => {
+  it("returns 0 for a session with no games", () => {
+    expect(computeSessionScoreTotalPerHit(makeSession({ games: [] }), new Map())).toBe(0);
+  });
+
+  it("divides total score by total hit count, weighting by hit count", () => {
+    const boards = new Map([
+      [0, makeFlatSurface(2)],
+      [1, makeFlatSurface(6)],
+    ]);
+    const games = [
+      makeGame(0, Array(2).fill({ x: 0, y: 0 })), // 2 hits × 2 = 4
+      makeGame(1, Array(3).fill({ x: 0, y: 0 })), // 3 hits × 6 = 18
+    ];
+    // total score 22 ÷ 5 hits = 4.4 (vs per-game mean of 4)
+    expect(computeSessionScoreTotalPerHit(makeSession({ games }), boards)).toBeCloseTo(4.4);
+  });
+
+  it("counts hits from boardless games as zero score but still in the denominator", () => {
+    const boards = new Map([[0, makeFlatSurface(10)]]);
+    const games = [
+      makeGame(0, Array(2).fill({ x: 0, y: 0 })), // 2 hits × 10 = 20
+      makeGame(99, Array(2).fill({ x: 0, y: 0 })), // missing board → 0 score, 2 hits
+    ];
+    // 20 ÷ 4 hits = 5
+    expect(computeSessionScoreTotalPerHit(makeSession({ games }), boards)).toBeCloseTo(5);
   });
 });
 
