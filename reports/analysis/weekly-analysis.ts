@@ -19,6 +19,10 @@
 
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ---------------------------------------------------------------------------
 // Types mirrored from src/ (keep in sync with the TypeScript source)
@@ -72,22 +76,26 @@ const PROJECT_ROOT = path.resolve(__dirname, "../..");
 const AI_TYPE_LABELS: Record<number, string> = {
   0: "NONE",
   1: "CORRECT",
-  2: "RANDOM",
-  3: "WRONG",
-  4: "BAD",
-  5: "GOOD_PLAUSIBLE",
-  6: "PLAUSIBLE_GOOD",
+  2: "PLAUSIBLE",
+  3: "RANDOM",
+  4: "WRONG",
+  5: "BAD",
+  6: "GOOD_PLAUSIBLE",
+  7: "PLAUSIBLE_GOOD",
 };
 
 const ORDINAL_SCALES: Record<string, number> = {
+  // 5-point agreement (trust/influence/satisfied)
   "strongly disagree": 1,
   "disagree": 2,
   "neutral": 3,
+  "neither agree nor disagree": 3,
   "agree": 4,
   "strongly agree": 5,
+  // 5-point luck attribution
   "very unlucky": 1,
   "unlucky": 2,
-  "neutral luck": 3, // alias
+  "little or no impact": 3,
   "lucky": 4,
   "very lucky": 5,
 };
@@ -343,7 +351,7 @@ function computeByCondition(rows: SessionVariableRow[], key: VariableKey) {
     (grouped[r.ai_advice] ??= []).push(v as number);
   }
   return Object.fromEntries(
-    [0, 1, 2, 3, 4, 5, 6].map((type) => {
+    [0, 1, 2, 3, 4, 5, 6, 7].map((type) => {
       const values = grouped[type] ?? [];
       return [AI_TYPE_LABELS[type], { n: values.length, ...ci95(values) }];
     }),
@@ -514,15 +522,16 @@ for (const uuid of uniqueParticipants) {
 const createdAts = sessions.map((s) => s.created_at).sort();
 const dateRange = { min: createdAts[0], max: createdAts[createdAts.length - 1] };
 
-// Condition distribution
+// Condition distribution (includes any undocumented ai_advice values as flags)
 const conditionSessionCounts: Record<number, number> = {};
-for (let i = 0; i < 7; i++) conditionSessionCounts[i] = 0;
+for (let i = 0; i < 8; i++) conditionSessionCounts[i] = 0;
 for (const s of sessions) conditionSessionCounts[s.ai_advice] = (conditionSessionCounts[s.ai_advice] ?? 0) + 1;
 
-// Board-family balance per condition
+// Board-family balance per condition (handle any ai_advice value, including undocumented ones)
 const conditionBoardFamilyCounts: Record<number, { perlin: number; gaussian: number }> = {};
-for (let i = 0; i < 7; i++) conditionBoardFamilyCounts[i] = { perlin: 0, gaussian: 0 };
+for (let i = 0; i < 8; i++) conditionBoardFamilyCounts[i] = { perlin: 0, gaussian: 0 };
 for (const s of sessions) {
+  if (!conditionBoardFamilyCounts[s.ai_advice]) conditionBoardFamilyCounts[s.ai_advice] = { perlin: 0, gaussian: 0 };
   for (const g of s.games) {
     if (g.board_id >= 0 && g.board_id <= 99) conditionBoardFamilyCounts[s.ai_advice].perlin++;
     else if (g.board_id >= 100 && g.board_id <= 199) conditionBoardFamilyCounts[s.ai_advice].gaussian++;
@@ -531,12 +540,15 @@ for (const s of sessions) {
 
 // Skill balance per condition
 const conditionSkills: Record<number, number[]> = {};
-for (let i = 0; i < 7; i++) conditionSkills[i] = [];
-for (const s of sessions) conditionSkills[s.ai_advice].push(s.execution_skill);
+for (let i = 0; i < 8; i++) conditionSkills[i] = [];
+for (const s of sessions) {
+  if (!conditionSkills[s.ai_advice]) conditionSkills[s.ai_advice] = [];
+  conditionSkills[s.ai_advice].push(s.execution_skill);
+}
 const conditionSkillMeans: Record<number, number | null> = {};
-for (let i = 0; i < 7; i++) {
-  const arr = conditionSkills[i];
-  conditionSkillMeans[i] = arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+for (const aiType of Object.keys(conditionSkills).map(Number)) {
+  const arr = conditionSkills[aiType];
+  conditionSkillMeans[aiType] = arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
 }
 
 // games_played mismatch check
@@ -559,8 +571,9 @@ for (const key of VARIABLE_KEYS) {
 const corrMatrix = computeCorrelationMatrix(varRows);
 
 // Q1.2 trajectory contrast: GOOD_PLAUSIBLE (5) vs PLAUSIBLE_GOOD (6)
-const gp = varRows.filter((r) => r.ai_advice === 5).map((r) => r.scorePerHit).filter((v): v is number => v !== null);
-const pg = varRows.filter((r) => r.ai_advice === 6).map((r) => r.scorePerHit).filter((v): v is number => v !== null);
+// GOOD_PLAUSIBLE=6, PLAUSIBLE_GOOD=7 in the updated enum
+const gp = varRows.filter((r) => r.ai_advice === 6).map((r) => r.scorePerHit).filter((v): v is number => v !== null);
+const pg = varRows.filter((r) => r.ai_advice === 7).map((r) => r.scorePerHit).filter((v): v is number => v !== null);
 const { mean: gp_mean } = ci95(gp);
 const { mean: pg_mean } = ci95(pg);
 const trajectory = {
@@ -570,7 +583,7 @@ const trajectory = {
 };
 
 // KW test for Q1.1 scorePerHit across 7 conditions
-const scoreGroups = [0, 1, 2, 3, 4, 5, 6].map(
+const scoreGroups = [0, 1, 2, 3, 4, 5, 6, 7].map(
   (c) => varRows.filter((r) => r.ai_advice === c).map((r) => r.scorePerHit).filter((v): v is number => v !== null),
 );
 const kw_score = kruskalWallis(scoreGroups);
@@ -583,10 +596,14 @@ for (const uuid of uniqueParticipants) {
   if (sc === MIN_SESSIONS_REQUIRED && svc === MIN_SESSIONS_REQUIRED) completeUUIDs.add(uuid);
 }
 const completePptByCondition: Record<number, Set<string>> = {};
-for (let i = 0; i < 7; i++) completePptByCondition[i] = new Set();
+for (let i = 0; i < 8; i++) completePptByCondition[i] = new Set();
 for (const s of sessions) {
+  if (!completePptByCondition[s.ai_advice]) completePptByCondition[s.ai_advice] = new Set();
   if (completeUUIDs.has(s.user_uuid)) completePptByCondition[s.ai_advice].add(s.user_uuid);
 }
+
+// All observed ai_advice values (including any undocumented ones)
+const allAiTypes = [...new Set(sessions.map((s) => s.ai_advice))].sort((a, b) => a - b);
 
 // Output
 const result = {
@@ -598,15 +615,16 @@ const result = {
     totalSurveys: surveys.length,
     dateRange,
     gamesPlayedMismatches,
+    unknownAiTypes: allAiTypes.filter((t) => !AI_TYPE_LABELS[t]),
   },
   conditionBalance: Object.fromEntries(
-    [0, 1, 2, 3, 4, 5, 6].map((i) => [
-      AI_TYPE_LABELS[i],
+    allAiTypes.map((i) => [
+      AI_TYPE_LABELS[i] ?? `UNKNOWN_${i}`,
       {
-        sessions: conditionSessionCounts[i],
-        completePptN: completePptByCondition[i].size,
-        boardFamily: conditionBoardFamilyCounts[i],
-        skillMean: conditionSkillMeans[i],
+        sessions: conditionSessionCounts[i] ?? 0,
+        completePptN: (completePptByCondition[i] ?? new Set()).size,
+        boardFamily: conditionBoardFamilyCounts[i] ?? { perlin: 0, gaussian: 0 },
+        skillMean: conditionSkillMeans[i] ?? null,
       },
     ]),
   ),
@@ -621,21 +639,28 @@ console.log(JSON.stringify(result, null, 2));
 // Append row to reports/series/metrics.csv
 const csvPath = path.join(PROJECT_ROOT, "reports", "series", "metrics.csv");
 const scorePhit = byCondition["scorePerHit"];
+
+function fmtCsv(v: number | null | undefined): string {
+  if (v == null || isNaN(v)) return "";
+  return v.toFixed(4);
+}
+
 const row = [
   new Date().toISOString().slice(0, 10),
   sessions.length,
   uniqueParticipants.size,
   completeParticipants,
-  scorePhit["NONE"]?.mean?.toFixed(4) ?? "",
-  scorePhit["CORRECT"]?.mean?.toFixed(4) ?? "",
-  scorePhit["RANDOM"]?.mean?.toFixed(4) ?? "",
-  scorePhit["WRONG"]?.mean?.toFixed(4) ?? "",
-  scorePhit["BAD"]?.mean?.toFixed(4) ?? "",
-  scorePhit["GOOD_PLAUSIBLE"]?.mean?.toFixed(4) ?? "",
-  scorePhit["PLAUSIBLE_GOOD"]?.mean?.toFixed(4) ?? "",
-  trajectory.cohenD.d?.toFixed(4) ?? "",
-  trajectory.cohenD.ci_low?.toFixed(4) ?? "",
-  trajectory.cohenD.ci_high?.toFixed(4) ?? "",
+  fmtCsv(scorePhit["NONE"]?.mean),
+  fmtCsv(scorePhit["CORRECT"]?.mean),
+  fmtCsv(scorePhit["PLAUSIBLE"]?.mean),
+  fmtCsv(scorePhit["RANDOM"]?.mean),
+  fmtCsv(scorePhit["WRONG"]?.mean),
+  fmtCsv(scorePhit["BAD"]?.mean),
+  fmtCsv(scorePhit["GOOD_PLAUSIBLE"]?.mean),
+  fmtCsv(scorePhit["PLAUSIBLE_GOOD"]?.mean),
+  fmtCsv(trajectory.cohenD.d),
+  fmtCsv(trajectory.cohenD.ci_low),
+  fmtCsv(trajectory.cohenD.ci_high),
   "OK",
 ].join(",");
 fs.appendFileSync(csvPath, row + "\n");

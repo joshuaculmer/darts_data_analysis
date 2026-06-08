@@ -107,6 +107,7 @@ export function groupSessionsByDate(sessions: ParsedGameSession[]): DateCount[] 
 export const AI_TYPE_LABELS: Record<AI_Type, string> = {
   [AI_Type.NONE]: "None",
   [AI_Type.CORRECT]: "Correct",
+  [AI_Type.PLAUSIBLE]: "Plausible",
   [AI_Type.RANDOM]: "Random",
   [AI_Type.WRONG]: "Wrong",
   [AI_Type.BAD]: "Bad",
@@ -117,6 +118,7 @@ export const AI_TYPE_LABELS: Record<AI_Type, string> = {
 export const AI_TYPE_COLORS: Record<AI_Type, string> = {
   [AI_Type.NONE]: "#6b7280",
   [AI_Type.CORRECT]: "#0072B2",
+  [AI_Type.PLAUSIBLE]: "#F0E442",
   [AI_Type.RANDOM]: "#E69F00",
   [AI_Type.WRONG]: "#D55E00",
   [AI_Type.BAD]: "#CC79A7",

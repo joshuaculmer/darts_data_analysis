@@ -150,9 +150,9 @@ describe("groupSessionsByDate", () => {
 // countByCondition
 // ---------------------------------------------------------------------------
 describe("countByCondition", () => {
-  it("always returns an entry for all 7 AI_Type conditions", () => {
+  it("always returns an entry for all 8 AI_Type conditions", () => {
     const result = countByCondition([]);
-    expect(result).toHaveLength(7);
+    expect(result).toHaveLength(8);
   });
 
   it("returns zero counts for conditions with no sessions", () => {

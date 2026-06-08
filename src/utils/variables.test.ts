@@ -209,9 +209,9 @@ function row(ai_advice: number, value: number | null): SessionVariableRow {
 }
 
 describe("computeVariableByCondition", () => {
-  it("returns an entry for all 7 conditions, with label and color", () => {
+  it("returns an entry for all 8 conditions, with label and color", () => {
     const result = computeVariableByCondition([], "scorePerHit");
-    expect(result).toHaveLength(7);
+    expect(result).toHaveLength(8);
     expect(result[0].aiType).toBe(AI_Type.NONE);
     expect(result.find((r) => r.aiType === AI_Type.CORRECT)!.color).toBe("#0072B2");
   });

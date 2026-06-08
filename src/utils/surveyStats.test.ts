@@ -199,8 +199,8 @@ describe("joinSessionsWithSurvey", () => {
 // computeTrustByCondition
 // ---------------------------------------------------------------------------
 describe("computeTrustByCondition", () => {
-  it("returns 7 entries even with no joined sessions", () => {
-    expect(computeTrustByCondition([], "trust")).toHaveLength(7);
+  it("returns 8 entries even with no joined sessions", () => {
+    expect(computeTrustByCondition([], "trust")).toHaveLength(8);
   });
 
   it("skips sessions where the trust question is missing", () => {
@@ -258,8 +258,8 @@ describe("computeTrustByCondition", () => {
 // computeTrustLikertByCondition
 // ---------------------------------------------------------------------------
 describe("computeTrustLikertByCondition", () => {
-  it("returns 7 entries even with no joined sessions", () => {
-    expect(computeTrustLikertByCondition([], "trust")).toHaveLength(7);
+  it("returns 8 entries even with no joined sessions", () => {
+    expect(computeTrustLikertByCondition([], "trust")).toHaveLength(8);
   });
 
   it("computes per-condition Likert counts and percentages", () => {

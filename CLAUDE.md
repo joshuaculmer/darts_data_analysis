@@ -82,7 +82,7 @@ participantTotalScore = sum of session sums across all sessions for a user
 
 ## Key Experimental Design Facts
 - `execution_skill` and `ai_advice` (AI condition) are **preset by admins** before each session — they are not outcomes. Do not frame charts of these as findings.
-- The 7 AI conditions (`AI_Type` values 0–6): NONE, CORRECT, RANDOM, WRONG, BAD, GOOD_PLAUSIBLE, PLAUSIBLE_GOOD.
+- The 8 AI conditions (`AI_Type` values 0–7): NONE, CORRECT, PLAUSIBLE, RANDOM, WRONG, BAD, GOOD_PLAUSIBLE, PLAUSIBLE_GOOD.
 - GOOD_PLAUSIBLE and PLAUSIBLE_GOOD are ordering conditions — same advice quality, different trajectory. Comparing them is a key research question.
 - Core research questions: Does AI condition affect game score? Does trust mediate performance? Does trust improve score?
 - `MIN_SESSIONS_REQUIRED = 20` in `stats.ts` — change this single constant to update the completeness threshold everywhere. A participant is "complete" when `sessionCount === MIN_SESSIONS_REQUIRED && surveyCount === MIN_SESSIONS_REQUIRED`.

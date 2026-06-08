@@ -25,9 +25,9 @@ function makeSession(overrides: Partial<ParsedGameSession>): ParsedGameSession {
 // computeConditionStats
 // ---------------------------------------------------------------------------
 describe("computeConditionStats", () => {
-  it("returns an entry for all 7 conditions even with no sessions", () => {
+  it("returns an entry for all 8 conditions even with no sessions", () => {
     const result = computeConditionStats([]);
-    expect(result).toHaveLength(7);
+    expect(result).toHaveLength(8);
     result.forEach((s) => {
       expect(s.count).toBe(0);
       expect(s.mean).toBe(0);
