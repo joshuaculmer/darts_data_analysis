@@ -1,6 +1,10 @@
 .env
 SUPABASE_PRIVATE.md
 
+# Weekly-report agent: never commit raw fetched experiment data
+reports/**/raw-*.json
+**/darts-data*.json
+
 # Logs
 logs
 *.log
