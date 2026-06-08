@@ -125,8 +125,8 @@ describe("computeSessionScore", () => {
 // computeScoreByCondition
 // ---------------------------------------------------------------------------
 describe("computeScoreByCondition", () => {
-  it("returns an entry for all 7 AI_Type conditions even with no sessions", () => {
-    expect(computeScoreByCondition([], new Map())).toHaveLength(7);
+  it("returns an entry for all 8 AI_Type conditions even with no sessions", () => {
+    expect(computeScoreByCondition([], new Map())).toHaveLength(8);
   });
 
   it("returns zero stats for conditions with no sessions", () => {

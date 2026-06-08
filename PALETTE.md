@@ -97,6 +97,7 @@ Colorblind-safe, print-safe. Used for all per-condition coloring in charts.
 |---|---|---|
 | NONE | Neutral grey | `#6b7280` |
 | CORRECT | Blue | `#0072B2` |
+| PLAUSIBLE | Yellow | `#F0E442` |
 | RANDOM | Amber | `#E69F00` |
 | WRONG | Vermillion | `#D55E00` |
 | BAD | Mauve | `#CC79A7` |

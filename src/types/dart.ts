@@ -20,11 +20,12 @@ export interface DartGameDTO {
 export const AI_Type = {
   NONE: 0,
   CORRECT: 1,
-  RANDOM: 2,
-  WRONG: 3,
-  BAD: 4,
-  GOOD_PLAUSIBLE: 5,
-  PLAUSIBLE_GOOD: 6,
+  PLAUSIBLE: 2,
+  RANDOM: 3,
+  WRONG: 4,
+  BAD: 5,
+  GOOD_PLAUSIBLE: 6,
+  PLAUSIBLE_GOOD: 7,
 } as const;
 export type AI_Type = typeof AI_Type[keyof typeof AI_Type];
 

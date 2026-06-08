@@ -76,11 +76,12 @@ const PROJECT_ROOT = path.resolve(__dirname, "../..");
 const AI_TYPE_LABELS: Record<number, string> = {
   0: "NONE",
   1: "CORRECT",
-  2: "RANDOM",
-  3: "WRONG",
-  4: "BAD",
-  5: "GOOD_PLAUSIBLE",
-  6: "PLAUSIBLE_GOOD",
+  2: "PLAUSIBLE",
+  3: "RANDOM",
+  4: "WRONG",
+  5: "BAD",
+  6: "GOOD_PLAUSIBLE",
+  7: "PLAUSIBLE_GOOD",
 };
 
 const ORDINAL_SCALES: Record<string, number> = {
@@ -350,7 +351,7 @@ function computeByCondition(rows: SessionVariableRow[], key: VariableKey) {
     (grouped[r.ai_advice] ??= []).push(v as number);
   }
   return Object.fromEntries(
-    [0, 1, 2, 3, 4, 5, 6].map((type) => {
+    [0, 1, 2, 3, 4, 5, 6, 7].map((type) => {
       const values = grouped[type] ?? [];
       return [AI_TYPE_LABELS[type], { n: values.length, ...ci95(values) }];
     }),
@@ -523,12 +524,12 @@ const dateRange = { min: createdAts[0], max: createdAts[createdAts.length - 1] }
 
 // Condition distribution (includes any undocumented ai_advice values as flags)
 const conditionSessionCounts: Record<number, number> = {};
-for (let i = 0; i < 7; i++) conditionSessionCounts[i] = 0;
+for (let i = 0; i < 8; i++) conditionSessionCounts[i] = 0;
 for (const s of sessions) conditionSessionCounts[s.ai_advice] = (conditionSessionCounts[s.ai_advice] ?? 0) + 1;
 
 // Board-family balance per condition (handle any ai_advice value, including undocumented ones)
 const conditionBoardFamilyCounts: Record<number, { perlin: number; gaussian: number }> = {};
-for (let i = 0; i < 7; i++) conditionBoardFamilyCounts[i] = { perlin: 0, gaussian: 0 };
+for (let i = 0; i < 8; i++) conditionBoardFamilyCounts[i] = { perlin: 0, gaussian: 0 };
 for (const s of sessions) {
   if (!conditionBoardFamilyCounts[s.ai_advice]) conditionBoardFamilyCounts[s.ai_advice] = { perlin: 0, gaussian: 0 };
   for (const g of s.games) {
@@ -539,7 +540,7 @@ for (const s of sessions) {
 
 // Skill balance per condition
 const conditionSkills: Record<number, number[]> = {};
-for (let i = 0; i < 7; i++) conditionSkills[i] = [];
+for (let i = 0; i < 8; i++) conditionSkills[i] = [];
 for (const s of sessions) {
   if (!conditionSkills[s.ai_advice]) conditionSkills[s.ai_advice] = [];
   conditionSkills[s.ai_advice].push(s.execution_skill);
@@ -570,8 +571,9 @@ for (const key of VARIABLE_KEYS) {
 const corrMatrix = computeCorrelationMatrix(varRows);
 
 // Q1.2 trajectory contrast: GOOD_PLAUSIBLE (5) vs PLAUSIBLE_GOOD (6)
-const gp = varRows.filter((r) => r.ai_advice === 5).map((r) => r.scorePerHit).filter((v): v is number => v !== null);
-const pg = varRows.filter((r) => r.ai_advice === 6).map((r) => r.scorePerHit).filter((v): v is number => v !== null);
+// GOOD_PLAUSIBLE=6, PLAUSIBLE_GOOD=7 in the updated enum
+const gp = varRows.filter((r) => r.ai_advice === 6).map((r) => r.scorePerHit).filter((v): v is number => v !== null);
+const pg = varRows.filter((r) => r.ai_advice === 7).map((r) => r.scorePerHit).filter((v): v is number => v !== null);
 const { mean: gp_mean } = ci95(gp);
 const { mean: pg_mean } = ci95(pg);
 const trajectory = {
@@ -581,7 +583,7 @@ const trajectory = {
 };
 
 // KW test for Q1.1 scorePerHit across 7 conditions
-const scoreGroups = [0, 1, 2, 3, 4, 5, 6].map(
+const scoreGroups = [0, 1, 2, 3, 4, 5, 6, 7].map(
   (c) => varRows.filter((r) => r.ai_advice === c).map((r) => r.scorePerHit).filter((v): v is number => v !== null),
 );
 const kw_score = kruskalWallis(scoreGroups);
@@ -594,7 +596,7 @@ for (const uuid of uniqueParticipants) {
   if (sc === MIN_SESSIONS_REQUIRED && svc === MIN_SESSIONS_REQUIRED) completeUUIDs.add(uuid);
 }
 const completePptByCondition: Record<number, Set<string>> = {};
-for (let i = 0; i < 7; i++) completePptByCondition[i] = new Set();
+for (let i = 0; i < 8; i++) completePptByCondition[i] = new Set();
 for (const s of sessions) {
   if (!completePptByCondition[s.ai_advice]) completePptByCondition[s.ai_advice] = new Set();
   if (completeUUIDs.has(s.user_uuid)) completePptByCondition[s.ai_advice].add(s.user_uuid);
@@ -650,6 +652,7 @@ const row = [
   completeParticipants,
   fmtCsv(scorePhit["NONE"]?.mean),
   fmtCsv(scorePhit["CORRECT"]?.mean),
+  fmtCsv(scorePhit["PLAUSIBLE"]?.mean),
   fmtCsv(scorePhit["RANDOM"]?.mean),
   fmtCsv(scorePhit["WRONG"]?.mean),
   fmtCsv(scorePhit["BAD"]?.mean),

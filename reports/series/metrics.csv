@@ -1,2 +1,2 @@
-run_date,n_sessions,n_participants,n_complete,scorePerHit_NONE,scorePerHit_CORRECT,scorePerHit_RANDOM,scorePerHit_WRONG,scorePerHit_BAD,scorePerHit_GOOD_PLAUSIBLE,scorePerHit_PLAUSIBLE_GOOD,q1_2_smd,q1_2_ci_low,q1_2_ci_high,fetch_status
-2026-06-08,24,2,1,6.7470,7.9417,,7.9375,7.9933,9.2333,7.5206,,,,OK
+run_date,n_sessions,n_participants,n_complete,scorePerHit_NONE,scorePerHit_CORRECT,scorePerHit_PLAUSIBLE,scorePerHit_RANDOM,scorePerHit_WRONG,scorePerHit_BAD,scorePerHit_GOOD_PLAUSIBLE,scorePerHit_PLAUSIBLE_GOOD,q1_2_smd,q1_2_ci_low,q1_2_ci_high,fetch_status
+2026-06-08,24,2,1,6.7470,7.9417,,7.9375,7.9933,9.2333,7.5206,9.0058,-2.3335,-4.6342,-0.0328,OK
