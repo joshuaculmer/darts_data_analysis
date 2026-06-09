@@ -207,7 +207,7 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
 
       {/* Zone 3: Game list + game detail */}
       {activeSession && sessionScore ? (
-        <div style={{ display: "flex", minHeight: 620 }}>
+        <div style={{ display: "flex", height: 620 }}>
 
           {/* Left panel: game list */}
           <div style={{
