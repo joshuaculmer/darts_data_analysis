@@ -54,9 +54,10 @@ function makeFlatSurface(value: number, size = 512): RewardSurface {
   return Array.from({ length: size }, () => Array(size).fill(value));
 }
 
-function makeFlatEvGrids(boardId: number, skill: number, ev: number): EvGrids {
+// Grids store EV for a 10-hit game, so fill with perHitEv × 10.
+function makeFlatEvGrids(boardId: number, skill: number, perHitEv: number): EvGrids {
   return new Map([
-    [evGridKey(boardId, skill), new Float32Array(EV_GRID_SIZE * EV_GRID_SIZE).fill(ev)],
+    [evGridKey(boardId, skill), new Float32Array(EV_GRID_SIZE * EV_GRID_SIZE).fill(perHitEv * 10)],
   ]);
 }
 

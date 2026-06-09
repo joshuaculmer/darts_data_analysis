@@ -61,6 +61,8 @@ experiment (276 pairs). Generated from `experiment_ev_grids.npz` (gitignored, at
 - Loader: `src/loaders/loadEvGrids.ts` — `loadEvGrids(sessions)` returns `EvGrids`
   (`Map<string, Float32Array>` keyed by `evGridKey(boardId, skill)` = `"board:skill"`). Loaded in
   `App.tsx` alongside the boards behind the same loading gate.
+- The grids store EV for a **10-hit game**; `getAimEV` divides by `EV_GRID_HITS` (10) to return
+  per-hit EV.
 - Lookup: `getAimEV(evGrids, boardId, skill, coord)` in `src/utils/aimingEV.ts` → EV per hit, or
   `null` when no grid covers the pair / coord is null / out of bounds. The old flat-8 placeholder
   is gone; **EV gap = scorePerHit − EV(actual aim)** and is `null` (not 0) when uncovered.

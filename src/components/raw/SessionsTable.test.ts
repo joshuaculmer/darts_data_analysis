@@ -68,8 +68,9 @@ describe("buildSessionTableRows", () => {
         makeGame({ hits: [{ x: 0, y: 0 }] }),
       ],
     });
+    // Grids store EV for a 10-hit game: 80 → per-hit EV 8.
     const evGrids = new Map([
-      [evGridKey(0, 50), new Float32Array(EV_GRID_SIZE * EV_GRID_SIZE).fill(8)],
+      [evGridKey(0, 50), new Float32Array(EV_GRID_SIZE * EV_GRID_SIZE).fill(80)],
     ]);
     const r = buildSessionTableRows([session], [], boards, evGrids)[0];
     expect(r.totalScore).toBeCloseTo(30); // 20 + 10

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getAimEV } from "./aimingEV";
+import { getAimEV, EV_GRID_HITS } from "./aimingEV";
 import { evGridKey, EV_GRID_SIZE } from "../loaders/loadEvGrids";
 import type { EvGrids } from "../loaders/loadEvGrids";
 
@@ -17,8 +17,8 @@ function makeGrids(boardId: number, skill: number): EvGrids {
 describe("getAimEV", () => {
   const grids = makeGrids(5, 20);
 
-  it("looks up the grid in [x][y] order with floored coordinates", () => {
-    expect(getAimEV(grids, 5, 20, { x: 100.9, y: 200.2 })).toBe(100 * 1000 + 200);
+  it("looks up the grid in [x][y] order with floored coords, ÷10 for per-hit EV", () => {
+    expect(getAimEV(grids, 5, 20, { x: 100.9, y: 200.2 })).toBe((100 * 1000 + 200) / EV_GRID_HITS);
   });
 
   it("returns null when no grid exists for the (board, skill) pair", () => {

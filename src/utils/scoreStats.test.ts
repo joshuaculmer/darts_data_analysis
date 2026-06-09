@@ -430,11 +430,12 @@ describe("computeSessionHitDispersion", () => {
 // ---------------------------------------------------------------------------
 // computeGameEvGap / computeSessionEvGap — per-hit gap vs EV of the actual aim
 // ---------------------------------------------------------------------------
-function makeFlatEvGrids(pairs: [number, number][], ev: number): EvGrids {
+// Grids store EV for a 10-hit game, so fill with perHitEv × 10.
+function makeFlatEvGrids(pairs: [number, number][], perHitEv: number): EvGrids {
   return new Map(
     pairs.map(([b, s]) => [
       evGridKey(b, s),
-      new Float32Array(EV_GRID_SIZE * EV_GRID_SIZE).fill(ev),
+      new Float32Array(EV_GRID_SIZE * EV_GRID_SIZE).fill(perHitEv * 10),
     ]),
   );
 }

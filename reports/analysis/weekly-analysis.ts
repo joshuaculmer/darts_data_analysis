@@ -181,6 +181,8 @@ function computeSessionHitDispersion(session: ParsedGameSession): number {
 // 512×512 uint16 grid per (board_id, execution_skill) pair, [x][y] row-major,
 // EV = value * scale. Lazily read and cached per pair.
 const EV_GRID_SIZE = 512;
+// The grids store EV for a 10-hit game; divide to get per-hit EV.
+const EV_GRID_HITS = 10;
 let evGridIndex: { scale: number; pairs: Set<string> } | null | undefined;
 const evGridCache = new Map<string, Uint16Array | null>();
 
@@ -217,7 +219,7 @@ function getAimEV(
   const x = Math.floor(aim.x);
   const y = Math.floor(aim.y);
   if (x < 0 || x >= EV_GRID_SIZE || y < 0 || y >= EV_GRID_SIZE) return null;
-  return grid[x * EV_GRID_SIZE + y] * evGridIndex.scale;
+  return (grid[x * EV_GRID_SIZE + y] * evGridIndex.scale) / EV_GRID_HITS;
 }
 
 /** Mean per-game (scorePerHit − EV of actual aim); null when no game is covered. */
