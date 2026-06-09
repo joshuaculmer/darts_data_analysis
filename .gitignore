@@ -1,6 +1,9 @@
 .env
 SUPABASE_PRIVATE.md
 
+# Source npz for public/ev_grids (converted by tools/convert_ev_grids.py)
+experiment_ev_grids.npz
+
 # Weekly-report agent: never commit raw fetched experiment data
 reports/**/raw-*.json
 **/darts-data*.json

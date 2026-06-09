@@ -46,10 +46,6 @@ export function LuckGroup({ joined, variableRows, matrix }: Props) {
         valueLabel={VARIABLES.evGap.label}
         format={VARIABLES.evGap.format}
       />
-      <p className="section-note" style={{ color: "#b45309" }}>
-        EV gap uses a placeholder expected value (a flat 8 per hit) until the EV-per-board JSON lands,
-        so its absolute level is provisional — only relative comparisons are meaningful for now.
-      </p>
 
       <PairwiseScatter rows={variableRows} xKey="luck" yKey="dispersion" />
       <PairwiseScatter rows={variableRows} xKey="luck" yKey="evGap" />

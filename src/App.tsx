@@ -15,6 +15,8 @@ import type {
 } from "./loaders/loadData";
 import { fetchData, isSupabaseConfigured } from "./loaders/fetchSupabase";
 import { loadBoards } from "./loaders/loadBoards";
+import { loadEvGrids } from "./loaders/loadEvGrids";
+import type { EvGrids } from "./loaders/loadEvGrids";
 import type { RewardSurface } from "./types/dart";
 import { getCompleteUserIds } from "./utils/stats";
 import { joinSessionsWithSurvey } from "./utils/surveyStats";
@@ -49,9 +51,11 @@ const NAV_ITEMS: { path: string; label: string }[] = [
 function SessionRoute({
   sessions,
   boards,
+  evGrids,
 }: {
   sessions: ParsedGameSession[];
   boards: Map<number, RewardSurface>;
+  evGrids: EvGrids;
 }) {
   const { uuid, sessionIndex } = useParams();
   return (
@@ -62,6 +66,7 @@ function SessionRoute({
       <SessionView
         sessions={sessions}
         boards={boards}
+        evGrids={evGrids}
         initialParticipant={uuid ?? null}
         initialSessionIndex={sessionIndex != null ? Number(sessionIndex) : null}
       />
@@ -123,6 +128,7 @@ function App() {
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
   const [boards, setBoards] = useState<Map<number, RewardSurface>>(new Map());
   const [boardsLoaded, setBoardsLoaded] = useState(false);
+  const [evGrids, setEvGrids] = useState<EvGrids>(new Map());
   const [trustQuestionId, setTrustQuestionId] = useState<string | null>(null);
   const [completeOnly, setCompleteOnly] = useState(true);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -194,6 +200,7 @@ function App() {
     setSessionsLoaded(false);
     setBoardsLoaded(false);
     setBoards(new Map());
+    setEvGrids(new Map());
     setTrustQuestionId(null);
     setFetchError(null);
     navigate("/sanity");
@@ -249,14 +256,17 @@ function App() {
     setTrustQuestionId(firstTrustId ?? fallbackId);
   }, [surveyResponses]);
 
-  // Load board surfaces once both CSVs are ready
+  // Load board surfaces + EV grids once both CSVs are ready
   useEffect(() => {
     if (!sessionsLoaded || surveyResponses.length === 0) return;
     setBoardsLoaded(false);
-    loadBoards(sessions).then((loaded) => {
-      setBoards(loaded);
-      setBoardsLoaded(true);
-    });
+    Promise.all([loadBoards(sessions), loadEvGrids(sessions)]).then(
+      ([loadedBoards, loadedEvGrids]) => {
+        setBoards(loadedBoards);
+        setEvGrids(loadedEvGrids);
+        setBoardsLoaded(true);
+      },
+    );
   }, [sessions, surveyResponses, sessionsLoaded]);
 
   const completeUserIds = useMemo(
@@ -287,8 +297,8 @@ function App() {
   // Unified session-level variable rows + the global Spearman correlation matrix,
   // computed once and shared across all three group pages (Trust/Performance/Luck).
   const variableRows = useMemo(
-    () => buildSessionVariableRows(joinedData, boards),
-    [joinedData, boards],
+    () => buildSessionVariableRows(joinedData, boards, evGrids),
+    [joinedData, boards, evGrids],
   );
   const correlationMatrix = useMemo(
     () => computeCorrelationMatrix(variableRows, VARIABLE_KEYS),
@@ -416,7 +426,7 @@ function App() {
         {appHeader}
         <div className="upload-screen">
           <p style={{ color: "#6b7280", fontSize: 14 }}>
-            Loading board surfaces…
+            Loading board surfaces and EV grids…
           </p>
         </div>
       </div>
@@ -513,11 +523,11 @@ function App() {
 
           <Route
             path="/session/:uuid/:sessionIndex"
-            element={<SessionRoute sessions={filteredSessions} boards={boards} />}
+            element={<SessionRoute sessions={filteredSessions} boards={boards} evGrids={evGrids} />}
           />
           <Route
             path="/session"
-            element={<SessionRoute sessions={filteredSessions} boards={boards} />}
+            element={<SessionRoute sessions={filteredSessions} boards={boards} evGrids={evGrids} />}
           />
 
           <Route
@@ -528,7 +538,7 @@ function App() {
                   All sessions and survey responses — unfiltered regardless of the
                   Complete Participants toggle. Click any column header to sort.
                 </p>
-                <SessionsTable sessions={sessions} surveys={surveyResponses} boards={boards} />
+                <SessionsTable sessions={sessions} surveys={surveyResponses} boards={boards} evGrids={evGrids} />
                 <SurveyTable surveys={surveyResponses} />
               </section>
             }

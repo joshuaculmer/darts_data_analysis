@@ -49,6 +49,22 @@ Each board is a 512×512 `number[][]`. Filenames have **no zero-padding**. Only 
 - Loader: `src/loaders/loadBoards.ts` — `loadBoards(sessions)` returns `Map<number, RewardSurface>`
 - `boardUrl(id)` in that file handles the family routing; update it if the ID ranges or directory names change.
 
+### EV Grids (auto-fetched)
+Precomputed expected-value-per-hit grids, one per `(board_id, execution_skill)` pair used in the
+experiment (276 pairs). Generated from `experiment_ev_grids.npz` (gitignored, at project root) by
+`tools/convert_ev_grids.py` into `public/ev_grids/`:
+
+- `ev_{board}_{skill}.bin` — 512×512 little-endian uint16, row-major in the app's `[x][y]`
+  convention (the npz is stored transposed; the converter transposes once). EV = value × scale.
+- `index.json` — `{ size, scale, pairs }`; the loader only fetches pairs present in both the
+  uploaded sessions and this index.
+- Loader: `src/loaders/loadEvGrids.ts` — `loadEvGrids(sessions)` returns `EvGrids`
+  (`Map<string, Float32Array>` keyed by `evGridKey(boardId, skill)` = `"board:skill"`). Loaded in
+  `App.tsx` alongside the boards behind the same loading gate.
+- Lookup: `getAimEV(evGrids, boardId, skill, coord)` in `src/utils/aimingEV.ts` → EV per hit, or
+  `null` when no grid covers the pair / coord is null / out of bounds. The old flat-8 placeholder
+  is gone; **EV gap = scorePerHit − EV(actual aim)** and is `null` (not 0) when uncovered.
+
 ### Supabase Direct Fetch (alternative to CSV upload)
 The header has a **Fetch Data** button that pulls both tables directly from Supabase instead of requiring manual CSV exports. This goes through a Supabase Edge Function rather than the public REST API.
 
@@ -113,9 +129,9 @@ variable-centric and share the same building blocks. See `PLANNING.md` for the c
 | Sanity Checks | KpiCards, SessionCalendar, ConditionDistribution |
 | Game Performance (`/performance`) | `PerformanceGroup`: scorePerHit by condition + proxOptimal by condition (VariableByCondition), satisfied dimension (SurveyDimensionCharts), within-group pairwise scatters, global heatmap (Performance highlighted) |
 | Trust & Influence (`/trust`) | `TrustGroup`: trust + influence dimensions (SurveyDimensionCharts), proxAI by condition, within-group pairwise scatters, global heatmap (Trust highlighted) |
-| Luck (`/luck`) | `LuckGroup`: luck dimension, dispersion + evGap by condition, within-group pairwise scatters, global heatmap (Luck highlighted). EV gap labeled as placeholder. |
+| Luck (`/luck`) | `LuckGroup`: luck dimension, dispersion + evGap by condition, within-group pairwise scatters, global heatmap (Luck highlighted). |
 | Individual View | IndividualView (participant dropdown + wholistic score graph with toggleable per-dimension survey overlays [trust/influence/satisfied/luck] + game breakdown) |
-| Session View | SessionView — participant + session pills in **chronological** order (`created_at`); session metadata table + per-game table with expandable hit rows, board ID, board seed (if present in game JSON), and per-game scorePerHit / dispersion / EV-gap (placeholder EV). Scatter navigation uses global row index into `filteredSessions`; pills remap to the same session after sort. |
+| Session View | SessionView — participant + session pills in **chronological** order (`created_at`); session metadata table + per-game table with expandable hit rows, board ID, board seed (if present in game JSON), per-game scorePerHit / dispersion / EV-gap, and EV of the actual / suggested / optimal aim. Scatter navigation uses global row index into `filteredSessions`; pills remap to the same session after sort. |
 | Raw Data | Coming soon (filterable/sortable tables) |
 
 The six trust charts (`TrustByCondition`, `TrustBySession`, `TrustOverTime`, `TrustVsScore`,
@@ -142,7 +158,10 @@ src/
 │   ├── loadData.ts                  # ParsedGameSession, ParsedSurveyResponse, CSV parsers
 │   ├── loadData.test.ts
 │   ├── loadBoards.ts                # loadBoards(sessions) → Map<number, RewardSurface>
-│   └── loadBoards.test.ts
+│   ├── loadBoards.test.ts
+│   ├── loadEvGrids.ts               # loadEvGrids(sessions) → EvGrids (Map<"board:skill", Float32Array>);
+│   │                                #   fetches public/ev_grids/*.bin per (board, skill) pair in the data
+│   └── loadEvGrids.test.ts
 │
 ├── data/
 │   ├── Perlin_Aiming.json           # Optimal aiming coords for Perlin boards (IDs 0–99);
@@ -165,7 +184,8 @@ src/
     │   │                                #     hit-weighted per-hit; used by Individual View KPI + timeline),
 │   │                                #   computeGameHitDispersion/computeSessionHitDispersion (Dispersion
 │   │                                #     {mean,std} of hits around actual aim),
-│   │                                #   computeGameEvGap/computeSessionEvGap (per-hit scorePerHit − EV),
+│   │                                #   computeGameEvGap/computeSessionEvGap (per-hit scorePerHit −
+│   │                                #     EV(actual aim) from EvGrids; null when no grid covers the game),
 │   │                                #   SessionScore, ParticipantScore, ProximityScorePoint, Dispersion
 │   │                                #   ScoreSkillPoint includes user_uuid + sessionIndex for click-to-navigate
 │   ├── scoreStats.test.ts
@@ -193,8 +213,8 @@ src/
 │   ├── aimingLookup.ts              # getOptimalAimingCoord(boardId, executionSkill) → canvas {x,y} | null
 │   │                                #   routes to Perlin (0–99) or Gaussian (100–199) JSON;
 │   │                                #   JSON [a,b] → canvas x=b, y=a (matches AI_Correct toCoord convention)
-│   ├── aimingEV.ts                  # getAimEV(boardId, aimCoord, executionSkill) → EV per hit;
-│   │                                #   STUB returns flat EV_PER_HIT_PLACEHOLDER (8) until EV JSON lands
+│   ├── aimingEV.ts                  # getAimEV(evGrids, boardId, skill, coord) → EV per hit | null;
+│   │                                #   real lookup into the precomputed EV grids (see EV Grids section)
 │   ├── aimingEV.test.ts
 │   ├── variables.ts                 # Unified 9-variable session-level set (Trust/Performance/Luck):
 │   │                                #   SessionVariableRow, buildSessionVariableRows(joined, boards),
@@ -260,12 +280,13 @@ src/
         ├── SessionsTable.tsx        # Sortable/filterable sessions table; shows games_played vs actual array length (red if mismatch); CSV export; uses unfiltered sessions.
         │                            #   Includes extrapolated session-level columns via buildSessionTableRows (pure, exported, tested):
         │                            #   avg hits/game, total score, avg score/game, scorePerHit, proxAI, proxOptimal, dispersion μ/σ,
-        │                            #   EV gap (placeholder EV 8/hit), and joined survey trust/influence/satisfied/luck. CSV export includes all.
+        │                            #   EV gap (from EV grids; blank when uncovered), and joined survey trust/influence/satisfied/luck. CSV export includes all.
         └── SurveyTable.tsx          # Sortable/filterable survey table; dynamic question columns; CSV export
 
 public/
 ├── Perlin_Noise_Surfaces.ts/        # 100 board JSON files (PerlinNoiseBoard0.json … PerlinNoiseBoard99.json); board_id 0–99
 ├── Gaussian_Sum/                    # 100 board JSON files (GaussianSumBoard0.json … GaussianSumBoard99.json); board_id 100–199 → file index = id−100
+├── ev_grids/                        # 276 EV grids (ev_{board}_{skill}.bin, uint16) + index.json; from tools/convert_ev_grids.py
 ├── favicon.svg
 └── icons.svg
 ```

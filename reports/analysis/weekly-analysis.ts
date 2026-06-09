@@ -177,12 +177,64 @@ function computeSessionHitDispersion(session: ParsedGameSession): number {
   return means.reduce((s, v) => s + v, 0) / means.length;
 }
 
-/** EV gap: scorePerHit − 8 (flat placeholder EV). */
+// EV grids (public/ev_grids, written by tools/convert_ev_grids.py): one
+// 512×512 uint16 grid per (board_id, execution_skill) pair, [x][y] row-major,
+// EV = value * scale. Lazily read and cached per pair.
+const EV_GRID_SIZE = 512;
+let evGridIndex: { scale: number; pairs: Set<string> } | null | undefined;
+const evGridCache = new Map<string, Uint16Array | null>();
+
+function getAimEV(
+  boardId: number,
+  executionSkill: number,
+  aim: { x: number; y: number } | null,
+): number | null {
+  if (!aim) return null;
+  if (evGridIndex === undefined) {
+    const p = path.join(PROJECT_ROOT, "public", "ev_grids", "index.json");
+    if (fs.existsSync(p)) {
+      const idx = JSON.parse(fs.readFileSync(p, "utf-8"));
+      evGridIndex = {
+        scale: idx.scale,
+        pairs: new Set(idx.pairs.map(([b, s]: [number, number]) => `${b}:${s}`)),
+      };
+    } else {
+      evGridIndex = null;
+    }
+  }
+  if (!evGridIndex) return null;
+  const key = `${boardId}:${executionSkill}`;
+  if (!evGridIndex.pairs.has(key)) return null;
+  let grid = evGridCache.get(key);
+  if (grid === undefined) {
+    const p = path.join(PROJECT_ROOT, "public", "ev_grids", `ev_${boardId}_${executionSkill}.bin`);
+    grid = fs.existsSync(p)
+      ? new Uint16Array(new Uint8Array(fs.readFileSync(p)).buffer)
+      : null;
+    evGridCache.set(key, grid);
+  }
+  if (!grid) return null;
+  const x = Math.floor(aim.x);
+  const y = Math.floor(aim.y);
+  if (x < 0 || x >= EV_GRID_SIZE || y < 0 || y >= EV_GRID_SIZE) return null;
+  return grid[x * EV_GRID_SIZE + y] * evGridIndex.scale;
+}
+
+/** Mean per-game (scorePerHit − EV of actual aim); null when no game is covered. */
 function computeSessionEvGap(
   session: ParsedGameSession,
   boards: Map<number, RewardSurface>,
-): number {
-  return computeSessionScorePerHit(session, boards) - 8;
+): number | null {
+  const gaps: number[] = [];
+  for (const game of session.games) {
+    const surface = boards.get(game.board_id);
+    if (!surface) continue;
+    const ev = getAimEV(game.board_id, session.execution_skill, game.actual_aiming_coord);
+    if (ev === null) continue;
+    gaps.push(gameScorePerHit(game, surface) - ev);
+  }
+  if (gaps.length === 0) return null;
+  return gaps.reduce((s, v) => s + v, 0) / gaps.length;
 }
 
 function computeGameProximity(game: DartGameDTO): number | null {

@@ -1,19 +1,25 @@
 import type { Coord } from "../types/dart";
+import { EV_GRID_SIZE, evGridKey } from "../loaders/loadEvGrids";
+import type { EvGrids } from "../loaders/loadEvGrids";
 
 /**
- * Placeholder expected-value-per-hit (EV) for aiming at a given coord on a board.
- *
- * STUB: returns a flat value regardless of inputs. A forthcoming JSON (EV per
- * board × aim location × execution skill) will replace the body of getAimEV
- * without touching call sites. Mirror aimingLookup.ts's boardId routing
- * (0–99 Perlin, 100–199 Gaussian) when that data lands.
+ * Expected value per hit of aiming at `aimCoord` on a board, given the
+ * player's execution skill. Looks up the precomputed EV grid for the
+ * (board_id, execution_skill) pair (see loadEvGrids.ts); returns null when no
+ * grid was loaded for that pair, the coord is null, or it falls outside the
+ * 512×512 grid.
  */
-export const EV_PER_HIT_PLACEHOLDER = 8;
-
 export function getAimEV(
-  _boardId: number,
-  _aimCoord: Coord,
-  _executionSkill: number,
-): number {
-  return EV_PER_HIT_PLACEHOLDER;
+  evGrids: EvGrids,
+  boardId: number,
+  executionSkill: number,
+  aimCoord: Coord | null,
+): number | null {
+  if (!aimCoord) return null;
+  const grid = evGrids.get(evGridKey(boardId, executionSkill));
+  if (!grid) return null;
+  const x = Math.floor(aimCoord.x);
+  const y = Math.floor(aimCoord.y);
+  if (x < 0 || x >= EV_GRID_SIZE || y < 0 || y >= EV_GRID_SIZE) return null;
+  return grid[x * EV_GRID_SIZE + y];
 }

@@ -7,11 +7,13 @@ import { AI_TYPE_LABELS, AI_TYPE_COLORS } from "../../utils/stats";
 import { computeSessionScore, computeSessionHitDispersion } from "../../utils/scoreStats";
 import { joinSessionsWithSurvey } from "../../utils/surveyStats";
 import { buildSessionVariableRows } from "../../utils/variables";
+import type { EvGrids } from "../../loaders/loadEvGrids";
 
 interface Props {
   sessions: ParsedGameSession[];
   surveys: ParsedSurveyResponse[];
   boards: Map<number, RewardSurface>;
+  evGrids: EvGrids;
 }
 
 export interface SessionTableRow {
@@ -46,16 +48,17 @@ type SortDir = "asc" | "desc";
  * Builds the Raw Data sessions table rows, including the extrapolated
  * session-level variables (per-hit score, proximities, dispersion, EV gap) and
  * the joined survey dimensions. Pure + exported so it can be unit-tested
- * without rendering the component. EV gap uses the placeholder EV (see
- * aimingEV.ts) until the EV JSON lands.
+ * without rendering the component. EV gap uses the precomputed EV grids and is
+ * null for sessions whose (board, skill) pairs have no grid.
  */
 export function buildSessionTableRows(
   sessions: ParsedGameSession[],
   surveys: ParsedSurveyResponse[],
   boards: Map<number, RewardSurface>,
+  evGrids: EvGrids = new Map(),
 ): SessionTableRow[] {
   const joined = joinSessionsWithSurvey(sessions, surveys);
-  const varRows = buildSessionVariableRows(joined, boards);
+  const varRows = buildSessionVariableRows(joined, boards, evGrids);
 
   return sessions.map((s, i) => {
     const v = varRows[i];
@@ -106,7 +109,7 @@ const CSV_COLUMNS: { header: string; get: (r: SessionTableRow) => string }[] = [
   { header: "prox_optimal", get: (r) => csvNum(r.proxOptimal, 4) },
   { header: "dispersion_mean", get: (r) => csvNum(r.dispersionMean, 4) },
   { header: "dispersion_std", get: (r) => csvNum(r.dispersionStd, 4) },
-  { header: "ev_gap_placeholder", get: (r) => csvNum(r.evGap, 4) },
+  { header: "ev_gap", get: (r) => csvNum(r.evGap, 4) },
   { header: "trust", get: (r) => csvNum(r.trust, 0) },
   { header: "influence", get: (r) => csvNum(r.influence, 0) },
   { header: "satisfied", get: (r) => csvNum(r.satisfied, 0) },
@@ -132,14 +135,14 @@ function exportCSV(rows: SessionTableRow[]) {
   URL.revokeObjectURL(url);
 }
 
-export function SessionsTable({ sessions, surveys, boards }: Props) {
+export function SessionsTable({ sessions, surveys, boards, evGrids }: Props) {
   const [search, setSearch] = useState("");
   const [conditionFilter, setConditionFilter] = useState<string>("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "date", dir: "asc" });
 
   const rows = useMemo(
-    () => buildSessionTableRows(sessions, surveys, boards),
-    [sessions, surveys, boards],
+    () => buildSessionTableRows(sessions, surveys, boards, evGrids),
+    [sessions, surveys, boards, evGrids],
   );
 
   const filtered = useMemo(() => {
@@ -265,7 +268,7 @@ export function SessionsTable({ sessions, surveys, boards }: Props) {
               <NumCol k="proxOptimal" label="Prox Optimal" />
               <NumCol k="dispersionMean" label="Disp μ" />
               <NumCol k="dispersionStd" label="Disp σ" />
-              <NumCol k="evGap" label="EV Gap*" />
+              <NumCol k="evGap" label="EV Gap" />
               <NumCol k="trust" label="Trust" />
               <NumCol k="influence" label="Influence" />
               <NumCol k="satisfied" label="Satisfied" />
@@ -315,7 +318,8 @@ export function SessionsTable({ sessions, surveys, boards }: Props) {
         "Games (CSV)" is the games_played field; "Games (data)" is the actual games array length —
         highlighted red if they differ. Score/Hit, proximities, dispersion, and EV gap are the
         extrapolated session-level variables; survey columns are the nearest matching response.
-        <strong> *EV Gap</strong> uses a placeholder expected value (8/hit) until the EV dataset lands.
+        EV gap = score/hit − EV of the actual aim (from the precomputed EV grids); blank when no
+        grid covers the session's board/skill pairs.
       </p>
     </div>
   );

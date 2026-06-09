@@ -3,6 +3,7 @@ import { AI_Type } from "../../types/dart";
 import type { DartGameDTO, RewardSurface } from "../../types/dart";
 import type { ParsedGameSession, ParsedSurveyResponse } from "../../loaders/loadData";
 import { buildSessionTableRows } from "./SessionsTable";
+import { evGridKey, EV_GRID_SIZE } from "../../loaders/loadEvGrids";
 
 function makeGame(overrides: Partial<DartGameDTO> = {}): DartGameDTO {
   return {
@@ -67,11 +68,14 @@ describe("buildSessionTableRows", () => {
         makeGame({ hits: [{ x: 0, y: 0 }] }),
       ],
     });
-    const r = buildSessionTableRows([session], [], boards)[0];
+    const evGrids = new Map([
+      [evGridKey(0, 50), new Float32Array(EV_GRID_SIZE * EV_GRID_SIZE).fill(8)],
+    ]);
+    const r = buildSessionTableRows([session], [], boards, evGrids)[0];
     expect(r.totalScore).toBeCloseTo(30); // 20 + 10
     expect(r.avgHitCount).toBeCloseTo(1.5); // (2 + 1) / 2 games
     expect(r.scorePerHit).toBeCloseTo(10); // mean per-game per-hit ratio (10 & 10)
-    expect(r.evGap).toBeCloseTo(2); // 10 - placeholder EV 8
+    expect(r.evGap).toBeCloseTo(2); // 10 - EV 8 at the actual aim
     expect(r.dispersionMean).toBeCloseTo(0); // all hits at the aim point
     expect(r.dispersionStd).toBeCloseTo(0);
   });

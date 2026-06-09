@@ -11,6 +11,8 @@ import {
 } from "./variables";
 import type { SessionVariableRow } from "./variables";
 import { getOptimalAimingCoord } from "./aimingLookup";
+import { evGridKey, EV_GRID_SIZE } from "../loaders/loadEvGrids";
+import type { EvGrids } from "../loaders/loadEvGrids";
 
 function makeGame(overrides: Partial<DartGameDTO> = {}): DartGameDTO {
   return {
@@ -50,6 +52,12 @@ function makeSurvey(responses: { questionId: string; value: number | string }[])
 
 function makeFlatSurface(value: number, size = 512): RewardSurface {
   return Array.from({ length: size }, () => Array(size).fill(value));
+}
+
+function makeFlatEvGrids(boardId: number, skill: number, ev: number): EvGrids {
+  return new Map([
+    [evGridKey(boardId, skill), new Float32Array(EV_GRID_SIZE * EV_GRID_SIZE).fill(ev)],
+  ]);
 }
 
 // ---------------------------------------------------------------------------
@@ -140,10 +148,22 @@ describe("buildSessionVariableRows", () => {
     const rows = buildSessionVariableRows(
       [{ session: makeSession({ games: [game] }), survey: null }],
       boards,
+      makeFlatEvGrids(0, 50, 8),
     );
     expect(rows[0].scorePerHit).toBeCloseTo(10); // 20 / 2 hits
     expect(rows[0].dispersion).toBeCloseTo(0); // both hits at the aim point
-    expect(rows[0].evGap).toBeCloseTo(2); // 10 - placeholder 8
+    expect(rows[0].evGap).toBeCloseTo(2); // 10 - EV 8 at the actual aim
+  });
+
+  it("evGap is null when no EV grid covers the session's (board, skill) pair", () => {
+    const boards = new Map([[0, makeFlatSurface(10)]]);
+    const game = makeGame({ board_id: 0, hits: [{ x: 0, y: 0 }] });
+    const rows = buildSessionVariableRows(
+      [{ session: makeSession({ games: [game] }), survey: null }],
+      boards,
+      makeFlatEvGrids(0, 99, 8), // wrong skill → no grid for (0, 50)
+    );
+    expect(rows[0].evGap).toBeNull();
   });
 
   it("leaves game-derived metrics null when a session has no games", () => {

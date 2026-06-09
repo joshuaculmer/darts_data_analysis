@@ -10,6 +10,7 @@ import {
   computeSessionHitDispersion,
   computeSessionEvGap,
 } from "./scoreStats";
+import type { EvGrids } from "../loaders/loadEvGrids";
 import type { VariableGroup } from "./surveyScales";
 import { AGREEMENT_LABELS, LUCK_LABELS, formatScaleValue } from "./surveyScales";
 
@@ -20,7 +21,8 @@ import { AGREEMENT_LABELS, LUCK_LABELS, formatScaleValue } from "./surveyScales"
  *
  * Survey-derived variables (trust/influence/satisfied/luck) are null when the
  * session has no matching survey. Game-derived continuous metrics
- * (scorePerHit/dispersion/evGap) are null when the session has no games.
+ * (scorePerHit/dispersion/evGap) are null when the session has no games;
+ * evGap is also null when no EV grid covers the session's (board, skill) pairs.
  * Proximity variables are null when no game supplies the needed coordinate
  * (e.g. proxAI in the NONE condition).
  */
@@ -60,6 +62,7 @@ function meanOrNull(values: (number | null)[]): number | null {
 export function buildSessionVariableRows(
   joined: JoinedSessionSurvey[],
   boards: Map<number, RewardSurface>,
+  evGrids: EvGrids = new Map(),
 ): SessionVariableRow[] {
   return joined.map(({ session, survey }, sessionIndex) => {
     const hasGames = session.games.length > 0;
@@ -85,7 +88,7 @@ export function buildSessionVariableRows(
       proxOptimal,
       scorePerHit: hasGames ? computeSessionScorePerHit(session, boards) : null,
       dispersion: hasGames ? computeSessionHitDispersion(session).mean : null,
-      evGap: hasGames ? computeSessionEvGap(session, boards) : null,
+      evGap: hasGames ? computeSessionEvGap(session, boards, evGrids) : null,
     };
   });
 }

@@ -19,6 +19,8 @@ import {
   computeSessionEvGap,
 } from "./scoreStats";
 import { getOptimalAimingCoord } from "./aimingLookup";
+import { evGridKey, EV_GRID_SIZE } from "../loaders/loadEvGrids";
+import type { EvGrids } from "../loaders/loadEvGrids";
 
 function makeGame(boardId: number, hits: { x: number; y: number }[] = []): DartGameDTO {
   return {
@@ -426,25 +428,36 @@ describe("computeSessionHitDispersion", () => {
 });
 
 // ---------------------------------------------------------------------------
-// computeGameEvGap / computeSessionEvGap — per-hit gap vs placeholder EV
+// computeGameEvGap / computeSessionEvGap — per-hit gap vs EV of the actual aim
 // ---------------------------------------------------------------------------
+function makeFlatEvGrids(pairs: [number, number][], ev: number): EvGrids {
+  return new Map(
+    pairs.map(([b, s]) => [
+      evGridKey(b, s),
+      new Float32Array(EV_GRID_SIZE * EV_GRID_SIZE).fill(ev),
+    ]),
+  );
+}
+
 describe("computeGameEvGap", () => {
-  it("is per-hit score minus the placeholder EV (8)", () => {
+  it("is per-hit score minus the EV at the actual aim", () => {
     const surface = makeFlatSurface(10); // 2 hits → total 20 → per-hit 10
     const game = makeGame(0, Array(2).fill({ x: 0, y: 0 }));
-    expect(computeGameEvGap(game, surface, 50)).toBeCloseTo(2); // 10 - 8
+    const evGrids = makeFlatEvGrids([[0, 50]], 8);
+    expect(computeGameEvGap(game, surface, 50, evGrids)).toBeCloseTo(2); // 10 - 8
   });
 
-  it("is negative when per-hit score is below the placeholder EV", () => {
+  it("is null when no EV grid covers the (board, skill) pair", () => {
     const surface = makeFlatSurface(3);
     const game = makeGame(0, [{ x: 0, y: 0 }]);
-    expect(computeGameEvGap(game, surface, 50)).toBeCloseTo(-5); // 3 - 8
+    expect(computeGameEvGap(game, surface, 50, new Map())).toBeNull();
+    expect(computeGameEvGap(game, surface, 50, makeFlatEvGrids([[0, 45]], 8))).toBeNull();
   });
 });
 
 describe("computeSessionEvGap", () => {
-  it("returns 0 for a session with no games", () => {
-    expect(computeSessionEvGap(makeSession({ games: [] }), new Map())).toBe(0);
+  it("returns null for a session with no games", () => {
+    expect(computeSessionEvGap(makeSession({ games: [] }), new Map(), new Map())).toBeNull();
   });
 
   it("averages per-game ev gaps across the session", () => {
@@ -456,16 +469,20 @@ describe("computeSessionEvGap", () => {
       makeGame(0, Array(2).fill({ x: 0, y: 0 })),
       makeGame(1, [{ x: 0, y: 0 }]),
     ];
+    const evGrids = makeFlatEvGrids([[0, 50], [1, 50]], 8);
     // mean(2, -4) = -1
-    expect(computeSessionEvGap(makeSession({ games }), boards)).toBeCloseTo(-1);
+    expect(computeSessionEvGap(makeSession({ games }), boards, evGrids)).toBeCloseTo(-1);
   });
 
-  it("treats a missing board as 0 per-hit (gap = -8)", () => {
-    const result = computeSessionEvGap(
-      makeSession({ games: [makeGame(99, [{ x: 0, y: 0 }])] }),
-      new Map(),
-    );
-    expect(result).toBeCloseTo(-8);
+  it("skips games without a board or EV grid; null when none qualify", () => {
+    const boards = new Map([[0, makeFlatSurface(10)]]);
+    const games = [
+      makeGame(0, [{ x: 0, y: 0 }]), // covered → gap +2
+      makeGame(99, [{ x: 0, y: 0 }]), // no board, no grid → skipped
+    ];
+    const evGrids = makeFlatEvGrids([[0, 50]], 8);
+    expect(computeSessionEvGap(makeSession({ games }), boards, evGrids)).toBeCloseTo(2);
+    expect(computeSessionEvGap(makeSession({ games }), boards, new Map())).toBeNull();
   });
 });
 

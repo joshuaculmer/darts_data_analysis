@@ -4,6 +4,7 @@ import type { ParsedGameSession } from "../loaders/loadData";
 import { AI_TYPE_COLORS, AI_TYPE_LABELS } from "./stats";
 import { getOptimalAimingCoord } from "./aimingLookup";
 import { getAimEV } from "./aimingEV";
+import type { EvGrids } from "../loaders/loadEvGrids";
 
 export function gameScore(game: DartGameDTO, surface: RewardSurface): number {
   return game.hits.reduce((sum, hit) => {
@@ -87,32 +88,38 @@ export function computeSessionHitDispersion(session: ParsedGameSession): Dispers
 }
 
 /**
- * Per-hit gap between realized score and expected value:
- * `gameScorePerHit − getAimEV(...)`. EV is a placeholder until the EV JSON
- * lands (see aimingEV.ts), so every gap is currently `scorePerHit − 8`.
+ * Per-hit gap between realized score and the expected value of the player's
+ * actual aim: `gameScorePerHit − EV(actual_aiming_coord)`. EV comes from the
+ * precomputed (board, skill) grids; null when no grid covers this game.
  */
 export function computeGameEvGap(
   game: DartGameDTO,
   surface: RewardSurface,
   executionSkill: number,
-): number {
-  return (
-    gameScorePerHit(game, surface) -
-    getAimEV(game.board_id, game.actual_aiming_coord, executionSkill)
-  );
+  evGrids: EvGrids,
+): number | null {
+  const ev = getAimEV(evGrids, game.board_id, executionSkill, game.actual_aiming_coord);
+  if (ev === null) return null;
+  return gameScorePerHit(game, surface) - ev;
 }
 
-/** Mean per-hit EV gap across all games in a session. */
+/**
+ * Mean per-hit EV gap across a session's games. Games without a loaded board
+ * surface or EV grid are skipped; null when no game has both.
+ */
 export function computeSessionEvGap(
   session: ParsedGameSession,
   boards: Map<number, RewardSurface>,
-): number {
-  if (session.games.length === 0) return 0;
-  const gaps = session.games.map((game) => {
-    const surface = boards.get(game.board_id);
-    const perHit = surface ? gameScorePerHit(game, surface) : 0;
-    return perHit - getAimEV(game.board_id, game.actual_aiming_coord, session.execution_skill);
-  });
+  evGrids: EvGrids,
+): number | null {
+  const gaps = session.games
+    .map((game) => {
+      const surface = boards.get(game.board_id);
+      if (!surface) return null;
+      return computeGameEvGap(game, surface, session.execution_skill, evGrids);
+    })
+    .filter((g): g is number => g !== null);
+  if (gaps.length === 0) return null;
   return gaps.reduce((s, v) => s + v, 0) / gaps.length;
 }
 

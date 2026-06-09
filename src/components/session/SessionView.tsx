@@ -12,10 +12,13 @@ import {
 import { AI_TYPE_LABELS, AI_TYPE_COLORS } from "../../utils/stats";
 import { GameBoardView } from "./GameBoardView";
 import { getOptimalAimingCoord } from "../../utils/aimingLookup";
+import { getAimEV } from "../../utils/aimingEV";
+import type { EvGrids } from "../../loaders/loadEvGrids";
 
 interface Props {
   sessions: ParsedGameSession[];
   boards: Map<number, RewardSurface>;
+  evGrids: EvGrids;
   initialParticipant?: string | null;
   initialSessionIndex?: number | null;
 }
@@ -45,7 +48,7 @@ function KpiChip({ label, value, accent }: { label: string; value: string | numb
   );
 }
 
-export function SessionView({ sessions, boards, initialParticipant, initialSessionIndex }: Props) {
+export function SessionView({ sessions, boards, evGrids, initialParticipant, initialSessionIndex }: Props) {
   const participantIds = [...new Set(sessions.map((s) => s.user_uuid))].filter(Boolean).sort();
 
   const [selectedParticipant, setSelectedParticipant] = useState<string>(
@@ -86,11 +89,22 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
     ? getOptimalAimingCoord(game.board_id, activeSession.execution_skill)
     : null;
 
-  // Extrapolated per-game metrics (Phase 6). EV gap uses the EV stub (placeholder 8/hit).
+  // Extrapolated per-game metrics (Phase 6). EV from the precomputed
+  // (board, skill) grids; null when no grid covers this game.
   const dispersion = game && game.hits.length > 0 ? computeGameHitDispersion(game) : null;
   const scorePerHit = game && surface ? gameScorePerHit(game, surface) : null;
   const evGap = game && surface && activeSession
-    ? computeGameEvGap(game, surface, activeSession.execution_skill)
+    ? computeGameEvGap(game, surface, activeSession.execution_skill, evGrids)
+    : null;
+  const skill = activeSession?.execution_skill ?? null;
+  const evActual = game && skill != null
+    ? getAimEV(evGrids, game.board_id, skill, game.actual_aiming_coord)
+    : null;
+  const evSuggested = game && skill != null
+    ? getAimEV(evGrids, game.board_id, skill, game.suggested_aiming_coord)
+    : null;
+  const evOptimal = game && skill != null
+    ? getAimEV(evGrids, game.board_id, skill, optimalAiming)
     : null;
 
   return (
@@ -303,12 +317,25 @@ export function SessionView({ sessions, boards, initialParticipant, initialSessi
                       value={dispersion ? `${dispersion.mean.toFixed(2)} ± ${dispersion.std.toFixed(2)}` : "—"}
                     />
                     <KpiChip
-                      label="EV Gap *"
+                      label="EV Gap"
                       value={evGap != null ? evGap.toFixed(2) : "—"}
+                    />
+                    <KpiChip
+                      label="EV (Actual Aim)"
+                      value={evActual != null ? evActual.toFixed(2) : "—"}
+                    />
+                    <KpiChip
+                      label="EV (AI Suggestion)"
+                      value={evSuggested != null ? evSuggested.toFixed(2) : "—"}
+                    />
+                    <KpiChip
+                      label="EV (Optimal Aim)"
+                      value={evOptimal != null ? evOptimal.toFixed(2) : "—"}
                     />
                   </div>
                   <p style={{ fontSize: 10, color: "#9ca3af", marginBottom: 10 }}>
-                    * EV gap uses a placeholder expected value (8/hit) until the EV surface lands.
+                    EV is the expected score per hit of aiming at a location, given this
+                    session's execution skill. EV gap = realized score/hit − EV of the actual aim.
                   </p>
                   <p style={{ fontSize: 11, color: "#6b7280", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                     Hit coordinates — {game.hits.length} hits
