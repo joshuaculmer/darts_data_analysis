@@ -95,6 +95,17 @@ describe("VARIABLES registry", () => {
     expect(group("evGap")).toBe("luck");
   });
 
+  it("marks exactly the 1–5 Likert survey dimensions as ordinal", () => {
+    const ordinal = VARIABLE_KEYS.filter((k) => VARIABLES[k].ordinal);
+    expect(new Set(ordinal)).toEqual(new Set(["trust", "influence", "satisfied", "luck"]));
+    // Continuous game-derived variables must not be pinned to the 1–5 axis.
+    expect(VARIABLES.scorePerHit.ordinal).toBeFalsy();
+    expect(VARIABLES.proxAI.ordinal).toBeFalsy();
+    expect(VARIABLES.dispersion.ordinal).toBeFalsy();
+    expect(VARIABLES.evGap.ordinal).toBeFalsy();
+    expect(VARIABLES.proxOptimal.ordinal).toBeFalsy();
+  });
+
   it("each variable has an accessor that reads its row field", () => {
     const row = buildSessionVariableRows(
       [{ session: makeSession(), survey: makeSurvey([{ questionId: "trust", value: 4 }]) }],

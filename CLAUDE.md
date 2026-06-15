@@ -237,6 +237,9 @@ src/
     ├── correlation/                  # Shared building blocks for the group pages
     │   ├── CorrelationHeatmap.tsx    # Generic Spearman heatmap; diverging palette; highlightGroup; onCellClick
     │   ├── PairwiseScatter.tsx       # Generic x-var vs y-var scatter (VARIABLES accessors); dot → /session nav
+    │   │                             #   ordinal vars (trust/influence/satisfied/luck) pin their axis to
+    │   │                             #   ORDINAL_DOMAIN [1,5] / ORDINAL_TICKS [1..5] so Likert labels align
+    │   │                             #   with dots (auto numeric ticks land off-integer and mislabel)
     │   ├── VariableByCondition.tsx   # Generic mean±CI95 dot chart for continuous vars by AI condition
     │   ├── SurveyDimensionCharts.tsx # Renders by-condition/by-session/over-time for one survey dimension
     │   └── GlobalHeatmapSection.tsx  # CorrelationHeatmap + click-to-scatter drilldown

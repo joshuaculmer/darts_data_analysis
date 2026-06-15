@@ -12,7 +12,13 @@ import {
 import { useNavigate } from "react-router-dom";
 import { AI_Type } from "../../types/dart";
 import { AI_TYPE_LABELS, AI_TYPE_COLORS } from "../../utils/stats";
-import { VARIABLES, type SessionVariableRow, type VariableKey } from "../../utils/variables";
+import {
+  VARIABLES,
+  ORDINAL_DOMAIN,
+  ORDINAL_TICKS,
+  type SessionVariableRow,
+  type VariableKey,
+} from "../../utils/variables";
 import { ChartCard } from "../ChartCard";
 
 interface Props {
@@ -74,6 +80,9 @@ export function PairwiseScatter({ rows, xKey, yKey, title }: Props) {
             dataKey="x"
             name={xVar.label}
             type="number"
+            domain={xVar.ordinal ? ORDINAL_DOMAIN : undefined}
+            ticks={xVar.ordinal ? ORDINAL_TICKS : undefined}
+            allowDecimals={!xVar.ordinal}
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 11, fill: "#374151" }}
@@ -84,6 +93,9 @@ export function PairwiseScatter({ rows, xKey, yKey, title }: Props) {
             dataKey="y"
             name={yVar.label}
             type="number"
+            domain={yVar.ordinal ? ORDINAL_DOMAIN : undefined}
+            ticks={yVar.ordinal ? ORDINAL_TICKS : undefined}
+            allowDecimals={!yVar.ordinal}
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 11, fill: "#374151" }}

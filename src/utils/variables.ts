@@ -99,20 +99,33 @@ export interface VariableDef {
   group: VariableGroup;
   accessor: (row: SessionVariableRow) => number | null;
   format: (value: number) => string;
+  /**
+   * Ordinal 1–5 Likert variables (the survey dimensions). When charting these on
+   * a numeric axis, the axis must be pinned to {@link ORDINAL_DOMAIN} /
+   * {@link ORDINAL_TICKS} so every integer position gets its own correctly
+   * labelled tick. Without this, Recharts' auto-generated "nice" ticks land on
+   * non-integer positions and `format` rounds several of them to the same/wrong
+   * label, visually offsetting the data from the axis.
+   */
+  ordinal?: boolean;
 }
+
+/** Domain/ticks for ordinal (1–5 Likert) variables on a numeric axis. */
+export const ORDINAL_DOMAIN: [number, number] = [1, 5];
+export const ORDINAL_TICKS: number[] = [1, 2, 3, 4, 5];
 
 const px = (v: number) => `${v.toFixed(1)} px`;
 const pts = (v: number) => v.toFixed(2);
 const agreement = (v: number) => formatScaleValue(v, AGREEMENT_LABELS);
 
 export const VARIABLES: Record<VariableKey, VariableDef> = {
-  trust: { key: "trust", label: "Trust", group: "trust", accessor: (r) => r.trust, format: agreement },
-  influence: { key: "influence", label: "Influence", group: "trust", accessor: (r) => r.influence, format: agreement },
+  trust: { key: "trust", label: "Trust", group: "trust", accessor: (r) => r.trust, format: agreement, ordinal: true },
+  influence: { key: "influence", label: "Influence", group: "trust", accessor: (r) => r.influence, format: agreement, ordinal: true },
   proxAI: { key: "proxAI", label: "Proximity to AI", group: "trust", accessor: (r) => r.proxAI, format: px },
-  satisfied: { key: "satisfied", label: "Satisfaction", group: "performance", accessor: (r) => r.satisfied, format: agreement },
+  satisfied: { key: "satisfied", label: "Satisfaction", group: "performance", accessor: (r) => r.satisfied, format: agreement, ordinal: true },
   scorePerHit: { key: "scorePerHit", label: "Score / Hit", group: "performance", accessor: (r) => r.scorePerHit, format: pts },
   proxOptimal: { key: "proxOptimal", label: "Proximity to Optimal", group: "performance", accessor: (r) => r.proxOptimal, format: px },
-  luck: { key: "luck", label: "Luck", group: "luck", accessor: (r) => r.luck, format: (v) => formatScaleValue(v, LUCK_LABELS) },
+  luck: { key: "luck", label: "Luck", group: "luck", accessor: (r) => r.luck, format: (v) => formatScaleValue(v, LUCK_LABELS), ordinal: true },
   dispersion: { key: "dispersion", label: "Hit Dispersion", group: "luck", accessor: (r) => r.dispersion, format: px },
   evGap: { key: "evGap", label: "EV Gap", group: "luck", accessor: (r) => r.evGap, format: pts },
 };
