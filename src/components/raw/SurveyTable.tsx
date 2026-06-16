@@ -1,6 +1,7 @@
 // All colors in this file must follow PALETTE.md at the project root.
 import { useState, useMemo } from "react";
 import type { ParsedSurveyResponse } from "../../loaders/loadData";
+import { RawTableCard } from "./RawTableCard";
 
 interface Props {
   surveys: ParsedSurveyResponse[];
@@ -10,9 +11,14 @@ type SortDir = "asc" | "desc";
 
 function exportCSV(rows: ParsedSurveyResponse[], questionIds: string[]) {
   const headers = ["participant", "user_uuid", "date", ...questionIds];
+  // Always export in chronological order by full timestamp, regardless of the
+  // current on-screen sort.
+  const chronological = [...rows].sort((a, b) =>
+    a.created_at.localeCompare(b.created_at),
+  );
   const lines = [
     headers.join(","),
-    ...rows.map((s) => {
+    ...chronological.map((s) => {
       const answerMap = Object.fromEntries(s.responses.map((r) => [r.questionId, r.value]));
       return [
         `"${s.user_nickname ?? ""}"`,
@@ -97,8 +103,13 @@ export function SurveyTable({ surveys }: Props) {
   };
 
   return (
-    <div className="chart-card">
-      <h2>Survey Responses ({sorted.length} of {surveys.length})</h2>
+    <RawTableCard title={`Survey Responses (${sorted.length} of ${surveys.length})`}>
+      <p className="raw-schema">
+        One row per survey submission. CSV columns: <code>participant</code>,{" "}
+        <code>user_uuid</code>, <code>date</code>, then one column per survey{" "}
+        <code>questionId</code> holding that response's value (blank when the participant did not
+        answer that question).
+      </p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <input
           type="text"
@@ -115,7 +126,7 @@ export function SurveyTable({ surveys }: Props) {
         </button>
       </div>
 
-      <div className="table-scroll">
+      <div className="table-scroll table-scroll--boxed">
         <table className="data-table">
           <thead>
             <tr>
@@ -163,6 +174,6 @@ export function SurveyTable({ surveys }: Props) {
           Hover a UUID cell to see the full identifier.
         </p>
       )}
-    </div>
+    </RawTableCard>
   );
 }

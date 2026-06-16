@@ -481,6 +481,25 @@ body {
   overflow-x: auto;
 }
 
+/* Boxed, vertically-resizable scroll container for the Raw Data tables.
+   Defaults to half the viewport height and can be dragged taller/shorter. */
+.table-scroll--boxed {
+  overflow: auto;
+  height: 50vh;
+  resize: vertical;
+  min-height: 8rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+/* Keep the header visible while scrolling the body. */
+.table-scroll--boxed thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #ffffff;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -557,6 +576,36 @@ body {
   gap: 0.4rem;
   margin-top: 0.4rem;
   cursor: pointer;
+}
+
+/* Raw Data page toolbar: section note on the left, complete-only toggle on the right. */
+.raw-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.raw-toolbar .kpi-toggle {
+  margin-top: 0;
+}
+
+/* Schema blurb shown at the top of each Raw Data table (inside the collapsible body). */
+.raw-schema {
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: #6b7280;
+  margin: 0 0 0.75rem;
+}
+
+.raw-schema code {
+  font-size: 0.7rem;
+  background: #f3f4f6;
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+  color: #374151;
 }
 
 .kpi-toggle input[type="checkbox"] {

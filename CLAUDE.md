@@ -134,14 +134,14 @@ variable-centric and share the same building blocks. See `PLANNING.md` for the c
 | Luck (`/luck`) | `LuckGroup`: luck dimension, dispersion + evGap by condition, within-group pairwise scatters, global heatmap (Luck highlighted). |
 | Individual View | IndividualView (participant dropdown + wholistic score graph with toggleable per-dimension survey overlays [trust/influence/satisfied/luck] + game breakdown) |
 | Session View | SessionView — participant + session pills in **chronological** order (`created_at`); session metadata table + per-game table with expandable hit rows, board ID, board seed (if present in game JSON), per-game scorePerHit / dispersion / EV-gap, and EV of the actual / suggested / optimal aim. Scatter navigation uses global row index into `filteredSessions`; pills remap to the same session after sort. |
-| Raw Data | Coming soon (filterable/sortable tables) |
+| Raw Data | Own "Complete participants only" toggle at top; `session_stats_summary`, `game_data`, and Survey Responses tables — each in a collapsible, vertically-resizable boxed card (RawTableCard) with a CSV-schema blurb inside the collapsible body |
 
 The six trust charts (`TrustByCondition`, `TrustBySession`, `TrustOverTime`, `TrustVsScore`,
 `TrustVsTime`, `TrustVsProximity`) are now **dimension-agnostic**: they take `metricLabel` +
 `scaleLabels` (from `SURVEY_DIMENSIONS`) instead of the old `likertScale` union, so the same
 component renders trust, influence, satisfaction, or luck.
 
-All sections except Raw Data respect the **Complete Participants** toggle (passed via `filteredSessions` / `filteredSurveyResponses`).
+All sections — including Raw Data — respect the **Complete Participants** toggle (passed via `filteredSessions` / `filteredSurveyResponses`).
 
 ## File Structure
 
@@ -282,11 +282,17 @@ src/
     │                                #   Navigated to automatically when a scatter point is clicked
     │
     └── raw/
-        ├── SessionsTable.tsx        # Sortable/filterable sessions table; shows games_played vs actual array length (red if mismatch); CSV export; uses unfiltered sessions.
+        ├── RawTableCard.tsx         # Shared wrapper for the Raw Data tables: collapse toggle (top-right) + card chrome. Body uses `.table-scroll--boxed` (50vh default, vertically resizable, sticky header).
+        ├── SessionsTable.tsx        # `session_stats_summary` table — sortable sessions summary; shows games_played vs actual array length (red if mismatch); CSV export; respects the Complete Participants filter.
         │                            #   Includes extrapolated session-level columns via buildSessionTableRows (pure, exported, tested):
         │                            #   avg hits/game, total score, avg score/game, scorePerHit, proxAI, proxOptimal, dispersion μ/σ,
         │                            #   EV gap (from EV grids; blank when uncovered), and joined survey trust/influence/satisfied/luck. CSV export includes all.
+        │                            #   Sort-by dropdown (Oldest/Newest, full created_at timestamp) + unified Filter-by (AI Condition / UUID / Score-Hit ≥ min); CSV export follows the on-screen order and active filter.
+        ├── GameDataTable.tsx        # `game_data` table — flattens the `games` column to one row per game (buildGameDataRows, pure/exported/tested).
+        │                            #   Two exports: "game_data CSV" (one row per game, full hits array as JSON) and "raw game_sessions CSV"
+        │                            #   (reconstructs the original Supabase game_sessions table via Papa.unparse, `games` as a JSON string).
         └── SurveyTable.tsx          # Sortable/filterable survey table; dynamic question columns; CSV export
+                                     #   (CSV export always sorted chronologically by full created_at timestamp).
 
 public/
 ├── Perlin_Noise_Surfaces.ts/        # 100 board JSON files (PerlinNoiseBoard0.json … PerlinNoiseBoard99.json); board_id 0–99

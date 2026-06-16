@@ -31,6 +31,7 @@ import { TrustGroup } from "./components/trust/TrustGroup";
 import { PerformanceGroup } from "./components/performance/PerformanceGroup";
 import { LuckGroup } from "./components/luck/LuckGroup";
 import { SessionsTable } from "./components/raw/SessionsTable";
+import { GameDataTable } from "./components/raw/GameDataTable";
 import { SurveyTable } from "./components/raw/SurveyTable";
 import { IndividualView } from "./components/individual/IndividualView";
 import { SessionView } from "./components/session/SessionView";
@@ -534,12 +535,22 @@ function App() {
             path="/raw"
             element={
               <section className="dash-section">
-                <p className="section-note">
-                  All sessions and survey responses — unfiltered regardless of the
-                  Complete Participants toggle. Click any column header to sort.
-                </p>
-                <SessionsTable sessions={sessions} surveys={surveyResponses} boards={boards} evGrids={evGrids} />
-                <SurveyTable surveys={surveyResponses} />
+                <div className="raw-toolbar">
+                  <p className="section-note" style={{ margin: 0 }}>
+                    Sessions and survey responses. Click any column header to sort.
+                  </p>
+                  <label className="kpi-toggle">
+                    <input
+                      type="checkbox"
+                      checked={completeOnly}
+                      onChange={() => setCompleteOnly((v) => !v)}
+                    />
+                    <span className="kpi-toggle__label">Complete participants only</span>
+                  </label>
+                </div>
+                <SessionsTable sessions={filteredSessions} surveys={filteredSurveyResponses} boards={boards} evGrids={evGrids} />
+                <GameDataTable sessions={filteredSessions} />
+                <SurveyTable surveys={filteredSurveyResponses} />
               </section>
             }
           />

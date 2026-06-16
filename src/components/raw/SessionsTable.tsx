@@ -8,6 +8,7 @@ import { computeSessionScore, computeSessionHitDispersion } from "../../utils/sc
 import { joinSessionsWithSurvey } from "../../utils/surveyStats";
 import { buildSessionVariableRows } from "../../utils/variables";
 import type { EvGrids } from "../../loaders/loadEvGrids";
+import { RawTableCard } from "./RawTableCard";
 
 interface Props {
   sessions: ParsedGameSession[];
@@ -122,6 +123,7 @@ function csvNum(v: number | null, digits: number): string {
 }
 
 function exportCSV(rows: SessionTableRow[]) {
+  // Export in the current on-screen order (driven by the Sort-by dropdown).
   const lines = [
     CSV_COLUMNS.map((c) => c.header).join(","),
     ...rows.map((r) => CSV_COLUMNS.map((c) => c.get(r)).join(",")),
@@ -135,9 +137,13 @@ function exportCSV(rows: SessionTableRow[]) {
   URL.revokeObjectURL(url);
 }
 
+type FilterField = "condition" | "uuid" | "scorePerHit";
+
 export function SessionsTable({ sessions, surveys, boards, evGrids }: Props) {
-  const [search, setSearch] = useState("");
+  const [filterField, setFilterField] = useState<FilterField>("condition");
   const [conditionFilter, setConditionFilter] = useState<string>("all");
+  const [uuidQuery, setUuidQuery] = useState("");
+  const [scoreMin, setScoreMin] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "date", dir: "asc" });
 
   const rows = useMemo(
@@ -147,23 +153,29 @@ export function SessionsTable({ sessions, surveys, boards, evGrids }: Props) {
 
   const filtered = useMemo(() => {
     let r = rows;
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      r = r.filter(
-        (row) =>
-          row.participant.toLowerCase().includes(q) ||
-          (row.uuid ?? "").toLowerCase().includes(q)
-      );
-    }
-    if (conditionFilter !== "all") {
-      r = r.filter((row) => row.conditionType === Number(conditionFilter));
+    if (filterField === "condition") {
+      if (conditionFilter !== "all")
+        r = r.filter((row) => row.conditionType === Number(conditionFilter));
+    } else if (filterField === "uuid") {
+      const q = uuidQuery.trim().toLowerCase();
+      if (q) r = r.filter((row) => (row.uuid ?? "").toLowerCase().includes(q));
+    } else if (filterField === "scorePerHit") {
+      const min = parseFloat(scoreMin);
+      if (!Number.isNaN(min))
+        r = r.filter((row) => row.scorePerHit !== null && row.scorePerHit >= min);
     }
     return r;
-  }, [rows, search, conditionFilter]);
+  }, [rows, filterField, conditionFilter, uuidQuery, scoreMin]);
 
   const sorted = useMemo(() => {
     const { key, dir } = sort;
     return [...filtered].sort((a, b) => {
+      // The "date" key sorts on the full created_at timestamp (the date cell
+      // only shows YYYY-MM-DD, so a raw cell compare would tie within a day).
+      if (key === "date") {
+        const cmp = a.session.created_at.localeCompare(b.session.created_at);
+        return dir === "asc" ? cmp : -cmp;
+      }
       const va = a[key];
       const vb = b[key];
       // Nulls always sort to the end regardless of direction.
@@ -201,6 +213,11 @@ export function SessionsTable({ sessions, surveys, boards, evGrids }: Props) {
     fontFamily: "inherit",
   };
 
+  const labelStyle: React.CSSProperties = {
+    fontSize: 12,
+    color: "#6b7280",
+  };
+
   const numCell: React.CSSProperties = {
     color: "#111827",
     fontVariantNumeric: "tabular-nums",
@@ -222,26 +239,73 @@ export function SessionsTable({ sessions, surveys, boards, evGrids }: Props) {
   }
 
   return (
-    <div className="chart-card">
-      <h2>Sessions ({sorted.length} of {sessions.length})</h2>
+    <RawTableCard title={`session_stats_summary (${sorted.length} of ${sessions.length})`}>
+      <p className="raw-schema">
+        One row per session. CSV columns: <code>participant</code>, <code>user_uuid</code>,{" "}
+        <code>condition</code>, <code>execution_skill</code>, <code>games_played</code>,{" "}
+        <code>games_in_data</code>, <code>avg_hit_count</code>, <code>total_score</code>,{" "}
+        <code>avg_score_per_game</code>, <code>score_per_hit</code>, <code>prox_ai</code>,{" "}
+        <code>prox_optimal</code>, <code>dispersion_mean</code>, <code>dispersion_std</code>,{" "}
+        <code>ev_gap</code>, <code>trust</code>, <code>influence</code>, <code>satisfied</code>,{" "}
+        <code>luck</code>, <code>date</code>. All score/proximity/dispersion/EV columns are derived
+        from the board surfaces; survey columns are the nearest matching response.
+      </p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <input
-          type="text"
-          placeholder="Filter by participant or UUID…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ ...inputStyle, minWidth: 220 }}
-        />
+        <label style={labelStyle}>Sort by</label>
         <select
-          value={conditionFilter}
-          onChange={(e) => setConditionFilter(e.target.value)}
+          value={sort.key === "date" && sort.dir === "asc" ? "oldest" : "newest"}
+          onChange={(e) =>
+            setSort({ key: "date", dir: e.target.value === "oldest" ? "asc" : "desc" })
+          }
           style={inputStyle}
         >
-          <option value="all">All conditions</option>
-          {(Object.values(AI_Type).filter((v) => typeof v === "number") as AI_Type[]).map((t) => (
-            <option key={t} value={t}>{AI_TYPE_LABELS[t]}</option>
-          ))}
+          <option value="oldest">Oldest</option>
+          <option value="newest">Newest</option>
         </select>
+
+        <label style={{ ...labelStyle, marginLeft: 8 }}>Filter by</label>
+        <select
+          value={filterField}
+          onChange={(e) => setFilterField(e.target.value as FilterField)}
+          style={inputStyle}
+        >
+          <option value="condition">AI Condition</option>
+          <option value="uuid">UUID</option>
+          <option value="scorePerHit">Score/Hit</option>
+        </select>
+
+        {filterField === "condition" && (
+          <select
+            value={conditionFilter}
+            onChange={(e) => setConditionFilter(e.target.value)}
+            style={inputStyle}
+          >
+            <option value="all">All conditions</option>
+            {(Object.values(AI_Type).filter((v) => typeof v === "number") as AI_Type[]).map((t) => (
+              <option key={t} value={t}>{AI_TYPE_LABELS[t]}</option>
+            ))}
+          </select>
+        )}
+        {filterField === "uuid" && (
+          <input
+            type="text"
+            placeholder="Match UUID…"
+            value={uuidQuery}
+            onChange={(e) => setUuidQuery(e.target.value)}
+            style={{ ...inputStyle, minWidth: 220 }}
+          />
+        )}
+        {filterField === "scorePerHit" && (
+          <input
+            type="number"
+            step="0.1"
+            placeholder="≥ min score/hit"
+            value={scoreMin}
+            onChange={(e) => setScoreMin(e.target.value)}
+            style={{ ...inputStyle, minWidth: 140 }}
+          />
+        )}
+
         <button
           onClick={() => exportCSV(sorted)}
           style={{ ...inputStyle, marginLeft: "auto", cursor: "pointer", color: "#374151" }}
@@ -250,7 +314,7 @@ export function SessionsTable({ sessions, surveys, boards, evGrids }: Props) {
         </button>
       </div>
 
-      <div className="table-scroll">
+      <div className="table-scroll table-scroll--boxed">
         <table className="data-table">
           <thead>
             <tr>
@@ -321,6 +385,6 @@ export function SessionsTable({ sessions, surveys, boards, evGrids }: Props) {
         EV gap = score/hit − EV of the actual aim (from the precomputed EV grids); blank when no
         grid covers the session's board/skill pairs.
       </p>
-    </div>
+    </RawTableCard>
   );
 }
