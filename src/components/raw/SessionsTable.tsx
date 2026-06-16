@@ -7,14 +7,24 @@ import { AI_TYPE_LABELS, AI_TYPE_COLORS } from "../../utils/stats";
 import { computeSessionScore, computeSessionHitDispersion } from "../../utils/scoreStats";
 import { joinSessionsWithSurvey } from "../../utils/surveyStats";
 import { buildSessionVariableRows } from "../../utils/variables";
+import type { SessionVariableRow } from "../../utils/variables";
+import { useDebouncedValue } from "../../utils/useDebouncedValue";
 import type { EvGrids } from "../../loaders/loadEvGrids";
 import { RawTableCard } from "./RawTableCard";
+import { VirtualizedTable } from "./VirtualizedTable";
+import type { VirtualColumn } from "./VirtualizedTable";
 
 interface Props {
   sessions: ParsedGameSession[];
   surveys: ParsedSurveyResponse[];
   boards: Map<number, RewardSurface>;
   evGrids: EvGrids;
+  /**
+   * Precomputed session variable rows (from App), aligned by index with
+   * `sessions`. When provided, the table reuses them instead of re-running the
+   * expensive join + variable build that App already did.
+   */
+  variableRows?: SessionVariableRow[];
 }
 
 export interface SessionTableRow {
@@ -57,9 +67,14 @@ export function buildSessionTableRows(
   surveys: ParsedSurveyResponse[],
   boards: Map<number, RewardSurface>,
   evGrids: EvGrids = new Map(),
+  precomputedVarRows?: SessionVariableRow[],
 ): SessionTableRow[] {
-  const joined = joinSessionsWithSurvey(sessions, surveys);
-  const varRows = buildSessionVariableRows(joined, boards, evGrids);
+  // Reuse App's already-computed variable rows when given; otherwise build them
+  // (used by tests and any caller without them). They align by index with
+  // `sessions` because joinSessionsWithSurvey preserves session order 1:1.
+  const varRows =
+    precomputedVarRows ??
+    buildSessionVariableRows(joinSessionsWithSurvey(sessions, surveys), boards, evGrids);
 
   return sessions.map((s, i) => {
     const v = varRows[i];
@@ -139,7 +154,7 @@ function exportCSV(rows: SessionTableRow[]) {
 
 type FilterField = "condition" | "uuid" | "scorePerHit";
 
-export function SessionsTable({ sessions, surveys, boards, evGrids }: Props) {
+export function SessionsTable({ sessions, surveys, boards, evGrids, variableRows }: Props) {
   const [filterField, setFilterField] = useState<FilterField>("condition");
   const [conditionFilter, setConditionFilter] = useState<string>("all");
   const [uuidQuery, setUuidQuery] = useState("");
@@ -147,25 +162,27 @@ export function SessionsTable({ sessions, surveys, boards, evGrids }: Props) {
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "date", dir: "asc" });
 
   const rows = useMemo(
-    () => buildSessionTableRows(sessions, surveys, boards, evGrids),
-    [sessions, surveys, boards, evGrids],
+    () => buildSessionTableRows(sessions, surveys, boards, evGrids, variableRows),
+    [sessions, surveys, boards, evGrids, variableRows],
   );
 
+  const debouncedUuid = useDebouncedValue(uuidQuery);
+  const debouncedScoreMin = useDebouncedValue(scoreMin);
   const filtered = useMemo(() => {
     let r = rows;
     if (filterField === "condition") {
       if (conditionFilter !== "all")
         r = r.filter((row) => row.conditionType === Number(conditionFilter));
     } else if (filterField === "uuid") {
-      const q = uuidQuery.trim().toLowerCase();
+      const q = debouncedUuid.trim().toLowerCase();
       if (q) r = r.filter((row) => (row.uuid ?? "").toLowerCase().includes(q));
     } else if (filterField === "scorePerHit") {
-      const min = parseFloat(scoreMin);
+      const min = parseFloat(debouncedScoreMin);
       if (!Number.isNaN(min))
         r = r.filter((row) => row.scorePerHit !== null && row.scorePerHit >= min);
     }
     return r;
-  }, [rows, filterField, conditionFilter, uuidQuery, scoreMin]);
+  }, [rows, filterField, conditionFilter, debouncedUuid, debouncedScoreMin]);
 
   const sorted = useMemo(() => {
     const { key, dir } = sort;
@@ -198,7 +215,7 @@ export function SessionsTable({ sessions, surveys, boards, evGrids }: Props) {
     );
   }
 
-  function SortIcon({ k }: { k: SortKey }) {
+  function sortIcon(k: SortKey) {
     if (sort.key !== k) return <span style={{ color: "#d1d5db", fontSize: 10 }}> ↕</span>;
     return <span style={{ fontSize: 10 }}> {sort.dir === "asc" ? "▲" : "▼"}</span>;
   }
@@ -218,25 +235,84 @@ export function SessionsTable({ sessions, surveys, boards, evGrids }: Props) {
     color: "#6b7280",
   };
 
-  const numCell: React.CSSProperties = {
-    color: "#111827",
-    fontVariantNumeric: "tabular-nums",
-    textAlign: "right",
-  };
-
-  function NumCol({ k, label }: { k: SortKey; label: string }) {
-    return (
-      <th onClick={() => toggleSort(k)} style={{ cursor: "pointer", textAlign: "right" }}>
-        {label}
-        <SortIcon k={k} />
-      </th>
-    );
-  }
-
   function num(v: number | null, digits: number) {
     if (v === null) return <span style={{ color: "#9ca3af" }}>—</span>;
     return v.toFixed(digits);
   }
+
+  // Numeric column header: label + sort affordance, sortable on click.
+  const numHead = (k: SortKey, label: string): VirtualColumn<SessionTableRow> => ({
+    key: k,
+    header: <>{label}{sortIcon(k)}</>,
+    width: 0, // set per column below
+    numeric: true,
+    onHeaderClick: () => toggleSort(k),
+    cell: () => null,
+  });
+
+  const columns: VirtualColumn<SessionTableRow>[] = [
+    {
+      key: "participant",
+      header: <>Participant{sortIcon("participant")}</>,
+      width: 140,
+      ellipsis: true,
+      onHeaderClick: () => toggleSort("participant"),
+      cell: (r) => r.participant || <span style={{ color: "#9ca3af" }}>—</span>,
+    },
+    {
+      key: "uuid",
+      header: <>UUID{sortIcon("uuid")}</>,
+      width: 120,
+      onHeaderClick: () => toggleSort("uuid"),
+      cell: (r) => (
+        <span title={r.uuid ?? ""} style={{ fontFamily: "monospace", fontSize: 11 }}>
+          {r.uuid ? `${r.uuid.slice(0, 8)}…` : <span style={{ color: "#9ca3af" }}>—</span>}
+        </span>
+      ),
+    },
+    {
+      key: "condition",
+      header: <>Condition{sortIcon("condition")}</>,
+      width: 150,
+      onHeaderClick: () => toggleSort("condition"),
+      cell: (r) => (
+        <span className="condition-badge" style={{ background: AI_TYPE_COLORS[r.conditionType] }}>
+          {r.condition}
+        </span>
+      ),
+    },
+    { ...numHead("skill", "Exec Skill"), width: 95, cell: (r) => r.skill },
+    { ...numHead("gamesPlayed", "Games (CSV)"), width: 105, cell: (r) => r.gamesPlayed },
+    {
+      ...numHead("gamesActual", "Games (data)"),
+      width: 105,
+      cell: (r) => (
+        <span style={{ color: r.gamesPlayed !== r.gamesActual ? "#dc2626" : "#6b7280" }}>
+          {r.gamesActual}
+        </span>
+      ),
+    },
+    { ...numHead("avgHitCount", "Avg Hits/Game"), width: 115, cell: (r) => r.avgHitCount.toFixed(1) },
+    { ...numHead("totalScore", "Total Score"), width: 100, cell: (r) => r.totalScore.toFixed(1) },
+    { ...numHead("score", "Avg Score/Game"), width: 120, cell: (r) => r.score.toFixed(2) },
+    { ...numHead("scorePerHit", "Score/Hit"), width: 90, cell: (r) => num(r.scorePerHit, 2) },
+    { ...numHead("proxAI", "Prox AI"), width: 90, cell: (r) => num(r.proxAI, 1) },
+    { ...numHead("proxOptimal", "Prox Optimal"), width: 110, cell: (r) => num(r.proxOptimal, 1) },
+    { ...numHead("dispersionMean", "Disp μ"), width: 80, cell: (r) => num(r.dispersionMean, 1) },
+    { ...numHead("dispersionStd", "Disp σ"), width: 80, cell: (r) => num(r.dispersionStd, 1) },
+    { ...numHead("evGap", "EV Gap"), width: 85, cell: (r) => num(r.evGap, 2) },
+    { ...numHead("trust", "Trust"), width: 75, cell: (r) => num(r.trust, 0) },
+    { ...numHead("influence", "Influence"), width: 90, cell: (r) => num(r.influence, 0) },
+    { ...numHead("satisfied", "Satisfied"), width: 90, cell: (r) => num(r.satisfied, 0) },
+    { ...numHead("luck", "Luck"), width: 75, cell: (r) => num(r.luck, 0) },
+    {
+      key: "date",
+      header: <>Date{sortIcon("date")}</>,
+      width: 110,
+      onHeaderClick: () => toggleSort("date"),
+      cell: (r) => r.date,
+    },
+  ];
 
   return (
     <RawTableCard title={`session_stats_summary (${sorted.length} of ${sessions.length})`}>
@@ -314,70 +390,7 @@ export function SessionsTable({ sessions, surveys, boards, evGrids }: Props) {
         </button>
       </div>
 
-      <div className="table-scroll table-scroll--boxed">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th onClick={() => toggleSort("participant")} style={{ cursor: "pointer" }}>Participant<SortIcon k="participant" /></th>
-              <th onClick={() => toggleSort("uuid")} style={{ cursor: "pointer" }}>UUID<SortIcon k="uuid" /></th>
-              <th onClick={() => toggleSort("condition")} style={{ cursor: "pointer" }}>Condition<SortIcon k="condition" /></th>
-              <NumCol k="skill" label="Exec Skill" />
-              <NumCol k="gamesPlayed" label="Games (CSV)" />
-              <NumCol k="gamesActual" label="Games (data)" />
-              <NumCol k="avgHitCount" label="Avg Hits/Game" />
-              <NumCol k="totalScore" label="Total Score" />
-              <NumCol k="score" label="Avg Score/Game" />
-              <NumCol k="scorePerHit" label="Score/Hit" />
-              <NumCol k="proxAI" label="Prox AI" />
-              <NumCol k="proxOptimal" label="Prox Optimal" />
-              <NumCol k="dispersionMean" label="Disp μ" />
-              <NumCol k="dispersionStd" label="Disp σ" />
-              <NumCol k="evGap" label="EV Gap" />
-              <NumCol k="trust" label="Trust" />
-              <NumCol k="influence" label="Influence" />
-              <NumCol k="satisfied" label="Satisfied" />
-              <NumCol k="luck" label="Luck" />
-              <th onClick={() => toggleSort("date")} style={{ cursor: "pointer" }}>Date<SortIcon k="date" /></th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((r, i) => (
-              <tr key={i}>
-                <td style={{ color: "#111827" }}>{r.participant || <span style={{ color: "#9ca3af" }}>—</span>}</td>
-                <td>
-                  <span title={r.uuid ?? ""} style={{ fontFamily: "monospace", fontSize: 11 }}>
-                    {r.uuid ? `${r.uuid.slice(0, 8)}…` : <span style={{ color: "#9ca3af" }}>—</span>}
-                  </span>
-                </td>
-                <td>
-                  <span className="condition-badge" style={{ background: AI_TYPE_COLORS[r.conditionType] }}>
-                    {r.condition}
-                  </span>
-                </td>
-                <td style={numCell}>{r.skill}</td>
-                <td style={numCell}>{r.gamesPlayed}</td>
-                <td style={{ ...numCell, color: r.gamesPlayed !== r.gamesActual ? "#dc2626" : "#6b7280" }}>
-                  {r.gamesActual}
-                </td>
-                <td style={numCell}>{r.avgHitCount.toFixed(1)}</td>
-                <td style={numCell}>{r.totalScore.toFixed(1)}</td>
-                <td style={numCell}>{r.score.toFixed(2)}</td>
-                <td style={numCell}>{num(r.scorePerHit, 2)}</td>
-                <td style={numCell}>{num(r.proxAI, 1)}</td>
-                <td style={numCell}>{num(r.proxOptimal, 1)}</td>
-                <td style={numCell}>{num(r.dispersionMean, 1)}</td>
-                <td style={numCell}>{num(r.dispersionStd, 1)}</td>
-                <td style={numCell}>{num(r.evGap, 2)}</td>
-                <td style={numCell}>{num(r.trust, 0)}</td>
-                <td style={numCell}>{num(r.influence, 0)}</td>
-                <td style={numCell}>{num(r.satisfied, 0)}</td>
-                <td style={numCell}>{num(r.luck, 0)}</td>
-                <td>{r.date}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <VirtualizedTable columns={columns} rows={sorted} rowKey={(_r, i) => i} />
       <p style={{ fontSize: 11, color: "#6b7280" }}>
         "Games (CSV)" is the games_played field; "Games (data)" is the actual games array length —
         highlighted red if they differ. Score/Hit, proximities, dispersion, and EV gap are the

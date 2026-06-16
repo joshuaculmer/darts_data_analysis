@@ -117,6 +117,11 @@ Navbar items are `<NavLink>`s; scatter/calendar click-throughs use `useNavigate(
 underlying stateful views don't remount. The data-loading gates (upload, board fetch) still
 run inside `App` before the `<Routes>` render.
 
+The heavy pages (TrustGroup, PerformanceGroup, LuckGroup, IndividualView, SessionView,
+RawDataPage) are `React.lazy`-loaded and code-split — the `<Routes>` block is wrapped in a
+`<Suspense>` whose fallback is the `<Spinner>`, so each route's chunk only loads when first
+visited. The sanity page stays eager (it's the landing route).
+
 **Deployment (SPA fallback):** a `spa-404-fallback` Vite plugin in `vite.config.ts` copies
 `dist/index.html` → `dist/404.html` on build, so a hard refresh of a client route resolves to
 the SPA shell on GitHub Pages. The deploy workflow uploads all of `dist/`, so no workflow change
@@ -223,11 +228,17 @@ src/
 │   │                                #   VARIABLES registry {key,label,group,accessor,format} + VARIABLE_KEYS,
 │   │                                #   computeVariableByCondition(rows, key) → mean±CI95 per AI condition
 │   ├── variables.test.ts
+│   ├── useDebouncedValue.ts         # useDebouncedValue(value, delayMs=150) — debounces Raw Data filter inputs
+│   │                                #   so each keystroke doesn't re-filter/re-render the full (large) table set
 │   ├── correlation.ts               # spearman(xs, ys) pairwise-complete → {r, n};
 │   │                                #   computeCorrelationMatrix(rows, keys) → CorrelationCell[][]
 │   └── correlation.test.ts
 │
 └── components/
+    ├── Spinner.tsx / Spinner.css  # Rotating-dartboard loading spinner. <Spinner label?/>.
+    │                              #   Used by the board/EV loading gate, the Suspense route
+    │                              #   fallback, the Raw Data deferred-render, and the "spinner"
+    │                              #   easter egg (type "spinner" outside a text field → overlay; Esc closes).
     ├── sanity/
     │   ├── KpiCards.tsx             # 5 KPIs: unique participants, complete participants,
     │   │                            #   avg sessions/participant, avg time/session, avg total time
@@ -282,9 +293,19 @@ src/
     │                                #   Navigated to automatically when a scatter point is clicked
     │
     └── raw/
+        ├── RawDataPage.tsx          # /raw page wrapper. Renders the spinner first, then defers mounting the
+        │                            #   three heavy tables to the next frame (double rAF) so navigating to /raw
+        │                            #   never freezes. Receives App's precomputed `variableRows` and forwards them.
+        ├── VirtualizedTable.tsx     # Generic sticky-header table that only renders visible rows (@tanstack/react-virtual,
+        │                            #   spacer-row technique, table-layout:fixed + colgroup widths). Columns: {key,header,
+        │                            #   width,numeric?,align?,ellipsis?,onHeaderClick?,cell}. Trade-off: off-screen rows
+        │                            #   aren't in the DOM, so Ctrl+F / select-all only cover visible rows (filter + CSV export unaffected).
         ├── RawTableCard.tsx         # Shared wrapper for the Raw Data tables: collapse toggle (top-right) + card chrome. Body uses `.table-scroll--boxed` (50vh default, vertically resizable, sticky header).
-        ├── SessionsTable.tsx        # `session_stats_summary` table — sortable sessions summary; shows games_played vs actual array length (red if mismatch); CSV export; respects the Complete Participants filter.
-        │                            #   Includes extrapolated session-level columns via buildSessionTableRows (pure, exported, tested):
+        ├── SessionsTable.tsx        # `session_stats_summary` table — sortable sessions summary; shows games_played vs actual array length (red if mismatch); CSV export; respects the Complete Participants filter. Virtualized rows; filters debounced.
+        │                            #   Takes an optional `variableRows` prop (App's precomputed rows) so buildSessionTableRows
+        │                            #   skips the duplicate join + variable build it used to run.
+        │                            #   Includes extrapolated session-level columns via buildSessionTableRows (pure, exported, tested;
+        │                            #   accepts precomputedVarRows as its 5th arg):
         │                            #   avg hits/game, total score, avg score/game, scorePerHit, proxAI, proxOptimal, dispersion μ/σ,
         │                            #   EV gap (from EV grids; blank when uncovered), and joined survey trust/influence/satisfied/luck. CSV export includes all.
         │                            #   Sort-by dropdown (Oldest/Newest, full created_at timestamp) + unified Filter-by (AI Condition / UUID / Score-Hit ≥ min); CSV export follows the on-screen order and active filter.

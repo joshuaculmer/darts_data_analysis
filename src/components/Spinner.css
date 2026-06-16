@@ -1,0 +1,127 @@
+/* Dartboard loading spinner. The dartboard colors below are scoped to this
+   component only (decorative loading art); all other UI color must come from
+   PALETTE.md. Label text uses palette tokens. */
+.darts-spinner {
+  --cream: #efe6d0;
+  --blackseg: #1a1a1a;
+  --red: #c8102e;
+  --green: #1e7d4f;
+  --wire: #b8bcc2;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+/* ===================================================================
+   Spinning board
+   A miniature dartboard: cream/black singles, a red/green scoring
+   ring, a wire spider overlay and a bull. The whole board rotates.
+==================================================================== */
+.darts-spinner .board {
+  position: relative;
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from -9deg,
+    var(--cream) 0 18deg,
+    var(--blackseg) 18deg 36deg
+  );
+  border: 3px solid #060807;
+  box-shadow: inset 0 0 0 2px var(--wire), 0 6px 14px rgba(0, 0, 0, 0.45);
+  animation: darts-board-spin 2.6s linear infinite;
+}
+/* outer double ring */
+.darts-spinner .board::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from -9deg,
+    var(--red) 0 18deg,
+    var(--green) 18deg 36deg
+  );
+  -webkit-mask: radial-gradient(
+    circle,
+    transparent 0 76%,
+    #000 77% 90%,
+    transparent 91%
+  );
+  mask: radial-gradient(
+    circle,
+    transparent 0 76%,
+    #000 77% 90%,
+    transparent 91%
+  );
+}
+/* inner treble ring + wire spokes */
+.darts-spinner .board::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(
+      from -9deg,
+      var(--green) 0 18deg,
+      var(--red) 18deg 36deg
+    ),
+    repeating-conic-gradient(
+      from -9deg,
+      rgba(184, 188, 194, 0.55) 0 0.7deg,
+      transparent 0.7deg 18deg
+    );
+  -webkit-mask: radial-gradient(
+    circle,
+    transparent 0 46%,
+    #000 47% 56%,
+    transparent 57%
+  );
+  mask: radial-gradient(
+    circle,
+    transparent 0 46%,
+    #000 47% 56%,
+    transparent 57%
+  );
+}
+.darts-spinner .board .bull {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--green);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: grid;
+  place-items: center;
+  z-index: 2;
+}
+.darts-spinner .board .bull::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--red);
+}
+@keyframes darts-board-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.darts-spinner__label {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .darts-spinner .board {
+    animation-duration: 6s;
+  }
+}

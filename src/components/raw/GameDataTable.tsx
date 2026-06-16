@@ -4,7 +4,10 @@ import { useState, useMemo } from "react";
 import type { ParsedGameSession } from "../../loaders/loadData";
 import type { Coord } from "../../types/dart";
 import { AI_TYPE_LABELS } from "../../utils/stats";
+import { useDebouncedValue } from "../../utils/useDebouncedValue";
 import { RawTableCard } from "./RawTableCard";
+import { VirtualizedTable } from "./VirtualizedTable";
+import type { VirtualColumn } from "./VirtualizedTable";
 
 interface Props {
   sessions: ParsedGameSession[];
@@ -126,13 +129,14 @@ export function GameDataTable({ sessions }: Props) {
 
   const rows = useMemo(() => buildGameDataRows(sessions), [sessions]);
 
+  const debouncedSearch = useDebouncedValue(search);
   const filtered = useMemo(() => {
-    if (!search.trim()) return rows;
-    const q = search.trim().toLowerCase();
+    if (!debouncedSearch.trim()) return rows;
+    const q = debouncedSearch.trim().toLowerCase();
     return rows.filter(
       (r) => r.uuid.toLowerCase().includes(q) || r.nickname.toLowerCase().includes(q),
     );
-  }, [rows, search]);
+  }, [rows, debouncedSearch]);
 
   const inputStyle: React.CSSProperties = {
     background: "#ffffff",
@@ -144,17 +148,42 @@ export function GameDataTable({ sessions }: Props) {
     fontFamily: "inherit",
   };
 
-  const numCell: React.CSSProperties = {
-    color: "#111827",
-    fontVariantNumeric: "tabular-nums",
-    textAlign: "right",
-  };
-
   function coord(x: number | null, y: number | null) {
     if (x === null || y === null || Number.isNaN(x) || Number.isNaN(y))
       return <span style={{ color: "#9ca3af" }}>—</span>;
     return `(${x.toFixed(1)}, ${y.toFixed(1)})`;
   }
+
+  const columns: VirtualColumn<GameDataRow>[] = [
+    {
+      key: "uuid",
+      header: "UUID",
+      width: 130,
+      cell: (r) => (
+        <span title={r.uuid} style={{ fontFamily: "monospace", fontSize: 11 }}>
+          {r.uuid ? `${r.uuid.slice(0, 8)}…` : <span style={{ color: "#9ca3af" }}>—</span>}
+        </span>
+      ),
+    },
+    { key: "gameIndex", header: "Game #", width: 80, numeric: true, cell: (r) => r.gameIndex },
+    { key: "boardId", header: "Board", width: 80, numeric: true, cell: (r) => r.boardId },
+    {
+      key: "suggested",
+      header: "Suggested Aim",
+      width: 140,
+      align: "right",
+      cell: (r) => coord(r.suggestedX, r.suggestedY),
+    },
+    {
+      key: "actual",
+      header: "Actual Aim",
+      width: 140,
+      align: "right",
+      cell: (r) => coord(r.actualX, r.actualY),
+    },
+    { key: "hitCount", header: "Hits", width: 80, numeric: true, cell: (r) => r.hitCount },
+    { key: "date", header: "Date", width: 120, cell: (r) => r.createdAt.slice(0, 10) },
+  ];
 
   return (
     <RawTableCard title={`game_data (${filtered.length} of ${rows.length} games)`}>
@@ -190,38 +219,7 @@ export function GameDataTable({ sessions }: Props) {
         </button>
       </div>
 
-      <div className="table-scroll table-scroll--boxed">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>UUID</th>
-              <th style={{ textAlign: "right" }}>Game #</th>
-              <th style={{ textAlign: "right" }}>Board</th>
-              <th style={{ textAlign: "right" }}>Suggested Aim</th>
-              <th style={{ textAlign: "right" }}>Actual Aim</th>
-              <th style={{ textAlign: "right" }}>Hits</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r, i) => (
-              <tr key={i}>
-                <td>
-                  <span title={r.uuid} style={{ fontFamily: "monospace", fontSize: 11 }}>
-                    {r.uuid ? `${r.uuid.slice(0, 8)}…` : <span style={{ color: "#9ca3af" }}>—</span>}
-                  </span>
-                </td>
-                <td style={numCell}>{r.gameIndex}</td>
-                <td style={numCell}>{r.boardId}</td>
-                <td style={numCell}>{coord(r.suggestedX, r.suggestedY)}</td>
-                <td style={numCell}>{coord(r.actualX, r.actualY)}</td>
-                <td style={numCell}>{r.hitCount}</td>
-                <td>{r.createdAt.slice(0, 10)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <VirtualizedTable columns={columns} rows={filtered} rowKey={(_r, i) => i} />
       <p style={{ fontSize: 11, color: "#6b7280" }}>
         One row per game (the flattened <code>games</code> column). "Export game_data CSV" writes
         every game with its full hit array as JSON; "Export raw game_sessions CSV" reconstructs the

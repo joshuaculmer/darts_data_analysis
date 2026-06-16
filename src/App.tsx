@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from "react";
 import {
   Routes,
   Route,
@@ -7,6 +7,7 @@ import {
   useNavigate,
   useParams,
   useSearchParams,
+  useLocation,
 } from "react-router-dom";
 import { loadGameSessions, loadSurveyResponses } from "./loaders/loadData";
 import type {
@@ -27,15 +28,29 @@ import { computeCorrelationMatrix } from "./utils/correlation";
 import { KpiCards } from "./components/sanity/KpiCards";
 import { SessionCalendar } from "./components/sanity/SessionCalendar";
 import { ConditionDistribution } from "./components/sanity/ConditionDistribution";
-import { TrustGroup } from "./components/trust/TrustGroup";
-import { PerformanceGroup } from "./components/performance/PerformanceGroup";
-import { LuckGroup } from "./components/luck/LuckGroup";
-import { SessionsTable } from "./components/raw/SessionsTable";
-import { GameDataTable } from "./components/raw/GameDataTable";
-import { SurveyTable } from "./components/raw/SurveyTable";
-import { IndividualView } from "./components/individual/IndividualView";
-import { SessionView } from "./components/session/SessionView";
+import { Spinner } from "./components/Spinner";
 import "./App.css";
+
+// Heavy pages (Recharts subtrees, the Raw Data tables) are code-split so they
+// only load when first visited. The Suspense fallback below shows the spinner.
+const TrustGroup = lazy(() =>
+  import("./components/trust/TrustGroup").then((m) => ({ default: m.TrustGroup })),
+);
+const PerformanceGroup = lazy(() =>
+  import("./components/performance/PerformanceGroup").then((m) => ({ default: m.PerformanceGroup })),
+);
+const LuckGroup = lazy(() =>
+  import("./components/luck/LuckGroup").then((m) => ({ default: m.LuckGroup })),
+);
+const RawDataPage = lazy(() =>
+  import("./components/raw/RawDataPage").then((m) => ({ default: m.RawDataPage })),
+);
+const IndividualView = lazy(() =>
+  import("./components/individual/IndividualView").then((m) => ({ default: m.IndividualView })),
+);
+const SessionView = lazy(() =>
+  import("./components/session/SessionView").then((m) => ({ default: m.SessionView })),
+);
 
 const NAV_ITEMS: { path: string; label: string }[] = [
   { path: "/sanity", label: "Sanity Checks" },
@@ -121,6 +136,47 @@ function IndividualRoute({
   );
 }
 
+// Shows the loading spinner whenever the top-level section changes, then defers
+// mounting the new page until the spinner has painted (double rAF). This makes
+// the heavy synchronous render of a page (e.g. a Recharts group page) happen
+// *behind* an already-visible spinner instead of freezing the UI. Keyed on the
+// first path segment so navigating within a section (e.g. session pills under
+// /session/:uuid/:idx) does NOT flash a spinner or remount the view.
+function RouteSpinnerGate({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  const section = pathname.split("/")[1] ?? "";
+  const [renderedSection, setRenderedSection] = useState(section);
+  const [ready, setReady] = useState(true);
+
+  // Adjust-state-during-render: when the section changes, switch to the spinner
+  // in this same render pass so it paints before the new page mounts.
+  if (section !== renderedSection) {
+    setRenderedSection(section);
+    setReady(false);
+  }
+
+  useEffect(() => {
+    if (ready) return;
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setReady(true));
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [ready]);
+
+  if (!ready) {
+    return (
+      <section className="dash-section" style={{ padding: "48px 0" }}>
+        <Spinner label="Loading…" />
+      </section>
+    );
+  }
+  return <>{children}</>;
+}
+
 function App() {
   const [sessions, setSessions] = useState<ParsedGameSession[]>([]);
   const [surveyResponses, setSurveyResponses] = useState<
@@ -137,6 +193,33 @@ function App() {
   const [passwordInput, setPasswordInput] = useState("");
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [showSpinnerEgg, setShowSpinnerEgg] = useState(false);
+
+  // Easter egg: typing "spinner" anywhere (outside a text field) overlays the
+  // loading spinner on top of whatever is rendered; Escape dismisses it.
+  useEffect(() => {
+    let buffer = "";
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowSpinnerEgg(false);
+        return;
+      }
+      // Ignore typing inside inputs/textareas/selects so filters aren't hijacked.
+      const el = e.target as HTMLElement | null;
+      const tag = el?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el?.isContentEditable) {
+        return;
+      }
+      if (e.key.length !== 1 || !/[a-z]/i.test(e.key)) return;
+      buffer = (buffer + e.key.toLowerCase()).slice(-7);
+      if (buffer === "spinner") {
+        setShowSpinnerEgg(true);
+        buffer = "";
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   // Restore persisted data on mount — JSON (fetched) takes priority over CSV (uploaded)
   useEffect(() => {
@@ -341,6 +424,16 @@ function App() {
     </div>
   );
 
+  const spinnerEgg = showSpinnerEgg && (
+    <div
+      className="modal-overlay"
+      onClick={() => setShowSpinnerEgg(false)}
+      style={{ cursor: "pointer" }}
+    >
+      <Spinner label="Press Esc to close" />
+    </div>
+  );
+
   const fetchBtn = isSupabaseConfigured() && (
     <button
       className="btn-primary"
@@ -369,6 +462,7 @@ function App() {
   if (!sessionsLoaded || !surveyLoaded) {
     return (
       <div className="app">
+        {spinnerEgg}
         {passwordModal}
         {appHeader}
         <div className="upload-screen">
@@ -424,11 +518,10 @@ function App() {
   if (!boardsLoaded) {
     return (
       <div className="app">
+        {spinnerEgg}
         {appHeader}
         <div className="upload-screen">
-          <p style={{ color: "#6b7280", fontSize: 14 }}>
-            Loading board surfaces and EV grids…
-          </p>
+          <Spinner label="Loading board surfaces and EV grids…" />
         </div>
       </div>
     );
@@ -436,6 +529,7 @@ function App() {
 
   return (
     <div className="app">
+      {spinnerEgg}
       {passwordModal}
       <header className="app-header">
         <h1>Darts Analysis</h1>
@@ -461,6 +555,14 @@ function App() {
       </header>
 
       <main className="dashboard">
+        <Suspense
+          fallback={
+            <section className="dash-section" style={{ padding: "48px 0" }}>
+              <Spinner label="Loading…" />
+            </section>
+          }
+        >
+        <RouteSpinnerGate>
         <Routes>
           <Route path="/" element={<Navigate to="/sanity" replace />} />
 
@@ -534,29 +636,22 @@ function App() {
           <Route
             path="/raw"
             element={
-              <section className="dash-section">
-                <div className="raw-toolbar">
-                  <p className="section-note" style={{ margin: 0 }}>
-                    Sessions and survey responses. Click any column header to sort.
-                  </p>
-                  <label className="kpi-toggle">
-                    <input
-                      type="checkbox"
-                      checked={completeOnly}
-                      onChange={() => setCompleteOnly((v) => !v)}
-                    />
-                    <span className="kpi-toggle__label">Complete participants only</span>
-                  </label>
-                </div>
-                <SessionsTable sessions={filteredSessions} surveys={filteredSurveyResponses} boards={boards} evGrids={evGrids} />
-                <GameDataTable sessions={filteredSessions} />
-                <SurveyTable surveys={filteredSurveyResponses} />
-              </section>
+              <RawDataPage
+                sessions={filteredSessions}
+                surveys={filteredSurveyResponses}
+                boards={boards}
+                evGrids={evGrids}
+                variableRows={variableRows}
+                completeOnly={completeOnly}
+                onToggleCompleteOnly={() => setCompleteOnly((v) => !v)}
+              />
             }
           />
 
           <Route path="*" element={<Navigate to="/sanity" replace />} />
         </Routes>
+        </RouteSpinnerGate>
+        </Suspense>
       </main>
     </div>
   );

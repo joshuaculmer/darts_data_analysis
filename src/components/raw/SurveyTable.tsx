@@ -1,7 +1,10 @@
 // All colors in this file must follow PALETTE.md at the project root.
 import { useState, useMemo } from "react";
 import type { ParsedSurveyResponse } from "../../loaders/loadData";
+import { useDebouncedValue } from "../../utils/useDebouncedValue";
 import { RawTableCard } from "./RawTableCard";
+import { VirtualizedTable } from "./VirtualizedTable";
+import type { VirtualColumn } from "./VirtualizedTable";
 
 interface Props {
   surveys: ParsedSurveyResponse[];
@@ -51,15 +54,16 @@ export function SurveyTable({ surveys }: Props) {
     [surveys]
   );
 
+  const debouncedSearch = useDebouncedValue(search);
   const filtered = useMemo(() => {
-    if (!search.trim()) return surveys;
-    const q = search.trim().toLowerCase();
+    if (!debouncedSearch.trim()) return surveys;
+    const q = debouncedSearch.trim().toLowerCase();
     return surveys.filter(
       (s) =>
         (s.user_nickname ?? "").toLowerCase().includes(q) ||
         (s.user_uuid ?? "").toLowerCase().includes(q)
     );
-  }, [surveys, search]);
+  }, [surveys, debouncedSearch]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -87,7 +91,7 @@ export function SurveyTable({ surveys }: Props) {
     }
   }
 
-  function SortIcon({ k }: { k: "participant" | "uuid" | "date" }) {
+  function sortIcon(k: "participant" | "uuid" | "date") {
     if (sortCol !== k) return <span style={{ color: "#d1d5db", fontSize: 10 }}> ↕</span>;
     return <span style={{ fontSize: 10 }}> {sortDir === "asc" ? "▲" : "▼"}</span>;
   }
@@ -101,6 +105,59 @@ export function SurveyTable({ surveys }: Props) {
     fontSize: 12,
     fontFamily: "inherit",
   };
+
+  type DisplayRow = { survey: ParsedSurveyResponse; answers: Record<string, unknown> };
+  const displayRows = useMemo<DisplayRow[]>(
+    () =>
+      sorted.map((s) => ({
+        survey: s,
+        answers: Object.fromEntries(s.responses.map((r) => [r.questionId, r.value])),
+      })),
+    [sorted],
+  );
+
+  const columns: VirtualColumn<DisplayRow>[] = [
+    {
+      key: "participant",
+      header: <>Participant{sortIcon("participant")}</>,
+      width: 150,
+      ellipsis: true,
+      onHeaderClick: () => toggleSort("participant"),
+      cell: ({ survey }) =>
+        survey.user_nickname || <span style={{ color: "#9ca3af" }}>—</span>,
+    },
+    {
+      key: "uuid",
+      header: <>UUID{sortIcon("uuid")}</>,
+      width: 130,
+      onHeaderClick: () => toggleSort("uuid"),
+      cell: ({ survey }) => (
+        <span title={survey.user_uuid ?? ""} style={{ fontFamily: "monospace", fontSize: 11 }}>
+          {survey.user_uuid ? `${survey.user_uuid.slice(0, 8)}…` : <span style={{ color: "#9ca3af" }}>—</span>}
+        </span>
+      ),
+    },
+    {
+      key: "date",
+      header: <>Date{sortIcon("date")}</>,
+      width: 120,
+      onHeaderClick: () => toggleSort("date"),
+      cell: ({ survey }) => survey.created_at.slice(0, 10),
+    },
+    ...questionIds.map(
+      (qId): VirtualColumn<DisplayRow> => ({
+        key: `q:${qId}`,
+        header: qId,
+        width: 110,
+        numeric: true,
+        align: "left",
+        cell: ({ answers }) => {
+          const v = answers[qId];
+          return v !== undefined ? String(v) : <span style={{ color: "#9ca3af" }}>—</span>;
+        },
+      }),
+    ),
+  ];
 
   return (
     <RawTableCard title={`Survey Responses (${sorted.length} of ${surveys.length})`}>
@@ -126,48 +183,7 @@ export function SurveyTable({ surveys }: Props) {
         </button>
       </div>
 
-      <div className="table-scroll table-scroll--boxed">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th onClick={() => toggleSort("participant")} style={{ cursor: "pointer" }}>Participant<SortIcon k="participant" /></th>
-              <th onClick={() => toggleSort("uuid")} style={{ cursor: "pointer" }}>UUID<SortIcon k="uuid" /></th>
-              <th onClick={() => toggleSort("date")} style={{ cursor: "pointer" }}>Date<SortIcon k="date" /></th>
-              {questionIds.map((qId) => (
-                <th key={qId}>{qId}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((s, i) => {
-              const answerMap = Object.fromEntries(
-                s.responses.map((r) => [r.questionId, r.value])
-              );
-              return (
-                <tr key={i}>
-                  <td style={{ color: "#111827" }}>
-                    {s.user_nickname || <span style={{ color: "#9ca3af" }}>—</span>}
-                  </td>
-                  <td>
-                    <span title={s.user_uuid ?? ""} style={{ fontFamily: "monospace", fontSize: 11 }}>
-                      {s.user_uuid ? `${s.user_uuid.slice(0, 8)}…` : <span style={{ color: "#9ca3af" }}>—</span>}
-                    </span>
-                  </td>
-                  <td>{s.created_at.slice(0, 10)}</td>
-                  {questionIds.map((qId) => {
-                    const v = answerMap[qId];
-                    return (
-                      <td key={qId} style={{ fontVariantNumeric: "tabular-nums" }}>
-                        {v !== undefined ? String(v) : <span style={{ color: "#9ca3af" }}>—</span>}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <VirtualizedTable columns={columns} rows={displayRows} rowKey={(_r, i) => i} />
       {questionIds.length > 0 && (
         <p style={{ fontSize: 11, color: "#6b7280" }}>
           {questionIds.length} question{questionIds.length !== 1 ? "s" : ""} found across all responses.
