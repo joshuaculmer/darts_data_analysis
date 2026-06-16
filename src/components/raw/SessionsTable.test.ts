@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { AI_Type } from "../../types/dart";
 import type { DartGameDTO, RewardSurface } from "../../types/dart";
 import type { ParsedGameSession, ParsedSurveyResponse } from "../../loaders/loadData";
-import { buildSessionTableRows } from "./SessionsTable";
+import { buildSessionTableRows, sortSessionTableRows } from "./SessionsTable";
 import { evGridKey, EV_GRID_SIZE } from "../../loaders/loadEvGrids";
 
 function makeGame(overrides: Partial<DartGameDTO> = {}): DartGameDTO {
@@ -108,5 +108,35 @@ describe("buildSessionTableRows", () => {
     // raw totals still defined (just zero)
     expect(r.totalScore).toBe(0);
     expect(r.avgHitCount).toBe(0);
+  });
+});
+
+describe("sortSessionTableRows", () => {
+  it("default participant sort groups by participant, then created_at ascending", () => {
+    const rows = buildSessionTableRows(
+      [
+        makeSession({ id: "bob", user_uuid: "uuid-b", user_nickname: "Bob", created_at: "2024-01-10T09:00:00Z" }),
+        makeSession({ id: "alice-late", user_uuid: "uuid-a", user_nickname: "Alice", created_at: "2024-01-15T12:00:00Z" }),
+        makeSession({ id: "alice-early", user_uuid: "uuid-a", user_nickname: "Alice", created_at: "2024-01-15T10:00:00Z" }),
+      ],
+      [],
+      new Map(),
+    );
+    const sorted = sortSessionTableRows(rows, "participant", "asc");
+    expect(sorted.map((r) => r.session.id)).toEqual(["alice-early", "alice-late", "bob"]);
+  });
+
+  it("uses created_at ascending as the tiebreaker under any column sort", () => {
+    const rows = buildSessionTableRows(
+      [
+        makeSession({ id: "later", created_at: "2024-01-15T12:00:00Z", execution_skill: 50 }),
+        makeSession({ id: "earlier", created_at: "2024-01-15T10:00:00Z", execution_skill: 50 }),
+      ],
+      [],
+      new Map(),
+    );
+    // Equal skill → tiebreak is chronological ascending even when sorting desc.
+    const sorted = sortSessionTableRows(rows, "skill", "desc");
+    expect(sorted.map((r) => r.session.id)).toEqual(["earlier", "later"]);
   });
 });

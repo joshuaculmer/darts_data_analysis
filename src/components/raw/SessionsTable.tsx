@@ -110,6 +110,57 @@ export function buildSessionTableRows(
   });
 }
 
+const cmpStr = (a: string, b: string, dir: SortDir) =>
+  dir === "asc" ? a.localeCompare(b) : b.localeCompare(a);
+
+function compareSessionByKey(
+  a: SessionTableRow,
+  b: SessionTableRow,
+  key: SortKey,
+  dir: SortDir,
+): number {
+  // "date" sorts on the full created_at timestamp (the cell only shows the day).
+  if (key === "date") return cmpStr(a.session.created_at, b.session.created_at, dir);
+  if (key === "participant") {
+    // Group by participant: display name first, then UUID so a participant's
+    // rows stay contiguous even if two participants share a nickname.
+    const c = cmpStr(a.participant || (a.uuid ?? ""), b.participant || (b.uuid ?? ""), dir);
+    if (c !== 0) return c;
+    return cmpStr(a.uuid ?? "", b.uuid ?? "", dir);
+  }
+  const va = a[key];
+  const vb = b[key];
+  // Nulls always sort to the end regardless of direction.
+  if (va === null && vb === null) return 0;
+  if (va === null) return 1;
+  if (vb === null) return -1;
+  if (typeof va === "number" && typeof vb === "number") return dir === "asc" ? va - vb : vb - va;
+  return cmpStr(String(va), String(vb), dir);
+}
+
+/**
+ * Sorts the session rows by the chosen column, with the session `created_at`
+ * (the Supabase upload timestamp — one per session) as a universal tiebreaker
+ * that is ALWAYS ascending regardless of the primary direction. This makes the
+ * ordering intentional rather than incidental: the default (participant) groups
+ * each participant's sessions chronologically, and any column sort still falls
+ * back to chronological order for equal values. UUID is the final tiebreaker
+ * for full determinism. Pure + exported so it can be unit-tested.
+ */
+export function sortSessionTableRows(
+  rows: SessionTableRow[],
+  key: SortKey,
+  dir: SortDir,
+): SessionTableRow[] {
+  return [...rows].sort((a, b) => {
+    const primary = compareSessionByKey(a, b, key, dir);
+    if (primary !== 0) return primary;
+    const chrono = a.session.created_at.localeCompare(b.session.created_at);
+    if (chrono !== 0) return chrono;
+    return (a.uuid ?? "").localeCompare(b.uuid ?? "");
+  });
+}
+
 const CSV_COLUMNS: { header: string; get: (r: SessionTableRow) => string }[] = [
   { header: "participant", get: (r) => `"${r.participant}"` },
   { header: "user_uuid", get: (r) => r.uuid ?? "" },
@@ -159,7 +210,9 @@ export function SessionsTable({ sessions, surveys, boards, evGrids, variableRows
   const [conditionFilter, setConditionFilter] = useState<string>("all");
   const [uuidQuery, setUuidQuery] = useState("");
   const [scoreMin, setScoreMin] = useState("");
-  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "date", dir: "asc" });
+  // Default to the intentional ordering: participant, then chronological
+  // (created_at ascending) within each participant — see sortSessionTableRows.
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "participant", dir: "asc" });
 
   const rows = useMemo(
     () => buildSessionTableRows(sessions, surveys, boards, evGrids, variableRows),
@@ -184,28 +237,10 @@ export function SessionsTable({ sessions, surveys, boards, evGrids, variableRows
     return r;
   }, [rows, filterField, conditionFilter, debouncedUuid, debouncedScoreMin]);
 
-  const sorted = useMemo(() => {
-    const { key, dir } = sort;
-    return [...filtered].sort((a, b) => {
-      // The "date" key sorts on the full created_at timestamp (the date cell
-      // only shows YYYY-MM-DD, so a raw cell compare would tie within a day).
-      if (key === "date") {
-        const cmp = a.session.created_at.localeCompare(b.session.created_at);
-        return dir === "asc" ? cmp : -cmp;
-      }
-      const va = a[key];
-      const vb = b[key];
-      // Nulls always sort to the end regardless of direction.
-      if (va === null && vb === null) return 0;
-      if (va === null) return 1;
-      if (vb === null) return -1;
-      if (typeof va === "number" && typeof vb === "number")
-        return dir === "asc" ? va - vb : vb - va;
-      return dir === "asc"
-        ? String(va).localeCompare(String(vb))
-        : String(vb).localeCompare(String(va));
-    });
-  }, [filtered, sort]);
+  const sorted = useMemo(
+    () => sortSessionTableRows(filtered, sort.key, sort.dir),
+    [filtered, sort],
+  );
 
   function toggleSort(key: SortKey) {
     setSort((prev) =>
@@ -329,7 +364,10 @@ export function SessionsTable({ sessions, surveys, boards, evGrids, variableRows
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <label style={labelStyle}>Sort by</label>
         <select
-          value={sort.key === "date" && sort.dir === "asc" ? "oldest" : "newest"}
+          // Default (participant grouping) keeps each participant's sessions in
+          // ascending chronological order, i.e. oldest-first — so it maps to
+          // "oldest" here; only an explicit date-descending sort is "newest".
+          value={sort.key === "date" && sort.dir === "desc" ? "newest" : "oldest"}
           onChange={(e) =>
             setSort({ key: "date", dir: e.target.value === "oldest" ? "asc" : "desc" })
           }

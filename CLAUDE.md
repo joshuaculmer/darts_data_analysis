@@ -309,11 +309,26 @@ src/
         │                            #   avg hits/game, total score, avg score/game, scorePerHit, proxAI, proxOptimal, dispersion μ/σ,
         │                            #   EV gap (from EV grids; blank when uncovered), and joined survey trust/influence/satisfied/luck. CSV export includes all.
         │                            #   Sort-by dropdown (Oldest/Newest, full created_at timestamp) + unified Filter-by (AI Condition / UUID / Score-Hit ≥ min); CSV export follows the on-screen order and active filter.
+        │                            #   ORDERING CONTRACT (sortSessionTableRows, pure/exported/tested): default = participant (nickname||uuid, then uuid),
+        │                            #   then session `created_at` ascending within each participant. Under ANY column sort, `created_at` ascending is the
+        │                            #   universal tiebreaker (then uuid) so equal values are deterministically chronological, never incidental. `created_at`
+        │                            #   is the per-session Supabase upload timestamp (one per session) — the intentional session-level clock.
         ├── GameDataTable.tsx        # `game_data` table — flattens the `games` column to one row per game (buildGameDataRows, pure/exported/tested).
+        │                            #   ORDERING CONTRACT: buildGameDataRows returns rows grouped by participant (nickname||uuid, then uuid),
+        │                            #   and within each participant sorted by game `start` ascending — true per-game chronology. `start` is the
+        │                            #   only reliable clock (participants run concurrently; session `created_at` is just the Supabase upload time,
+        │                            #   identical for every game in a session — use `session_id` to tie games to a session). Every game has a
+        │                            #   distinct `start`, so no tiebreaker fallback is needed. The table and the game_data CSV both read this one
+        │                            #   ordered list; any future sort/filter MUST preserve it (group by the chosen qualifier first, then `start` asc).
         │                            #   Two exports: "game_data CSV" (one row per game, full hits array as JSON) and "raw game_sessions CSV"
-        │                            #   (reconstructs the original Supabase game_sessions table via Papa.unparse, `games` as a JSON string).
-        └── SurveyTable.tsx          # Sortable/filterable survey table; dynamic question columns; CSV export
-                                     #   (CSV export always sorted chronologically by full created_at timestamp).
+        │                            #   (reconstructs the original Supabase game_sessions table via Papa.unparse, `games` as a JSON string;
+        │                            #   buildRawGameSessionRows applies the same contract — sessions grouped by participant then earliest game start,
+        │                            #   each session's nested `games` sorted by `start` asc).
+        └── SurveyTable.tsx          # Sortable/filterable survey table; dynamic question columns; CSV export.
+                                     #   ORDERING CONTRACT (sortSurveyRows, pure/exported/tested): default = participant (nickname||uuid, then uuid),
+                                     #   then `created_at` ascending within each participant. Under ANY column sort, `created_at` ascending is the universal
+                                     #   tiebreaker (then uuid). `created_at` is the only timestamp a survey carries — its intentional chronological clock.
+                                     #   CSV export follows the on-screen order (participant → chronological by default).
 
 public/
 ├── Perlin_Noise_Surfaces.ts/        # 100 board JSON files (PerlinNoiseBoard0.json … PerlinNoiseBoard99.json); board_id 0–99

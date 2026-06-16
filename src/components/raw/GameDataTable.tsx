@@ -37,9 +37,18 @@ export interface GameDataRow {
  * Flattens the `games` column of every session into one row per game. This is
  * the raw game data straight out of the session DTOs — no derived scores.
  * Pure + exported so it can be unit-tested without rendering.
+ *
+ * Ordering contract: rows come back grouped by participant, and within each
+ * participant the games are sorted by their `start` timestamp ascending (true
+ * per-game chronology — participants run concurrently, so `start` is the only
+ * reliable clock; the session `created_at` is just the upload time, identical
+ * for every game in a session). Every game has a distinct `start`, so no
+ * tiebreaker fallback is needed. Both the on-screen table and the CSV export
+ * read from this single ordered list, so any future sort/filter must preserve
+ * this contract: group by the chosen qualifier first, then `start` ascending.
  */
 export function buildGameDataRows(sessions: ParsedGameSession[]): GameDataRow[] {
-  return sessions.flatMap((s) =>
+  const rows = sessions.flatMap((s) =>
     s.games.map((g, i) => ({
       sessionId: s.id,
       createdAt: s.created_at,
@@ -60,6 +69,17 @@ export function buildGameDataRows(sessions: ParsedGameSession[]): GameDataRow[] 
       hits: g.hits,
     })),
   );
+
+  return rows.sort((a, b) => {
+    // Group by participant: display name first, then UUID so a participant's
+    // games stay contiguous even if two participants share a nickname.
+    const byName = (a.nickname || a.uuid).localeCompare(b.nickname || b.uuid);
+    if (byName !== 0) return byName;
+    const byUuid = a.uuid.localeCompare(b.uuid);
+    if (byUuid !== 0) return byUuid;
+    // Within a participant, chronological by game start.
+    return a.start - b.start;
+  });
 }
 
 function csvNum(v: number | null): string {
@@ -104,24 +124,56 @@ function exportGameData(rows: GameDataRow[]) {
   downloadCSV(lines.join("\n"), "game_data_export.csv");
 }
 
+export interface RawGameSessionRow {
+  id: string;
+  created_at: string;
+  user_uuid: string;
+  user_nickname: string;
+  execution_skill: number;
+  games_played: number;
+  ai_advice: number;
+  games: string;
+}
+
 /**
  * Reconstructs the raw game_sessions table as exported from Supabase — original
  * columns with the `games` array serialized back to a JSON string. Built from
  * the parsed sessions so it works whether the data came from a CSV upload or
- * the Supabase fetch.
+ * the Supabase fetch. Pure + exported so it can be unit-tested.
+ *
+ * Honors the same ordering contract as buildGameDataRows: sessions are grouped
+ * by participant (then ordered by their earliest game start), and each
+ * session's nested `games` array is sorted by `start` ascending.
  */
+export function buildRawGameSessionRows(sessions: ParsedGameSession[]): RawGameSessionRow[] {
+  const minStart = (s: ParsedGameSession) =>
+    s.games.length > 0 ? Math.min(...s.games.map((g) => g.start)) : Infinity;
+
+  return [...sessions]
+    .sort((a, b) => {
+      const byName = (a.user_nickname || a.user_uuid).localeCompare(
+        b.user_nickname || b.user_uuid,
+      );
+      if (byName !== 0) return byName;
+      const byUuid = a.user_uuid.localeCompare(b.user_uuid);
+      if (byUuid !== 0) return byUuid;
+      // Same participant: order their sessions chronologically by first game.
+      return minStart(a) - minStart(b);
+    })
+    .map((s) => ({
+      id: s.id,
+      created_at: s.created_at,
+      user_uuid: s.user_uuid,
+      user_nickname: s.user_nickname ?? "",
+      execution_skill: s.execution_skill,
+      games_played: s.games_played,
+      ai_advice: s.ai_advice,
+      games: JSON.stringify([...s.games].sort((g1, g2) => g1.start - g2.start)),
+    }));
+}
+
 function exportRawGameSessions(sessions: ParsedGameSession[]) {
-  const raw = sessions.map((s) => ({
-    id: s.id,
-    created_at: s.created_at,
-    user_uuid: s.user_uuid,
-    user_nickname: s.user_nickname ?? "",
-    execution_skill: s.execution_skill,
-    games_played: s.games_played,
-    ai_advice: s.ai_advice,
-    games: JSON.stringify(s.games),
-  }));
-  downloadCSV(Papa.unparse(raw), "game_sessions_raw.csv");
+  downloadCSV(Papa.unparse(buildRawGameSessionRows(sessions)), "game_sessions_raw.csv");
 }
 
 export function GameDataTable({ sessions }: Props) {

@@ -11,17 +11,49 @@ interface Props {
 }
 
 type SortDir = "asc" | "desc";
+type SortCol = "participant" | "uuid" | "date";
+
+const cmpStr = (a: string, b: string, dir: SortDir) =>
+  dir === "asc" ? a.localeCompare(b) : b.localeCompare(a);
+
+/**
+ * Sorts survey rows by the chosen column, with `created_at` (the only timestamp
+ * a survey carries) as a universal tiebreaker that is ALWAYS ascending,
+ * regardless of the primary direction. This makes the ordering intentional, not
+ * incidental: the default (participant) groups each participant's responses
+ * chronologically, and any column sort still falls back to chronological order
+ * for equal values. UUID is the final tiebreaker for full determinism. Pure +
+ * exported so it can be unit-tested.
+ */
+export function sortSurveyRows(
+  rows: ParsedSurveyResponse[],
+  col: SortCol,
+  dir: SortDir,
+): ParsedSurveyResponse[] {
+  return [...rows].sort((a, b) => {
+    let primary = 0;
+    if (col === "participant") {
+      primary = cmpStr(a.user_nickname || (a.user_uuid ?? ""), b.user_nickname || (b.user_uuid ?? ""), dir);
+      if (primary === 0) primary = cmpStr(a.user_uuid ?? "", b.user_uuid ?? "", dir);
+    } else if (col === "uuid") {
+      primary = cmpStr(a.user_uuid ?? "", b.user_uuid ?? "", dir);
+    } else {
+      primary = cmpStr(a.created_at, b.created_at, dir);
+    }
+    if (primary !== 0) return primary;
+    const chrono = a.created_at.localeCompare(b.created_at);
+    if (chrono !== 0) return chrono;
+    return (a.user_uuid ?? "").localeCompare(b.user_uuid ?? "");
+  });
+}
 
 function exportCSV(rows: ParsedSurveyResponse[], questionIds: string[]) {
   const headers = ["participant", "user_uuid", "date", ...questionIds];
-  // Always export in chronological order by full timestamp, regardless of the
-  // current on-screen sort.
-  const chronological = [...rows].sort((a, b) =>
-    a.created_at.localeCompare(b.created_at),
-  );
+  // Export in the current on-screen order (participant → chronological by
+  // default), so the CSV matches the intentional ordering shown in the table.
   const lines = [
     headers.join(","),
-    ...chronological.map((s) => {
+    ...rows.map((s) => {
       const answerMap = Object.fromEntries(s.responses.map((r) => [r.questionId, r.value]));
       return [
         `"${s.user_nickname ?? ""}"`,
@@ -45,7 +77,9 @@ function exportCSV(rows: ParsedSurveyResponse[], questionIds: string[]) {
 
 export function SurveyTable({ surveys }: Props) {
   const [search, setSearch] = useState("");
-  const [sortCol, setSortCol] = useState<"participant" | "uuid" | "date">("date");
+  // Default to the intentional ordering: participant, then chronological
+  // (created_at ascending) within each participant — see sortSurveyRows.
+  const [sortCol, setSortCol] = useState<SortCol>("participant");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const questionIds = useMemo(
@@ -65,24 +99,12 @@ export function SurveyTable({ surveys }: Props) {
     );
   }, [surveys, debouncedSearch]);
 
-  const sorted = useMemo(() => {
-    return [...filtered].sort((a, b) => {
-      let va: string, vb: string;
-      if (sortCol === "participant") {
-        va = a.user_nickname ?? a.user_uuid;
-        vb = b.user_nickname ?? b.user_uuid;
-      } else if (sortCol === "uuid") {
-        va = a.user_uuid ?? "";
-        vb = b.user_uuid ?? "";
-      } else {
-        va = a.created_at;
-        vb = b.created_at;
-      }
-      return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
-    });
-  }, [filtered, sortCol, sortDir]);
+  const sorted = useMemo(
+    () => sortSurveyRows(filtered, sortCol, sortDir),
+    [filtered, sortCol, sortDir],
+  );
 
-  function toggleSort(col: "participant" | "uuid" | "date") {
+  function toggleSort(col: SortCol) {
     if (sortCol === col) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
@@ -91,7 +113,7 @@ export function SurveyTable({ surveys }: Props) {
     }
   }
 
-  function sortIcon(k: "participant" | "uuid" | "date") {
+  function sortIcon(k: SortCol) {
     if (sortCol !== k) return <span style={{ color: "#d1d5db", fontSize: 10 }}> ↕</span>;
     return <span style={{ fontSize: 10 }}> {sortDir === "asc" ? "▲" : "▼"}</span>;
   }
