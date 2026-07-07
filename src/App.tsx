@@ -15,6 +15,13 @@ import type {
   ParsedSurveyResponse,
 } from "./loaders/loadData";
 import { fetchData, isSupabaseConfigured } from "./loaders/fetchSupabase";
+import {
+  persistFetchedData,
+  persistSessionsCsv,
+  persistSurveyCsv,
+  restorePersistedData,
+  clearPersistedData,
+} from "./utils/persistence";
 import { loadBoards } from "./loaders/loadBoards";
 import { loadEvGrids } from "./loaders/loadEvGrids";
 import type { EvGrids } from "./loaders/loadEvGrids";
@@ -221,32 +228,30 @@ function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Restore persisted data on mount — JSON (fetched) takes priority over CSV (uploaded)
+  // Restore persisted data on mount from IndexedDB (fetched objects or
+  // uploaded CSV text; legacy localStorage keys are migrated automatically)
   useEffect(() => {
-    const savedSessionsJson = localStorage.getItem("darts:sessions_json");
-    const savedSurveyJson = localStorage.getItem("darts:survey_json");
-    const savedSessionsCsv = localStorage.getItem("darts:sessions_csv");
-    const savedSurveyCsv = localStorage.getItem("darts:survey_csv");
+    void restorePersistedData().then(
+      ({ sessions, survey, sessionsCsv, surveyCsv }) => {
+        if (sessions) {
+          setSessions(sessions);
+          setSessionsLoaded(true);
+        } else if (sessionsCsv) {
+          void loadGameSessions(sessionsCsv).then((parsed) => {
+            setSessions(parsed);
+            setSessionsLoaded(true);
+          });
+        }
 
-    if (savedSessionsJson) {
-      const parsed = JSON.parse(savedSessionsJson) as ParsedGameSession[];
-      setSessions(parsed);
-      setSessionsLoaded(true);
-    } else if (savedSessionsCsv) {
-      loadGameSessions(savedSessionsCsv).then((parsed) => {
-        setSessions(parsed);
-        setSessionsLoaded(true);
-      });
-    }
-
-    if (savedSurveyJson) {
-      const parsed = JSON.parse(savedSurveyJson) as ParsedSurveyResponse[];
-      setSurveyResponses(parsed);
-    } else if (savedSurveyCsv) {
-      loadSurveyResponses(savedSurveyCsv).then((parsed) => {
-        setSurveyResponses(parsed);
-      });
-    }
+        if (survey) {
+          setSurveyResponses(survey);
+        } else if (surveyCsv) {
+          void loadSurveyResponses(surveyCsv).then((parsed) => {
+            setSurveyResponses(parsed);
+          });
+        }
+      },
+    );
   }, []);
 
   const handleSessionsFile = useCallback(
@@ -254,7 +259,7 @@ function App() {
       const file = e.target.files?.[0];
       if (!file) return;
       const text = await file.text();
-      localStorage.setItem("darts:sessions_csv", text);
+      await persistSessionsCsv(text);
       const parsed = await loadGameSessions(text);
       setSessions(parsed);
       setSessionsLoaded(true);
@@ -267,7 +272,7 @@ function App() {
       const file = e.target.files?.[0];
       if (!file) return;
       const text = await file.text();
-      localStorage.setItem("darts:survey_csv", text);
+      await persistSurveyCsv(text);
       const parsed = await loadSurveyResponses(text);
       setSurveyResponses(parsed);
     },
@@ -275,10 +280,7 @@ function App() {
   );
 
   const handleClearData = useCallback(() => {
-    localStorage.removeItem("darts:sessions_csv");
-    localStorage.removeItem("darts:survey_csv");
-    localStorage.removeItem("darts:sessions_json");
-    localStorage.removeItem("darts:survey_json");
+    void clearPersistedData();
     setSessions([]);
     setSurveyResponses([]);
     setSessionsLoaded(false);
@@ -296,14 +298,16 @@ function App() {
     try {
       const { sessions: fetchedSessions, survey: fetchedSurvey } =
         await fetchData(password);
-      localStorage.setItem(
-        "darts:sessions_json",
-        JSON.stringify(fetchedSessions),
-      );
-      localStorage.setItem("darts:survey_json", JSON.stringify(fetchedSurvey));
+      // Load the dashboard first; persistence is best-effort so a storage
+      // failure can never block a successful fetch.
       setSessions(fetchedSessions);
       setSurveyResponses(fetchedSurvey);
       setSessionsLoaded(true);
+      try {
+        await persistFetchedData(fetchedSessions, fetchedSurvey);
+      } catch (persistErr) {
+        console.warn("Could not persist fetched data:", persistErr);
+      }
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : String(err));
     } finally {

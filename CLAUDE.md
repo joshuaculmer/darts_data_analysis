@@ -15,7 +15,7 @@ The app has three sequential gates before showing the dashboard:
 2. **Board loading screen** — app auto-fetches the board surfaces (Perlin or Gaussian) referenced in the session data
 3. **Dashboard** — all data available, all charts active
 
-Both CSVs are persisted in `localStorage` (`darts:sessions_csv`, `darts:survey_csv`) so the dashboard reloads automatically on page refresh without re-uploading. A red **Clear Data** button in the top-right of the header removes both keys and resets all app state to the upload screen.
+All loaded data is persisted in **IndexedDB** via `src/utils/persistence.ts` (`idb-keyval`) so the dashboard reloads automatically on page refresh without re-uploading — keys `darts:sessions_csv`/`darts:survey_csv` (uploaded CSV text) and `darts:sessions`/`darts:survey` (fetched structured rows). localStorage is **no longer used** (its ~5 MB quota threw `QuotaExceededError` once the fetched dataset grew); any data under the old localStorage keys is migrated into IndexedDB on first restore. Fetching supersedes persisted CSVs and vice versa (per table). A red **Clear Data** button in the top-right of the header clears all persisted keys and resets all app state to the upload screen.
 
 The research dashboard is reorganized into three variable-centric **group pages** — Trust,
 Performance, and Luck — each rendering its dimensions' by-condition/by-session/over-time charts,
@@ -76,7 +76,7 @@ The header has a **Fetch Data** button that pulls both tables directly from Supa
 1. User clicks Fetch Data → password modal
 2. Password sent as `x-fetch-password` header to `{SUPABASE_URL}/functions/v1/fetch-data`
 3. Edge Function validates password, returns `{ sessions, survey }` JSON
-4. Client maps rows to `ParsedGameSession[]` / `ParsedSurveyResponse[]` and stores under `darts:sessions_json` / `darts:survey_json` in localStorage
+4. Client maps rows to `ParsedGameSession[]` / `ParsedSurveyResponse[]`, loads the dashboard, then persists them to IndexedDB (`persistFetchedData` in `src/utils/persistence.ts`) — persistence is best-effort and can never block a successful fetch
 
 **Relevant files:**
 - `supabase/functions/fetch-data/index.ts` — the Edge Function
@@ -228,6 +228,11 @@ src/
 │   │                                #   VARIABLES registry {key,label,group,accessor,format} + VARIABLE_KEYS,
 │   │                                #   computeVariableByCondition(rows, key) → mean±CI95 per AI condition
 │   ├── variables.test.ts
+│   ├── persistence.ts               # IndexedDB persistence (idb-keyval): persistFetchedData,
+│   │                                #   persistSessionsCsv/persistSurveyCsv, restorePersistedData
+│   │                                #   (migrates legacy localStorage keys), clearPersistedData.
+│   │                                #   Replaces localStorage (5 MB quota → QuotaExceededError).
+│   ├── persistence.test.ts          #   Tested against fake-indexeddb
 │   ├── useDebouncedValue.ts         # useDebouncedValue(value, delayMs=150) — debounces Raw Data filter inputs
 │   │                                #   so each keystroke doesn't re-filter/re-render the full (large) table set
 │   ├── correlation.ts               # spearman(xs, ys) pairwise-complete → {r, n};
